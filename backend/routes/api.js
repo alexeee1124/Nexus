@@ -261,7 +261,7 @@ router.delete('/messages/:src/:id', protect, async (req, res) => {
         const { src, id } = req.params;
         const { fbPath, fbKey } = req.body; // Sent securely in the request body
         
-        if (!fbPath || !fbKey) return res.status(400).json({ success: false, message: 'Missing path or key' });
+        if (!fbPath || fbKey === undefined || fbKey === null) return res.status(400).json({ success: false, message: 'Missing path or key' });
         
         const source = await Source.findOne({ key: src, $or: [{ owner: null }, { owner: req.user._id }] });
         if (!source) return res.status(403).json({ success: false, message: 'Unauthorized source' });

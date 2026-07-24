@@ -1861,7 +1861,7 @@ async function fetchMsgs(d) {
             let res = await r.json();
             if (res.success && res.data && res.data.length > 0) {
                 // Ensure local IDs are attached for rendering
-                cache[k] = res.data.map(x => ({ ...x, _localId: Date.now()+Math.random() }));
+                cache[k] = res.data.map(x => ({ ...x, _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9) }));
                 if(curTab==='messages' || curTab==='finance') renderTab(); 
                 return;
             }
