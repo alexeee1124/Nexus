@@ -1888,7 +1888,8 @@ function closeMobilePane() {
 }
 
 async function fetchMsgs(d) {
-    const k = d._src+':'+d._id;
+    if (!d || !d._id) return;
+    const k = d._id.toLowerCase();
     if(cache[k]) return;
     try {
         let r = await fetch(`/api/messages/${d._src}/${d._id}`, {
@@ -2073,7 +2074,7 @@ function renderTab(silent = false) {
             </div>`;
         }
         else if (curTab === 'messages') {
-            const msgs = cache[d._src+':'+d._id];
+            const msgs = cache[d._id.toLowerCase()];
             if(!msgs) { 
                 p.innerHTML = `<div class="empty-state"><div class="spinner"></div><div>Extracting Messages...</div></div>`; 
                 fetchMsgs(selDev);
@@ -2087,7 +2088,7 @@ function renderTab(silent = false) {
                     <div class="mhb-badge">${msgs.length} MSGS</div>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn primary" onclick="cache['${d._src}:${d._id}']=null;fetchMsgs(selDev)">↻ Force Sync</button>
+                    <button class="btn primary" onclick="cache['${d._id.toLowerCase()}']=null;fetchMsgs(selDev)">↻ Force Sync</button>
                 </div>
             </div>
             <div class="msg-filters">
@@ -2100,7 +2101,7 @@ function renderTab(silent = false) {
             renderMList();
         }
         else if (curTab === 'finance') {
-            const msgs = cache[d._src+':'+d._id];
+            const msgs = cache[d._id.toLowerCase()];
             if(!msgs) { 
                 p.innerHTML = `<div class="empty-state"><div class="spinner"></div><div>Extracting SMS Corpus for Financial Analysis...</div></div>`; 
                 fetchMsgs(selDev);
@@ -2235,10 +2236,9 @@ function renderTab(silent = false) {
 
 function renderMList() {
     const d = selDev;
-    if (!d) return;
-    const defaultK = d._src+':'+d._id;
-    const matchingKey = Object.keys(cache || {}).find(key => key.toLowerCase().endsWith(':' + d._id.toLowerCase())) || defaultK;
-    let allDevMsgs = cache[matchingKey] || [];
+    if (!d || !d._id) return;
+    const k = d._id.toLowerCase();
+    let allDevMsgs = cache[k] || [];
     
     // Update badge count live
     const badge = document.querySelector('.mhb-badge');
@@ -3553,8 +3553,8 @@ document.addEventListener('click', (e) => {
 
 let msgToDelete = null;
 function promptDeleteMsg(localId) {
-    if (!selDev) return;
-    const msgs = cache[selDev._src+':'+selDev._id];
+    if (!selDev || !selDev._id) return;
+    const msgs = cache[selDev._id.toLowerCase()];
     if(!msgs) return;
     const m = msgs.find(x => x._localId == localId);
     if(!m) return;
@@ -3583,9 +3583,9 @@ async function executeDeleteMsg() {
         
         if (!res.ok) throw new Error('Delete failed');
 
-        let msgs = cache[dev._src+':'+dev._id];
+        let msgs = cache[dev._id.toLowerCase()];
         if (msgs) {
-            cache[dev._src+':'+dev._id] = msgs.filter(x => x._localId != msg._localId);
+            cache[dev._id.toLowerCase()] = msgs.filter(x => x._localId != msg._localId);
         }
         renderTab(true);
         document.getElementById('delMsgModal').classList.remove('active');
@@ -4143,6 +4143,7 @@ function openAddDbDrawer() {
         });
         socket.on('newMessage', (msg) => {
             console.log('[Socket] Live SMS arrived:', msg);
+            if (!msg || !msg.deviceId) return;
             
             // Match device by deviceId (case insensitive)
             const targetDevId = (msg.deviceId || '').toLowerCase();
@@ -4153,44 +4154,41 @@ function openAddDbDrawer() {
             }
             
             if (!window.cache) window.cache = {};
-            const msgTime = Number(msg.id || msg.timestamp || Date.now());
-            const formattedMsg = {
-                _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-                type: msg.type || 'incoming',
-                dateTime: msg.dateTime || msg.date || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                sender: msg.sender || msg.address || msg.number || 'Unknown',
-                message: msg.message || msg.body || msg.text || msg.msg || '',
-                timestamp: msgTime
-            };
+            if (!window.cache[targetDevId]) window.cache[targetDevId] = [];
 
-            // Push to ALL matching cache keys for this device ID to prevent key-prefix mismatch
-            let addedToAny = false;
-            Object.keys(window.cache).forEach(k => {
-                if (k.toLowerCase().endsWith(':' + targetDevId)) {
-                    const isDuplicate = window.cache[k].some(existingMsg => {
-                        if (existingMsg._fbKey && msg._fbKey && existingMsg._fbKey === msg._fbKey) return true;
-                        if (existingMsg.id && msg.id && existingMsg.id === msg.id) return true;
-                        const existingTime = Number(existingMsg.id || existingMsg.timestamp || 0);
-                        return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingTime > 0 && Math.abs(existingTime - msgTime) < 3000);
-                    });
-                    if (!isDuplicate) {
-                        window.cache[k].push(formattedMsg);
-                        addedToAny = true;
-                    }
-                }
+            const msgTime = Number(msg.id || msg.timestamp || Date.now());
+            const isDuplicate = window.cache[targetDevId].some(existingMsg => {
+                if (existingMsg._fbKey && msg._fbKey && existingMsg._fbKey === msg._fbKey) return true;
+                if (existingMsg.id && msg.id && existingMsg.id === msg.id) return true;
+                const existingTime = Number(existingMsg.id || existingMsg.timestamp || 0);
+                return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingTime > 0 && Math.abs(existingTime - msgTime) < 3000);
             });
 
-            // If no cache key existed yet, create default key
-            if (!addedToAny) {
-                const defaultKey = ((msg.srcKey || 'default') + ':' + msg.deviceId);
-                window.cache[defaultKey] = [formattedMsg];
+            if (!isDuplicate) {
+                const formattedMsg = {
+                    _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                    type: msg.type || 'incoming',
+                    dateTime: msg.dateTime || msg.date || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    sender: msg.sender || msg.address || msg.number || 'Unknown',
+                    message: msg.message || msg.body || msg.text || msg.msg || '',
+                    timestamp: msgTime,
+                    id: msgTime
+                };
+
+                window.cache[targetDevId].push(formattedMsg);
             }
             
             // Instant UI update
             if (selDev && selDev._id.toLowerCase() === targetDevId) {
-                renderMList();
+                if (document.getElementById('mList')) {
+                    renderMList();
+                } else {
+                    renderTab(true);
+                }
             } else if (!selDev && curTab === 'messages') {
-                renderMList();
+                if (document.getElementById('mList')) {
+                    renderMList();
+                }
             }
         });
     </script>
