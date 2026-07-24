@@ -1314,7 +1314,6 @@ async function bootNexus() {
 
         renderDbSidebarFilters();
         await fetchAll();
-        startDataIntervals();
         
         document.getElementById('loader').classList.add('hidden');
     } catch (e) {
