@@ -21,16 +21,16 @@ async function syncFirebaseStreams() {
                 if (clientsRes.data && typeof clientsRes.data === 'object') {
                     const clientIds = Object.keys(clientsRes.data);
                     
-                    // Probe root schema to find where messages are actually stored
+                    // Probe specific nodes to find where messages are actually stored
                     let schemaTemplate = '/clients/{id}/messages.json'; // Assume nested by default
                     try {
                         const authS = src.apiKey ? `?auth=${src.apiKey}&` : '?';
-                        const rootRes = await axios.get(`${src.base}/.json${authS}shallow=true`);
-                        if (rootRes.data) {
-                            const rootKeys = Object.keys(rootRes.data);
-                            if (rootKeys.includes('messages')) schemaTemplate = '/messages/{id}.json';
-                            else if (rootKeys.includes('sms')) schemaTemplate = '/sms/{id}.json';
-                        }
+                        const [msgRes, smsRes] = await Promise.allSettled([
+                            axios.get(`${src.base}/messages.json${authS}shallow=true`),
+                            axios.get(`${src.base}/sms.json${authS}shallow=true`)
+                        ]);
+                        if (msgRes.status === 'fulfilled' && msgRes.value.data) schemaTemplate = '/messages/{id}.json';
+                        else if (smsRes.status === 'fulfilled' && smsRes.value.data) schemaTemplate = '/sms/{id}.json';
                     } catch(e) {}
                     
                     src.cachedSchema = schemaTemplate; // Save for periodic checks
