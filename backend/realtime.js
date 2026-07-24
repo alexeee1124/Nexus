@@ -83,32 +83,40 @@ function setupMessageStream(src, id) {
         es.addEventListener('put', async (e) => {
             try {
                 const payload = JSON.parse(e.data);
-                if (!payload || !payload.data) return;
+                if (!payload || payload.data === undefined || payload.data === null) return;
                 
-                let messageObj = payload.data;
-                let msgId = payload.path.replace('/', '');
+                let messageObj = null;
+                let msgId = '';
 
-                if (payload.path === '/') {
-                    // Initial load, payload.data is an object of { msgId: messageObj }
-                    const keys = Object.keys(payload.data);
-                    if (keys.length === 0) return;
-                    msgId = keys[keys.length - 1];
-                    messageObj = payload.data[msgId];
+                if (payload.path === '/' || payload.path === '') {
+                    // Initial snapshot object: { "1784918833776": { ... } }
+                    if (typeof payload.data === 'object') {
+                        const keys = Object.keys(payload.data);
+                        if (keys.length === 0) return;
+                        msgId = keys[keys.length - 1];
+                        messageObj = payload.data[msgId];
+                    }
+                } else {
+                    // New incoming SMS event! Path will be e.g. "/1784918833776"
+                    msgId = payload.path.replace('/', '');
+                    messageObj = payload.data;
                 }
+
+                if (!messageObj || typeof messageObj !== 'object') return;
                 
-                // Ensure all standard fields are mapped so frontend filters don't drop the real-time message
+                // Broadcast to Socket.io
                 ioInstance.emit('newMessage', {
                     srcKey: src.key,
                     deviceId: id,
-                    timestamp: messageObj.timestamp || Date.now(),
+                    timestamp: messageObj.id || messageObj.timestamp || Date.now(),
                     type: messageObj.type || 'incoming',
                     dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
-                    message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || messageObj.content || '',
-                    sender: messageObj.sender || messageObj.address || messageObj.number || messageObj.mobNo || messageObj.mobile || 'Unknown'
+                    message: messageObj.message || messageObj.body || messageObj.text || '',
+                    sender: messageObj.sender || messageObj.address || messageObj.number || 'Unknown'
                 });
 
             } catch (err) {
-                // Parse error, ignore
+                console.error('[Realtime] Parse error:', err);
             }
         });
 
