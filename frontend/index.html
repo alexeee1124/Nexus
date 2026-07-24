@@ -2744,8 +2744,14 @@ async function addDb() {
             SOURCES.push(data.source);
         }
         
-        await fetchAll(true);
+        // Push the newly discovered devices instantly into the UI without doing a global fetchAll
+        if (data.newDevices && data.newDevices.length > 0) {
+             devices.push(...data.newDevices);
+             devices.sort((a,b) => (b.status?1:0) - (a.status?1:0));
+        }
+        
         if (typeof renderAdminDbGrid === 'function') renderAdminDbGrid();
+        if (typeof updateStats === 'function') updateStats();
         
         resetAddBtn(btn);
         
@@ -2760,14 +2766,7 @@ async function addDb() {
             addFormTitle.style.color = 'var(--text-muted)';
         }
         
-        // Now calculate stats purely from the frontend array since the backend doesn't send mock stats anymore
-        const sDevs = devices.filter(d => d._src === key);
-        const stats = {
-            total: sDevs.length,
-            online: sDevs.filter(d => d.status).length,
-            offline: sDevs.length - sDevs.filter(d => d.status).length
-        };
-        
+        const stats = data.stats || { total: 0, online: 0, offline: 0 };
         const detailsHtml = `
             <div style="margin-top: 16px; display: flex; gap: 8px; justify-content: center; font-family: var(--font-mono);">
                 <div style="background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 20px; padding: 6px 12px; font-size: 0.75rem; color: var(--cyan); display: flex; align-items: center; gap: 6px; font-weight: 700; box-shadow: 0 2px 10px rgba(0,240,255,0.1);">

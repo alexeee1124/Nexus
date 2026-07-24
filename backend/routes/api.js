@@ -51,11 +51,43 @@ router.post('/databases', protect, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Firebase URL is already connected to Nexus' });
         }
         
+        // Fetch devices and calculate stats INSTANTLY before saving
+        const authSuffix = apiKey ? `?auth=${apiKey}` : '';
+        const fetchUrl = `${base}/clients.json${authSuffix}`;
+        
+        let newDevices = [];
+        let stats = { total: 0, online: 0, offline: 0 };
+        
+        const data = await fetchFirebase(fetchUrl);
+        
+        if (data && typeof data === 'object') {
+            const entries = Array.isArray(data) ? data.map((v, i) => [String(i), v]).filter(x => x[1]) : Object.entries(data);
+            for (const [id, info] of entries) {
+                if (info && typeof info === 'object') {
+                    newDevices.push({
+                        _id: id,
+                        _src: key,
+                        ...info
+                    });
+                    
+                    stats.total++;
+                    if (info.status === true) {
+                        stats.online++;
+                    } else {
+                        stats.offline++;
+                    }
+                }
+            }
+        } else {
+             // If completely unreachable, return a connection failure to frontend
+             return res.status(400).json({ success: false, message: 'Failed to connect to Firebase URL or invalid API Key.' });
+        }
+        
         const source = await Source.create({
             key, label, base, apiKey, color, owner
         });
         
-        res.status(201).json({ success: true, source });
+        res.status(201).json({ success: true, source, stats, newDevices });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ success: false, message: 'Database key already exists' });
         res.status(500).json({ success: false, message: 'Server error creating database' });
