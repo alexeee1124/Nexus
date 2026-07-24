@@ -4143,7 +4143,7 @@ function openAddDbDrawer() {
                         _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
                     });
                     
-                    if (selDev && selDev._src === msg.srcKey && selDev._id === msg.deviceId && (curTab === 'messages' || curTab === 'finance')) {
+                    if ((!selDev || (selDev._src === msg.srcKey && selDev._id === msg.deviceId)) && (curTab === 'messages' || curTab === 'finance')) {
                         renderTab(true); 
                     }
                 }
