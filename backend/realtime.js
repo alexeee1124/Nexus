@@ -111,11 +111,14 @@ function setupMessageStream(src, id) {
                                 seenMsgIds.add(k);
                                 const messageObj = payload.data[k];
                                 if (messageObj && typeof messageObj === 'object') {
+                                    const ts = Number(messageObj.id || messageObj.timestamp || k) || Date.now();
                                     console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
                                     ioInstance.emit('newMessage', {
                                         srcKey: src.key,
                                         deviceId: id,
-                                        timestamp: messageObj.id || messageObj.timestamp || Date.now(),
+                                        _fbKey: k,
+                                        timestamp: ts,
+                                        id: ts,
                                         type: messageObj.type || 'incoming',
                                         dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
                                         message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || '',
@@ -147,11 +150,14 @@ function setupMessageStream(src, id) {
                         }
 
                         if (messageObj && typeof messageObj === 'object') {
+                            const ts = Number(messageObj.id || messageObj.timestamp || msgId) || Date.now();
                             console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
                             ioInstance.emit('newMessage', {
                                 srcKey: src.key,
                                 deviceId: id,
-                                timestamp: messageObj.id || messageObj.timestamp || Date.now(),
+                                _fbKey: msgId,
+                                timestamp: ts,
+                                id: ts,
                                 type: messageObj.type || 'incoming',
                                 dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
                                 message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || '',

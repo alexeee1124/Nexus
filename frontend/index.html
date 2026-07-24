@@ -4172,6 +4172,7 @@ function openAddDbDrawer() {
             if (!isDuplicate) {
                 const formattedMsg = {
                     _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                    _fbKey: msg._fbKey || String(msgTime),
                     type: String(msg.type || 'incoming').toLowerCase().includes('out') ? 'outgoing' : 'incoming',
                     dateTime: msgDateStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     sender: msg.sender || msg.address || msg.number || 'Unknown',
