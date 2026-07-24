@@ -830,15 +830,11 @@
             <div class="m-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 16px;">
                 <div style="display:flex;align-items:center;gap:10px">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cyan)"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
-                    Manage Database Connections
+                    <span id="addFormTitle">Add / Edit Database Node</span>
                 </div>
                 <div style="display:flex;align-items:center;gap:12px">
                     
-                    <input type="file" id="dbBulkAddInput" accept=".txt" style="display: none;" onchange="handleDbBulkAdd(event)">
-                    <button class="f-btn" style="background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.2); color: var(--cyan); padding: 4px 10px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 6px;" onclick="document.getElementById('dbBulkAddInput').click()">📁 Bulk Add TXT</button>
-                    <button class="f-btn" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-muted); padding: 4px 10px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 6px;" onclick="exportDatabases()">⬇️ Export</button>
-
-                    <div id="dbTotalBadge" style="font-size:0.75rem; background:rgba(0, 240, 255, 0.1); color:var(--cyan); padding:4px 10px; border-radius:12px; border:1px solid rgba(0,240,255,0.2); font-weight:700;">Total: 0</div>
+                    
                     <button style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px; border-radius:50%; transition:var(--trans); display:flex; align-items:center; justify-content:center" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='var(--text-muted)'" onclick="document.getElementById('dbModal').classList.remove('active')">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
@@ -856,11 +852,8 @@
 
                 <!-- RIGHT COLUMN: ADD NEW DATABASE -->
                 <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
-                    <div class="db-hide-mobile" style="font-size: 0.85rem; font-weight: 700; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
-                        <span>2. Add New Source</span>
-                        <span style="font-size: 0.7rem; color: var(--cyan); background: rgba(0,240,255,0.1); padding: 2px 8px; border-radius: 10px;">APK EXTRACT SUPPORTED</span>
-                    </div>
-                    <div class="db-hide-pc" style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px;">Add New Source</div>
+                    
+                    
                     
                     <div id="apkDropZone" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 20px; text-align: center; margin-bottom: 16px; cursor: pointer; transition: var(--trans); background: rgba(0,0,0,0.2); position: relative; overflow: hidden;" ondragover="this.style.borderColor='var(--cyan)'; this.style.background='rgba(0,240,255,0.05)'; event.preventDefault();" ondragleave="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(0,0,0,0.2)';" ondrop="handleApkDrop(event)">
                         <input type="file" id="apkFileInput" accept=".apk,.zip" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;" onchange="handleApkSelect(event)">
@@ -4004,12 +3997,13 @@ async function renderAdminUserList() {
         const data = await res.json();
         
         if (data.success) {
-            if (data.users.length === 0) {
+            const userArray = data.users || data.data || [];
+            if (userArray.length === 0) {
                 list.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-sec);">No users found.</div>';
                 return;
             }
             
-            list.innerHTML = data.users.map(u => {
+            list.innerHTML = userArray.map(u => {
                 const isAdmin = u.role === 'admin';
                 const canSms = u.permissions && u.permissions.includes('send_sms');
                 const canPhone = u.permissions && u.permissions.includes('edit_phone');
