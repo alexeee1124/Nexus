@@ -2236,7 +2236,9 @@ function renderTab(silent = false) {
 function renderMList() {
     const d = selDev;
     if (!d) return;
-    let allDevMsgs = cache[d._src+':'+d._id] || [];
+    const defaultK = d._src+':'+d._id;
+    const matchingKey = Object.keys(cache || {}).find(key => key.toLowerCase().endsWith(':' + d._id.toLowerCase())) || defaultK;
+    let allDevMsgs = cache[matchingKey] || [];
     
     // Update badge count live
     const badge = document.querySelector('.mhb-badge');
@@ -2250,6 +2252,13 @@ function renderMList() {
     if(mf==='in') msgs = msgs.filter(m => !m.type || m.type === 'incoming');
     if(mf==='out') msgs = msgs.filter(m => m.type === 'outgoing');
     if(q) msgs = msgs.filter(m => `${m.sender||''} ${m.message||''}`.toLowerCase().includes(q));
+
+    // Sort ascending by ID / timestamp so newest is guaranteed to be at the end before reverse
+    msgs.sort((a, b) => {
+        const tA = Number(a.id || a.timestamp || 0);
+        const tB = Number(b.id || b.timestamp || 0);
+        return tA - tB;
+    });
 
     const html = [...msgs].reverse().slice(0,200).map(m => {
         const isOut = m.type === 'outgoing';
