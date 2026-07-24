@@ -638,6 +638,111 @@
             .db-form-row-1, .db-form-row-2 { display: flex; flex-direction: column; gap: 16px; align-items: stretch; margin-bottom: 16px; }
             .db-form-row-1 > div, .db-form-row-2 > div { width: 100% !important; flex: unset !important; }
         }
+    
+        /* Admin Hub Styles */
+        .admin-tab {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            color: var(--text-sec);
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--trans);
+            text-align: left;
+        }
+        .admin-tab:hover {
+            background: rgba(255,255,255,0.03);
+            color: #fff;
+        }
+        .admin-tab.active {
+            background: rgba(0, 240, 255, 0.1);
+            border-color: rgba(0, 240, 255, 0.2);
+            color: var(--cyan);
+        }
+        
+        .admin-db-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transition: var(--trans);
+            position: relative;
+            overflow: hidden;
+        }
+        .admin-db-card:hover {
+            border-color: rgba(255,255,255,0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            transform: translateY(-2px);
+        }
+        .admin-db-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: var(--color, var(--cyan));
+            opacity: 0.8;
+        }
+        
+        .admin-user-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 2.5fr 1fr;
+            align-items: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: var(--trans);
+        }
+        .admin-user-row:hover {
+            background: rgba(255,255,255,0.02);
+        }
+        .admin-user-row:last-child {
+            border-bottom: none;
+        }
+        
+        /* Premium Switches */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(255,255,255,0.1);
+            transition: .3s;
+            border-radius: 34px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #fff;
+            transition: .3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        input:checked + .slider {
+            background-color: var(--cyan);
+            border-color: var(--cyan);
+        }
+        input:checked + .slider:before {
+            transform: translateX(18px);
+        }
+
     </style>
 </head>
 <body>
@@ -1036,8 +1141,7 @@
         <div class="topbar-right" style="display:flex;gap:12px">
             <button class="btn" style="background:var(--bg-card); color:var(--amber); border-color:rgba(245,158,11,0.3); transition: var(--trans);" onmouseover="this.style.background='rgba(245,158,11,0.1)'; this.style.borderColor='var(--amber)'; this.style.boxShadow='0 0 10px rgba(245,158,11,0.1)'" onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='rgba(245,158,11,0.3)'; this.style.boxShadow='none'" onclick="openDupScanner()">🕵️ Scan Duplicates</button>
             <button class="btn" style="background:var(--bg-card); color:var(--purple); border-color:var(--purple-dim); transition: var(--trans);" onmouseover="this.style.background='rgba(168,85,247,0.1)'; this.style.borderColor='var(--purple)'; this.style.boxShadow='0 0 10px rgba(168,85,247,0.1)'" onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='var(--purple-dim)'; this.style.boxShadow='none'" onclick="openBulkSms()">🚀 Bulk SMS</button>
-            <button class="btn" id="dbManagerBtn" style="background:var(--bg-card); transition: var(--trans); border-color: rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='rgba(255,255,255,0.05)'" onclick="openDbManager()">⚙️ Databases</button>
-            <button class="btn" id="userManagerBtn" style="background:var(--bg-card); transition: var(--trans); border-color: rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='rgba(255,255,255,0.05)'" onclick="openUserManager()">👥 Users</button>
+            <button class="btn" id="adminHubBtn" style="background:var(--bg-card); transition: var(--trans); border-color: rgba(0,240,255,0.2); color: var(--cyan); display: none;" onmouseover="this.style.background='rgba(0,240,255,0.1)'; this.style.boxShadow='0 0 10px rgba(0,240,255,0.2)'" onmouseout="this.style.background='var(--bg-card)'; this.style.boxShadow='none'" onclick="toggleAdminHub()">⚙️ Admin Hub</button>
             <button class="btn primary" onclick="fetchAll()">↻ Sync</button>
             
             <button class="icon-btn" onclick="lockVault()" title="Logout" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); padding: 8px; border-radius: var(--radius-sm); display:flex; align-items:center; justify-content:center; background: transparent; transition: var(--trans);" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.background='transparent'">
@@ -1046,7 +1150,7 @@
         </div>
     </header>
 
-    <main class="workspace">
+    <main class="workspace" id="mainWorkspace">
         <aside class="sidebar">
             <div class="sidebar-head">
                 <div class="search-box" style="position: relative;">
@@ -1093,6 +1197,81 @@
             <div class="pane animate-up" id="pane"></div>
         </section>
     </main>
+
+    <!-- ADMIN HUB WORKSPACE -->
+    <main class="workspace" id="adminWorkspace" style="display: none; height: calc(100vh - 65px);">
+        <!-- Admin Sidebar -->
+        <aside class="sidebar" style="width: 280px; border-right: 1px solid rgba(255,255,255,0.05); background: var(--bg-card); display: flex; flex-direction: column;">
+            <div style="padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 1.2rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cyan)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                    COMMAND CENTER
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-sec); margin-top: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Admin Level Access</div>
+            </div>
+            
+            <div style="padding: 20px; display: flex; flex-direction: column; gap: 8px; flex: 1;">
+                <button class="admin-tab active" onclick="switchAdminTab('databases', this)">
+                    <span style="font-size: 1.2rem;">🗄️</span> Database Nodes
+                </button>
+                <button class="admin-tab" onclick="switchAdminTab('users', this)">
+                    <span style="font-size: 1.2rem;">👥</span> Access Control
+                </button>
+            </div>
+            
+            <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <button class="f-btn" style="width: 100%; justify-content: center; background: rgba(255,255,255,0.05); padding: 12px; font-size: 0.9rem;" onclick="toggleAdminHub()">← Back to Operations</button>
+            </div>
+        </aside>
+
+        <!-- Admin Main Content -->
+        <div class="content" style="background: var(--bg); display: flex; flex-direction: column; overflow: hidden; position: relative; padding: 0;">
+            
+            <!-- Databases Tab -->
+            <div id="adminTabDatabases" class="admin-tab-content active" style="flex:1; overflow-y: auto; padding: 40px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 24px;">
+                    <div>
+                        <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 8px;">Database Nodes</h2>
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">Manage all connected Firebase instances and system payloads.</div>
+                    </div>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        <input type="file" id="dbBulkAddInputAdmin" accept=".txt" style="display: none;" onchange="handleDbBulkAdd(event)">
+                        <button class="f-btn" style="background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.2); color: var(--cyan); padding: 8px 16px; font-weight: 700; font-size: 0.85rem;" onclick="document.getElementById('dbBulkAddInputAdmin').click()">📁 Bulk Add TXT</button>
+                        <button class="f-btn" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-muted); padding: 8px 16px; font-weight: 700; font-size: 0.85rem;" onclick="exportDatabases()">⬇️ Export</button>
+                        <button class="f-btn" style="background: var(--cyan); color: #000; padding: 8px 16px; font-weight: 800; font-size: 0.85rem;" onclick="openAddDbDrawer()">+ Add Source</button>
+                    </div>
+                </div>
+                
+                <div id="adminDbGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px;">
+                    <!-- Database Cards injected here -->
+                </div>
+            </div>
+            
+            <!-- Users Tab -->
+            <div id="adminTabUsers" class="admin-tab-content" style="display: none; flex:1; overflow-y: auto; padding: 40px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 24px;">
+                    <div>
+                        <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 8px;">Access Control</h2>
+                        <div style="color: var(--text-muted); font-size: 0.9rem;">Manage user permissions, roles, and engine access.</div>
+                    </div>
+                </div>
+                
+                <div style="background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                    <div style="display: grid; grid-template-columns: 2fr 1fr 2.5fr 1fr; padding: 16px 24px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2); font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                        <div>Operator Identity</div>
+                        <div>Role Tier</div>
+                        <div>Engine Permissions</div>
+                        <div style="text-align: right;">Actions</div>
+                    </div>
+                    <div id="adminUserList">
+                        <!-- User rows injected here -->
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
 
 <script>
 // ═══ CONFIGURATION ═══
@@ -3674,6 +3853,7 @@ async function handleDbBulkAdd(event) {
             
             await fetchAll();
             renderDbList();
+            if(typeof renderAdminDbGrid === 'function') renderAdminDbGrid();
             
             document.getElementById('loader').classList.add('hidden');
             customAlert("Bulk Add Complete", `Successfully connected ${successCount} databases.<br>Failed: ${failCount}`);
