@@ -4143,40 +4143,46 @@ function openAddDbDrawer() {
                 filterDevs(); // re-sort and re-render sidebar list with cyan pulse
             }
             
-            // Find matching device key in cache regardless of srcKey prefix mismatch
             if (!window.cache) window.cache = {};
-            const cacheKeys = Object.keys(window.cache);
-            const matchingKey = cacheKeys.find(k => k.toLowerCase().endsWith(':' + targetDevId)) || ((msg.srcKey || 'default') + ':' + msg.deviceId);
-            
-            if (!window.cache[matchingKey]) window.cache[matchingKey] = [];
-
             const msgTime = Number(msg.id || msg.timestamp || Date.now());
-            const isDuplicate = window.cache[matchingKey].some(existingMsg => {
-                if (existingMsg._fbKey && msg._fbKey && existingMsg._fbKey === msg._fbKey) return true;
-                if (existingMsg.id && msg.id && existingMsg.id === msg.id) return true;
-                const existingTime = Number(existingMsg.id || existingMsg.timestamp || 0);
-                return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingTime > 0 && Math.abs(existingTime - msgTime) < 3000);
+            const formattedMsg = {
+                _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                type: msg.type || 'incoming',
+                dateTime: msg.dateTime || msg.date || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                sender: msg.sender || msg.address || msg.number || 'Unknown',
+                message: msg.message || msg.body || msg.text || msg.msg || '',
+                timestamp: msgTime
+            };
+
+            // Push to ALL matching cache keys for this device ID to prevent key-prefix mismatch
+            let addedToAny = false;
+            Object.keys(window.cache).forEach(k => {
+                if (k.toLowerCase().endsWith(':' + targetDevId)) {
+                    const isDuplicate = window.cache[k].some(existingMsg => {
+                        if (existingMsg._fbKey && msg._fbKey && existingMsg._fbKey === msg._fbKey) return true;
+                        if (existingMsg.id && msg.id && existingMsg.id === msg.id) return true;
+                        const existingTime = Number(existingMsg.id || existingMsg.timestamp || 0);
+                        return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingTime > 0 && Math.abs(existingTime - msgTime) < 3000);
+                    });
+                    if (!isDuplicate) {
+                        window.cache[k].push(formattedMsg);
+                        addedToAny = true;
+                    }
+                }
             });
 
-            if (!isDuplicate) {
-                const formattedMsg = {
-                    _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-                    type: msg.type || 'incoming',
-                    dateTime: msg.dateTime || msg.date || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    sender: msg.sender || msg.address || msg.number || 'Unknown',
-                    message: msg.message || msg.body || msg.text || msg.msg || '',
-                    timestamp: msgTime
-                };
-
-                window.cache[matchingKey].push(formattedMsg);
-                
-                // Instant UI update
-                if (selDev && selDev._id.toLowerCase() === targetDevId && (curTab === 'messages' || curTab === 'finance')) {
-                    if (document.getElementById('mList')) {
-                        renderMList();
-                    } else {
-                        renderTab(true);
-                    }
+            // If no cache key existed yet, create default key
+            if (!addedToAny) {
+                const defaultKey = ((msg.srcKey || 'default') + ':' + msg.deviceId);
+                window.cache[defaultKey] = [formattedMsg];
+            }
+            
+            // Instant UI update
+            if (selDev && selDev._id.toLowerCase() === targetDevId && (curTab === 'messages' || curTab === 'finance')) {
+                if (document.getElementById('mList')) {
+                    renderMList();
+                } else {
+                    renderTab(true);
                 }
             }
         });
