@@ -22,15 +22,22 @@ router.get('/databases', protect, async (req, res) => {
     try {
         const query = { $or: [{ owner: null }, { owner: req.user._id }] };
         const sources = await Source.find(query);
-        const safeSources = sources.map(s => ({
-            _id: s._id,
-            key: s.key,
-            label: s.label,
-            color: s.color,
-            owner: s.owner,
-            base: s.base,
-            apiKey: s.apiKey
-        }));
+        const isAdmin = req.user.role === 'admin';
+        const safeSources = sources.map(s => {
+            const obj = {
+                _id: s._id,
+                key: s.key,
+                label: s.label,
+                color: s.color,
+                owner: s.owner
+            };
+            // Only admins can see the raw Firebase URLs and API keys
+            if (isAdmin) {
+                obj.base = s.base;
+                obj.apiKey = s.apiKey;
+            }
+            return obj;
+        });
         res.json({ success: true, data: safeSources });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error fetching databases' });
