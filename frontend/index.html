@@ -3485,7 +3485,17 @@ async function executeDeleteMsg() {
     btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;"></div>';
     
     try {
-        await proxyFirebase(dev._src, dev._id, p, 'DELETE');
+        const res = await fetch(`/api/messages/${dev._src}/${dev._id}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ fbPath: msg._fbPath, fbKey: msg._fbKey })
+        });
+        
+        if (!res.ok) throw new Error('Delete failed');
+
         let msgs = cache[dev._src+':'+dev._id];
         if (msgs) {
             cache[dev._src+':'+dev._id] = msgs.filter(x => x._localId != msg._localId);
