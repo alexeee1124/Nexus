@@ -4126,26 +4126,29 @@ function openAddDbDrawer() {
             // Update device's last message time to bubble to top
             const dev = devices.find(d => d._src === msg.srcKey && d._id === msg.deviceId);
             if (dev) {
-                dev.lastMessageTime = msg.timestamp;
-                filterDevs(); // re-sort and re-render the list immediately
+                dev.lastMessageTime = msg.timestamp || Date.now();
+                filterDevs(); // re-sort and re-render sidebar list
             }
             
-            if(window.cache && window.cache[k]) {
-                const isDuplicate = window.cache[k].some(existingMsg => 
-                    existingMsg.message === msg.message && 
-                    existingMsg.sender === msg.sender &&
-                    Math.abs(existingMsg.timestamp - msg.timestamp) < 5000 
-                );
+            if (!window.cache) window.cache = {};
+            if (!window.cache[k]) window.cache[k] = [];
 
-                if (!isDuplicate) {
-                    window.cache[k].push({
-                        ...msg,
-                        _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
-                    });
-                    
-                    if ((!selDev || (selDev._src === msg.srcKey && selDev._id === msg.deviceId)) && (curTab === 'messages' || curTab === 'finance')) {
-                        renderTab(true); 
-                    }
+            const isDuplicate = window.cache[k].some(existingMsg => 
+                (existingMsg.message === msg.message && existingMsg.sender === msg.sender && Math.abs((existingMsg.timestamp||0) - (msg.timestamp||0)) < 5000)
+            );
+
+            if (!isDuplicate) {
+                const formattedMsg = {
+                    type: msg.type || 'incoming',
+                    dateTime: msg.dateTime || msg.date || new Date().toLocaleString(),
+                    ...msg,
+                    _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+                };
+
+                window.cache[k].push(formattedMsg);
+                
+                if ((!selDev || (selDev._src === msg.srcKey && selDev._id === msg.deviceId)) && (curTab === 'messages' || curTab === 'finance')) {
+                    renderTab(true); 
                 }
             }
         });

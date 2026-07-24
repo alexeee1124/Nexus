@@ -96,13 +96,15 @@ function setupMessageStream(src, id) {
                     messageObj = payload.data[msgId];
                 }
                 
-                // It's a new message event!
+                // Ensure all standard fields are mapped so frontend filters don't drop the real-time message
                 ioInstance.emit('newMessage', {
                     srcKey: src.key,
                     deviceId: id,
                     timestamp: messageObj.timestamp || Date.now(),
-                    message: messageObj.message || messageObj.body || messageObj.text || '',
-                    sender: messageObj.sender || messageObj.address || messageObj.number || 'Unknown'
+                    type: messageObj.type || 'incoming',
+                    dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
+                    message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || messageObj.content || '',
+                    sender: messageObj.sender || messageObj.address || messageObj.number || messageObj.mobNo || messageObj.mobile || 'Unknown'
                 });
 
             } catch (err) {
