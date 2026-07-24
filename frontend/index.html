@@ -4156,32 +4156,36 @@ function openAddDbDrawer() {
             }
             
             if (!cache) cache = {};
-            if (!cache[targetDevId]) cache[targetDevId] = [];
+            
+            // If the historical message cache for this device hasn't been loaded yet,
+            // we don't need to inject this live message. When the user clicks the device,
+            // fetchMsgs() will download the full history (including this new message) directly from Firebase.
+            if (cache[targetDevId]) {
+                const msgTime = Number(msg.id || msg.timestamp || Date.now());
+                const msgDateStr = msg.dateTime || msg.date || '';
 
-            const msgTime = Number(msg.id || msg.timestamp || Date.now());
-            const msgDateStr = msg.dateTime || msg.date || '';
+                // Exact match deduplication (prevents false positive drops)
+                const isDuplicate = cache[targetDevId].some(existingMsg => {
+                    if (existingMsg._fbKey && msg._fbKey && existingMsg._fbKey === msg._fbKey) return true;
+                    const eTime = Number(existingMsg.id || existingMsg.timestamp || 0);
+                    if (eTime > 0 && msgTime > 0 && eTime === msgTime) return true;
+                    return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingMsg.dateTime === msgDateStr);
+                });
 
-            // Exact match deduplication (prevents false positive drops)
-            const isDuplicate = cache[targetDevId].some(existingMsg => {
-                if (existingMsg._fbKey && msg._fbKey && existingMsg._fbKey === msg._fbKey) return true;
-                const eTime = Number(existingMsg.id || existingMsg.timestamp || 0);
-                if (eTime > 0 && msgTime > 0 && eTime === msgTime) return true;
-                return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingMsg.dateTime === msgDateStr);
-            });
+                if (!isDuplicate) {
+                    const formattedMsg = {
+                        _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                        _fbKey: msg._fbKey || String(msgTime),
+                        type: String(msg.type || 'incoming').toLowerCase().includes('out') ? 'outgoing' : 'incoming',
+                        dateTime: msgDateStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        sender: msg.sender || msg.address || msg.number || 'Unknown',
+                        message: msg.message || msg.body || msg.text || msg.msg || '',
+                        timestamp: msgTime,
+                        id: msgTime
+                    };
 
-            if (!isDuplicate) {
-                const formattedMsg = {
-                    _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-                    _fbKey: msg._fbKey || String(msgTime),
-                    type: String(msg.type || 'incoming').toLowerCase().includes('out') ? 'outgoing' : 'incoming',
-                    dateTime: msgDateStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                    sender: msg.sender || msg.address || msg.number || 'Unknown',
-                    message: msg.message || msg.body || msg.text || msg.msg || '',
-                    timestamp: msgTime,
-                    id: msgTime
-                };
-
-                cache[targetDevId].push(formattedMsg);
+                    cache[targetDevId].push(formattedMsg);
+                }
             }
             
             // Unconditional live UI re-render whenever selected device matches target
