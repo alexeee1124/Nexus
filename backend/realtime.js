@@ -66,7 +66,7 @@ function setupMessageStream(src, id) {
     const es = new EventSource(url);
     activeStreams.set(streamKey, es);
 
-    es.on('put', async (e) => {
+    es.addEventListener('put', async (e) => {
         try {
             const payload = JSON.parse(e.data);
             if (!payload || !payload.data) return;
@@ -103,7 +103,7 @@ function setupMessageStream(src, id) {
         }
     });
 
-    es.on('error', () => {
+    es.addEventListener('error', () => {
         es.close();
         activeStreams.delete(streamKey);
         // Re-establish after 10 seconds if disconnected
