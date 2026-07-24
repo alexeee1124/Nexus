@@ -44,6 +44,12 @@ router.post('/databases', protect, async (req, res) => {
         const { key, label, base, apiKey, color } = req.body;
         const owner = req.user.role === 'admin' ? null : req.user._id;
         
+        // Server-side Deduplication: Reject identical Firebase URLs system-wide
+        const existingBase = await Source.findOne({ base });
+        if (existingBase) {
+            return res.status(400).json({ success: false, message: 'Firebase URL is already connected to Nexus' });
+        }
+        
         const source = await Source.create({
             key, label, base, apiKey, color, owner
         });
