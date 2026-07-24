@@ -1834,7 +1834,7 @@ function renderDevList() {
             </div>
             <div class="d-meta">
                 <div class="d-batt" style="color:${bcol}">${esc(d.battery||'—')}</div>
-                <div class="d-src" style="color:${scol}; border-color:${scol}">${d._src[0].toUpperCase()}</div>
+                ${window.CURRENT_ROLE === 'admin' ? `<div class="d-src" style="color:${scol}; border-color:${scol}">${d._src[0].toUpperCase()}</div>` : ''}
             </div>
         </div>`;
     }).join('');
