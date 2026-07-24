@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const EventSource = require('eventsource');
+const { EventSource } = require('eventsource');
 const axios = require('axios');
 const Source = require('./models/Source');
 
