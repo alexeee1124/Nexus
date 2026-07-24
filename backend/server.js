@@ -27,10 +27,16 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Catch-all route to serve the frontend for SPA navigation (if needed)
-// Keep-Alive Ping Route for Render
+// Keep-Alive Ping Route & Self-Ping for Render (keeps server warm 24/7)
+const axios = require('axios');
 app.get('/ping', (req, res) => {
     res.status(200).send('pong');
 });
+
+setInterval(() => {
+    const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://nexus-sb6l.onrender.com';
+    axios.get(`${renderUrl}/ping`).catch(() => {});
+}, 4 * 60 * 1000);
 
 app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
