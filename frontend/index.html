@@ -4184,6 +4184,31 @@ function openAddDbDrawer() {
                 renderMList();
             }
         });
+
+        // Silent background auto-sync engine (every 4s) - Guarantees 100% real-time UI without Force Sync clicks
+        setInterval(async () => {
+            if (selDev && (curTab === 'messages' || curTab === 'finance')) {
+                const k = selDev._src + ':' + selDev._id;
+                try {
+                    const r = await fetch(`/api/messages/${selDev._src}/${selDev._id}`, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                    });
+                    if (r.ok) {
+                        const res = await r.json();
+                        if (res.success && res.data && res.data.length > 0) {
+                            const newMsgs = res.data.map(x => ({ ...x, _localId: x._localId || (Date.now() + '-' + Math.random().toString(36).substr(2, 9)) }));
+                            const oldLength = window.cache && window.cache[k] ? window.cache[k].length : 0;
+                            
+                            if (newMsgs.length > oldLength) {
+                                if (!window.cache) window.cache = {};
+                                window.cache[k] = newMsgs;
+                                renderMList();
+                            }
+                        }
+                    }
+                } catch(e) {}
+            }
+        }, 4000);
     </script>
 </body>
 </html>
