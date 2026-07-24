@@ -249,9 +249,15 @@ router.get('/messages/:src/:id', protect, async (req, res) => {
         const paths = [`/messages/${id}.json`, `/clients/${id}/messages.json`, `/sms/${id}.json`, `/clients/${id}/sms.json`];
         let smsData = [];
 
-        for (let p of paths) {
+        const promises = paths.map(async (p) => {
             const authSuffix = source.apiKey ? `?auth=${source.apiKey}` : '';
             const data = await fetchFirebase(`${source.base}${p}${authSuffix}`);
+            return { p, data };
+        });
+
+        const results = await Promise.all(promises);
+        
+        for (let { p, data } of results) {
             if (data) {
                 if (Array.isArray(data)) {
                     smsData = data.map((x, i) => x ? { ...x, _fbPath: p, _fbKey: i } : null).filter(x => x);
@@ -262,7 +268,7 @@ router.get('/messages/:src/:id', protect, async (req, res) => {
                         _fbKey: key
                     }));
                 }
-                if (smsData.length > 0) break;
+                if (smsData.length > 0) break; // Use the first path that actually has messages
             }
         }
 
