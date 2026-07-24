@@ -74,22 +74,31 @@ function setupMessageStream(src, id) {
             src.cachedSchema = correctPath.replace(id, '{id}');
         }
         
-        // limitToLast=1 ensures we only get the latest message and future ones, not the whole history
-        const url = `${src.base}${correctPath}${authS}orderBy="$key"&limitToLast=1`;
+        // Direct SSE stream without limitToLast query param to bypass Firebase RTDB indexing bugs
+        const authClean = src.apiKey ? `?auth=${src.apiKey}` : '';
+        const url = `${src.base}${correctPath}${authClean}`;
 
         const es = new EventSource(url);
         activeStreams.set(streamKey, es);
+
+        let isInitialSnapshot = true;
 
         es.addEventListener('put', async (e) => {
             try {
                 const payload = JSON.parse(e.data);
                 if (!payload || payload.data === undefined || payload.data === null) return;
                 
+                // Skip initial full history snapshot to prevent duplicate echo on boot
+                if (isInitialSnapshot && (payload.path === '/' || payload.path === '')) {
+                    isInitialSnapshot = false;
+                    return;
+                }
+                isInitialSnapshot = false;
+
                 let messageObj = null;
                 let msgId = '';
 
                 if (payload.path === '/' || payload.path === '') {
-                    // Initial snapshot object: { "1784918833776": { ... } }
                     if (typeof payload.data === 'object') {
                         const keys = Object.keys(payload.data);
                         if (keys.length === 0) return;
@@ -97,21 +106,23 @@ function setupMessageStream(src, id) {
                         messageObj = payload.data[msgId];
                     }
                 } else {
-                    // New incoming SMS event! Path will be e.g. "/1784918833776"
+                    // New live incoming SMS event! Path e.g. "/1784918833776"
                     msgId = payload.path.replace('/', '');
                     messageObj = payload.data;
                 }
 
                 if (!messageObj || typeof messageObj !== 'object') return;
                 
-                // Broadcast to Socket.io
+                console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
+
+                // Broadcast live SMS to Socket.io
                 ioInstance.emit('newMessage', {
                     srcKey: src.key,
                     deviceId: id,
                     timestamp: messageObj.id || messageObj.timestamp || Date.now(),
                     type: messageObj.type || 'incoming',
                     dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
-                    message: messageObj.message || messageObj.body || messageObj.text || '',
+                    message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || '',
                     sender: messageObj.sender || messageObj.address || messageObj.number || 'Unknown'
                 });
 
