@@ -4178,12 +4178,10 @@ function openAddDbDrawer() {
             }
             
             // Instant UI update
-            if (selDev && selDev._id.toLowerCase() === targetDevId && (curTab === 'messages' || curTab === 'finance')) {
-                if (document.getElementById('mList')) {
-                    renderMList();
-                } else {
-                    renderTab(true);
-                }
+            if (selDev && selDev._id.toLowerCase() === targetDevId) {
+                renderMList();
+            } else if (!selDev && curTab === 'messages') {
+                renderMList();
             }
         });
     </script>
