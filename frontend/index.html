@@ -3697,7 +3697,7 @@ function exportDatabases() {
     SOURCES.forEach(s => {
         content += "Label: " + s.label + "\n";
         content += "URL: " + (s.base || s.url) + "\n";
-        if (s.key) content += "API Key: " + s.key + "\n";
+        if (s.apiKey) content += "API Key: " + s.apiKey + "\n";
         content += "----------------------------------------\n";
     });
     
