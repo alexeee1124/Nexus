@@ -13,11 +13,11 @@ async function syncFirebaseStreams() {
         console.log(`[REALTIME] Starting sync for ${sources.length} sources...`);
         
         for (let src of sources) {
-            const authSuffix = src.apiKey ? `?auth=${src.apiKey}` : '';
+            const authSuffix = src.apiKey ? `?auth=${src.apiKey}&` : '?';
             
             // 1. Fetch all clients to establish message streams
             try {
-                const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}&shallow=true`);
+                const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}shallow=true`);
                 if (clientsRes.data && typeof clientsRes.data === 'object') {
                     const clientIds = Object.keys(clientsRes.data);
                     for (let id of clientIds) {
@@ -37,14 +37,14 @@ async function syncFirebaseStreams() {
 }
 
 function setupClientListener(src) {
-    const authSuffix = src.apiKey ? `?auth=${src.apiKey}` : '';
+    const authSuffix = src.apiKey ? `?auth=${src.apiKey}&` : '?';
     // Limit to last 1 to avoid downloading the whole clients tree, just get new additions
     const url = `${src.base}/clients.json${authSuffix}`; 
     // Actually, listening to /clients might be heavy if devices update battery often.
     // A better approach is to periodically resync every 5 minutes.
     setInterval(async () => {
         try {
-            const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}&shallow=true`);
+            const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}shallow=true`);
             if (clientsRes.data && typeof clientsRes.data === 'object') {
                 const clientIds = Object.keys(clientsRes.data);
                 for (let id of clientIds) {
@@ -59,9 +59,9 @@ function setupMessageStream(src, id) {
     const streamKey = `${src.key}_${id}`;
     if (activeStreams.has(streamKey)) return; // Already listening
 
-    const authSuffix = src.apiKey ? `?auth=${src.apiKey}` : '';
+    const authSuffix = src.apiKey ? `?auth=${src.apiKey}&` : '?';
     // limitToLast=1 ensures we only get the latest message and future ones, not the whole history
-    const url = `${src.base}/messages/${id}.json${authSuffix}&orderBy="$key"&limitToLast=1`;
+    const url = `${src.base}/messages/${id}.json${authSuffix}orderBy="$key"&limitToLast=1`;
 
     const es = new EventSource(url);
     activeStreams.set(streamKey, es);
@@ -87,7 +87,8 @@ function setupMessageStream(src, id) {
                 const ts = messageObj.timestamp || messageObj.date || Date.now();
                 
                 // 1. Write lastMessageTime to Firebase clients node
-                axios.patch(`${src.base}/clients/${id}.json${authSuffix}`, { lastMessageTime: ts }).catch(()=>{});
+                const patchAuth = src.apiKey ? `?auth=${src.apiKey}` : '';
+                axios.patch(`${src.base}/clients/${id}.json${patchAuth}`, { lastMessageTime: ts }).catch(()=>{});
                 
                 // 2. Broadcast via Socket.io to anyone subscribed to this device
                 if (ioInstance) {
