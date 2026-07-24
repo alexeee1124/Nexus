@@ -4005,8 +4005,8 @@ async function renderAdminUserList() {
             
             list.innerHTML = userArray.map(u => {
                 const isAdmin = u.role === 'admin';
-                const canSms = u.permissions && u.permissions.includes('send_sms');
-                const canPhone = u.permissions && u.permissions.includes('edit_phone');
+                const canSms = u.permissions && u.permissions.canSendSms;
+                const canPhone = u.permissions && u.permissions.canEditPhone;
                 
                 return `
                 <div class="admin-user-row">
