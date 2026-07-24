@@ -27,7 +27,7 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Catch-all route to serve the frontend for SPA navigation (if needed)
-app.get('/*', (req, res, next) => {
+app.use((req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
