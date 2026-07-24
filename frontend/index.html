@@ -4138,7 +4138,7 @@ function openAddDbDrawer() {
                 );
 
                 if (!isDuplicate) {
-                    window.cache[k].unshift({
+                    window.cache[k].push({
                         ...msg,
                         _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
                     });
