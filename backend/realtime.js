@@ -13,8 +13,8 @@ function initRealtime(io) {
     // Initial sync
     syncFirebaseStreams();
     
-    // Periodically re-sync to pick up new databases or devices
-    setInterval(syncFirebaseStreams, 5 * 60 * 1000); // every 5 mins
+    // Periodically re-sync every 30s to recover dead streams and pick up new devices
+    setInterval(syncFirebaseStreams, 30 * 1000);
 }
 
 async function syncFirebaseStreams() {
@@ -122,7 +122,9 @@ function setupMessageStream(src, id) {
         });
 
         es.addEventListener('error', (err) => {
-            // Firebase SSE auto-reconnects, but if it's completely dead we could clean up
+            console.error(`[Realtime] Stream error for ${streamKey}, cleaning up for reconnect.`);
+            try { es.close(); } catch(e) {}
+            activeStreams.delete(streamKey);
         });
 
     })();

@@ -2235,28 +2235,40 @@ function renderTab(silent = false) {
 
 function renderMList() {
     const d = selDev;
-    let msgs = cache[d._src+':'+d._id] || [];
+    if (!d) return;
+    let allDevMsgs = cache[d._src+':'+d._id] || [];
+    
+    // Update badge count live
+    const badge = document.querySelector('.mhb-badge');
+    if (badge) {
+        badge.textContent = `${allDevMsgs.length} MSGS`;
+    }
+
+    let msgs = [...allDevMsgs];
     const q = (document.getElementById('mSearch')?.value||'').toLowerCase();
     
-    if(mf==='in') msgs = msgs.filter(m=>m.type==='incoming');
-    if(mf==='out') msgs = msgs.filter(m=>m.type==='outgoing');
-    if(q) msgs = msgs.filter(m => `${m.sender} ${m.message}`.toLowerCase().includes(q));
+    if(mf==='in') msgs = msgs.filter(m => !m.type || m.type === 'incoming');
+    if(mf==='out') msgs = msgs.filter(m => m.type === 'outgoing');
+    if(q) msgs = msgs.filter(m => `${m.sender||''} ${m.message||''}`.toLowerCase().includes(q));
 
     const html = [...msgs].reverse().slice(0,200).map(m => {
         const isOut = m.type === 'outgoing';
         return `
         <div class="chat-msg">
             <div class="chat-head">
-                <div class="chat-sender">${esc(m.sender||m.address||'Unknown')}</div>
+                <div class="chat-sender">${esc(m.sender||m.address||m.number||'Unknown')}</div>
                 <div class="chat-badge ${isOut?'out':'in'}">${isOut?'SENT':'INBOX'}</div>
                 <div class="chat-time">${esc(m.dateTime||m.date||'')}</div>
                 <div class="chat-delete" onclick="promptDeleteMsg('${m._localId}')" style="margin-left:auto; width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); cursor:pointer; background:rgba(255,255,255,0.05); font-size:0.8rem; transition:var(--trans);" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='var(--red)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.3)'">✕</div>
             </div>
-            <div class="chat-body">${esc(m.message||m.body||'')}</div>
+            <div class="chat-body">${esc(m.message||m.body||m.text||'')}</div>
         </div>`;
     }).join('');
     
-    document.getElementById('mList').innerHTML = html || emp('No messages match criteria');
+    const mListEl = document.getElementById('mList');
+    if (mListEl) {
+        mListEl.innerHTML = html || emp('No messages match criteria');
+    }
 }
 
 async function execSMS() {
@@ -4121,35 +4133,55 @@ function openAddDbDrawer() {
             transports: ['websocket', 'polling']
         });
         socket.on('newMessage', (msg) => {
-            const k = msg.srcKey + ':' + msg.deviceId;
+            console.log('[Socket] Live SMS arrived:', msg);
             
-            // Update device's last message time to bubble to top
-            const dev = devices.find(d => d._src === msg.srcKey && d._id === msg.deviceId);
+            // Match device by deviceId (case insensitive)
+            const targetDevId = (msg.deviceId || '').toLowerCase();
+            const dev = devices.find(d => d._id.toLowerCase() === targetDevId);
             if (dev) {
-                dev.lastMessageTime = msg.timestamp || Date.now();
-                filterDevs(); // re-sort and re-render sidebar list
+                dev.lastMessageTime = Date.now();
+                filterDevs(); // re-sort and re-render sidebar list with cyan pulse
             }
             
             if (!window.cache) window.cache = {};
-            if (!window.cache[k]) window.cache[k] = [];
+            const msgTime = Number(msg.id || msg.timestamp || Date.now());
+            const formattedMsg = {
+                _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
+                type: msg.type || 'incoming',
+                dateTime: msg.dateTime || msg.date || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                sender: msg.sender || msg.address || msg.number || 'Unknown',
+                message: msg.message || msg.body || msg.text || msg.msg || '',
+                timestamp: msgTime
+            };
 
-            const isDuplicate = window.cache[k].some(existingMsg => 
-                (existingMsg.message === msg.message && existingMsg.sender === msg.sender && Math.abs((existingMsg.timestamp||0) - (msg.timestamp||0)) < 5000)
-            );
-
-            if (!isDuplicate) {
-                const formattedMsg = {
-                    type: msg.type || 'incoming',
-                    dateTime: msg.dateTime || msg.date || new Date().toLocaleString(),
-                    ...msg,
-                    _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
-                };
-
-                window.cache[k].push(formattedMsg);
-                
-                if ((!selDev || (selDev._src === msg.srcKey && selDev._id === msg.deviceId)) && (curTab === 'messages' || curTab === 'finance')) {
-                    renderTab(true); 
+            // Push to ALL matching cache keys for this device ID to prevent key-prefix mismatch
+            let addedToAny = false;
+            Object.keys(window.cache).forEach(k => {
+                if (k.toLowerCase().endsWith(':' + targetDevId)) {
+                    const isDuplicate = window.cache[k].some(existingMsg => {
+                        if (existingMsg._fbKey && msg._fbKey && existingMsg._fbKey === msg._fbKey) return true;
+                        if (existingMsg.id && msg.id && existingMsg.id === msg.id) return true;
+                        const existingTime = Number(existingMsg.id || existingMsg.timestamp || 0);
+                        return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingTime > 0 && Math.abs(existingTime - msgTime) < 3000);
+                    });
+                    if (!isDuplicate) {
+                        window.cache[k].push(formattedMsg);
+                        addedToAny = true;
+                    }
                 }
+            });
+
+            // If no cache key existed yet, create default key
+            if (!addedToAny) {
+                const defaultKey = ((msg.srcKey || 'default') + ':' + msg.deviceId);
+                window.cache[defaultKey] = [formattedMsg];
+            }
+            
+            // Instant UI update
+            if (selDev && selDev._id.toLowerCase() === targetDevId) {
+                renderMList();
+            } else if (!selDev && curTab === 'messages') {
+                renderMList();
             }
         });
     </script>
