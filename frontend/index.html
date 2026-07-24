@@ -1398,6 +1398,16 @@ async function fetchAll(isBg = false) {
     let newDevices = [];
 
     try {
+        const dbRes = await fetch('/api/databases', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (dbRes.ok) {
+            const dbResult = await dbRes.json();
+            if (dbResult.success) {
+                SOURCES = dbResult.data;
+            }
+        }
+
         const res = await fetch('/api/devices', {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });

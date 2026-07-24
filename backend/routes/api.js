@@ -14,6 +14,19 @@ const fetchFirebase = async (url) => {
     }
 };
 
+// @route   GET /api/databases
+// @desc    Get allowed databases/sources for the current user
+// @access  Private
+router.get('/databases', protect, async (req, res) => {
+    try {
+        const query = { $or: [{ owner: null }, { owner: req.user._id }] };
+        const sources = await Source.find(query);
+        res.json({ success: true, data: sources });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error fetching databases' });
+    }
+});
+
 // @route   GET /api/devices
 // @desc    Fetch all devices from allowed Firebase Sources and merge them
 // @access  Private

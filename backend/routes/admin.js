@@ -40,6 +40,7 @@ router.post('/users', async (req, res) => {
 
         res.status(201).json({ success: true, message: 'User created', data: { _id: user._id, username: user.username } });
     } catch (error) {
+        console.error("Error creating user in API:", error);
         res.status(500).json({ success: false, message: 'Server error creating user' });
     }
 });
