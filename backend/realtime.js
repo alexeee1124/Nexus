@@ -126,11 +126,26 @@ function setupMessageStream(src, id) {
                         }
                     }
                 } else {
-                    // Specific path push event! e.g. "/1784918833776"
-                    const msgId = payload.path.replace('/', '');
+                    // Granular or child path push event! e.g. "/1784918833776" or "/1784918833776/message"
+                    const pathParts = payload.path.split('/').filter(Boolean);
+                    if (pathParts.length === 0) return;
+                    
+                    const msgId = pathParts[0];
                     if (!seenMsgIds.has(msgId)) {
                         seenMsgIds.add(msgId);
-                        const messageObj = payload.data;
+                        
+                        let messageObj = payload.data;
+                        
+                        // If path was property-level (e.g. /msgId/message), fetch the complete message object
+                        if (typeof messageObj !== 'object' || messageObj === null || pathParts.length > 1) {
+                            try {
+                                const fullRes = await axios.get(`${src.base}/messages/${id}/${msgId}.json${authClean}`);
+                                if (fullRes.data && typeof fullRes.data === 'object') {
+                                    messageObj = fullRes.data;
+                                }
+                            } catch(e) {}
+                        }
+
                         if (messageObj && typeof messageObj === 'object') {
                             console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
                             ioInstance.emit('newMessage', {
