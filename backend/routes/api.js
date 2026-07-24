@@ -253,6 +253,32 @@ router.get('/messages/:src/:id', protect, async (req, res) => {
     }
 });
 
+// @route   DELETE /api/messages/:src/:id
+// @desc    Securely delete an SMS message using a provided path and key
+// @access  Private
+router.delete('/messages/:src/:id', protect, async (req, res) => {
+    try {
+        const { src, id } = req.params;
+        const { fbPath, fbKey } = req.body; // Sent securely in the request body
+        
+        if (!fbPath || !fbKey) return res.status(400).json({ success: false, message: 'Missing path or key' });
+        
+        const source = await Source.findOne({ key: src, $or: [{ owner: null }, { owner: req.user._id }] });
+        if (!source) return res.status(403).json({ success: false, message: 'Unauthorized source' });
+
+        // Reconstruct the exact delete path on the backend so the frontend never sees the base URL
+        const cleanPath = fbPath.replace('.json', '');
+        const url = `${source.base}${cleanPath}/${fbKey}.json${source.apiKey ? `?auth=${source.apiKey}` : ''}`;
+        
+        const fRes = await fetch(url, { method: 'DELETE' });
+        
+        if (!fRes.ok) throw new Error('Firebase deletion failed');
+        res.json({ success: true, message: 'Message deleted' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error deleting message' });
+    }
+});
+
 // @route   DELETE /api/devices/:src/:id
 // @desc    Delete a specific device from Firebase
 // @access  Private

