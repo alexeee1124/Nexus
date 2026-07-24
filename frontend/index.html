@@ -3988,6 +3988,31 @@ function renderAdminDbGrid() {
     }).join('');
 }
 
+
+async function toggleUserPerm(userId, permission, isChecked) {
+    try {
+        const payload = { permission, value: isChecked };
+        const res = await fetch(`/api/admin/users/${userId}/permissions`, {
+            method: 'PUT',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if (!data.success) {
+            alert('Failed to update permission: ' + (data.message || 'Unknown error'));
+            renderAdminUserList(); // Revert UI
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Error updating permission');
+        renderAdminUserList(); // Revert UI
+    }
+}
+
 async function renderAdminUserList() {
     const list = document.getElementById('adminUserList');
     if (!list) return;
@@ -4030,18 +4055,26 @@ async function renderAdminUserList() {
                         ${!isAdmin ? `
                             <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
                                 <div class="switch">
-                                    <input type="checkbox" ${canSms ? 'checked' : ''} onchange="toggleUserPerm('${u._id}', 'send_sms', this.checked)">
+                                    <input type="checkbox" ${u.permissions && u.permissions.canEditPhone ? 'checked' : ''} onchange="toggleUserPerm('${u._id}', 'canEditPhone', this.checked)">
                                     <span class="slider"></span>
                                 </div>
-                                <span style="font-size: 0.85rem; color: var(--text-sec); font-weight: 600;">Allow Send SMS</span>
+                                <span style="font-size: 0.85rem; color: var(--text-sec); font-weight: 600;">Grant 'M' Badge Edit Rights</span>
                             </label>
                             
                             <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
                                 <div class="switch">
-                                    <input type="checkbox" ${canPhone ? 'checked' : ''} onchange="toggleUserPerm('${u._id}', 'edit_phone', this.checked)">
+                                    <input type="checkbox" ${u.permissions && u.permissions.canUseAutoDiscovery ? 'checked' : ''} onchange="toggleUserPerm('${u._id}', 'canUseAutoDiscovery', this.checked)">
                                     <span class="slider"></span>
                                 </div>
-                                <span style="font-size: 0.85rem; color: var(--text-sec); font-weight: 600;">Grant Auto-Discover Number</span>
+                                <span style="font-size: 0.85rem; color: var(--text-sec); font-weight: 600;">Grant Auto-Discover Number Engine</span>
+                            </label>
+
+                            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                                <div class="switch">
+                                    <input type="checkbox" ${u.permissions && u.permissions.canViewTelecomIntel ? 'checked' : ''} onchange="toggleUserPerm('${u._id}', 'canViewTelecomIntel', this.checked)">
+                                    <span class="slider"></span>
+                                </div>
+                                <span style="font-size: 0.85rem; color: var(--text-sec); font-weight: 600;">Grant Telecom Intel Access</span>
                             </label>
                         ` : '<span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Global Admin Access</span>'}
                     </div>

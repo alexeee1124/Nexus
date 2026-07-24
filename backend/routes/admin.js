@@ -69,4 +69,26 @@ router.get('/sources', async (req, res) => {
 
 
 
+
+// @route   PUT /api/admin/users/:id/permissions
+// @desc    Update a specific user permission
+router.put('/users/:id/permissions', async (req, res) => {
+    try {
+        const { permission, value } = req.body;
+        
+        // Find user
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        
+        // Update the specific permission
+        if (!user.permissions) user.permissions = {};
+        user.permissions[permission] = value === true;
+        
+        await user.save();
+        res.json({ success: true, message: 'Permission updated', permissions: user.permissions });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error updating permissions' });
+    }
+});
+
 module.exports = router;
