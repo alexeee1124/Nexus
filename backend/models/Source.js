@@ -24,7 +24,7 @@ const SourceSchema = new mongoose.Schema({
     },
     color: {
         type: String,
-        default: 'var(--cyan)'
+        default: () => `hsl(${Math.floor(Math.random() * 360)}, 100%, 65%)`
     },
     // If owner is null, it's a global Master Firebase managed by the Admin.
     // If owner is set, it's a Private Tenant Firebase only visible to that specific user (and Admin).

