@@ -3373,6 +3373,7 @@ function openDupScanner() {
     
     // Filter out IDs that only appear in one database
     const duplicates = Object.values(map).filter(arr => {
+        if (arr[0]._id === '{DEVICE_ID_MY_PROJECT}') return false;
         if (arr.length < 2) return false;
         // Ensure they are actually from DIFFERENT databases, not just duplicate entries in the same db
         const sources = new Set(arr.map(a => a._src));

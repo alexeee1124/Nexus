@@ -249,4 +249,22 @@ router.delete('/messages/:src/:id/:msgId', protect, async (req, res) => {
     }
 });
 
+
+// @route   GET /api/admin/users
+// @desc    Get all users for admin management
+// @access  Private (Admin Only)
+router.get('/admin/users', protect, async (req, res) => {
+    try {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ success: false, message: 'Not authorized' });
+        }
+        
+        // Exclude the password hash from the response
+        const users = await User.find().select('-password');
+        res.json({ success: true, users });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error loading users' });
+    }
+});
+
 module.exports = router;
