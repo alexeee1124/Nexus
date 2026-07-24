@@ -4133,33 +4133,45 @@ function openAddDbDrawer() {
             transports: ['websocket', 'polling']
         });
         socket.on('newMessage', (msg) => {
-            const k = msg.srcKey + ':' + msg.deviceId;
+            console.log('[Socket] Live SMS arrived:', msg);
             
-            // Update device's last message time to bubble to top
-            const dev = devices.find(d => d._src === msg.srcKey && d._id === msg.deviceId);
+            // Match device by deviceId (case insensitive)
+            const targetDevId = (msg.deviceId || '').toLowerCase();
+            const dev = devices.find(d => d._id.toLowerCase() === targetDevId);
             if (dev) {
-                dev.lastMessageTime = msg.timestamp || Date.now();
-                filterDevs(); // re-sort and re-render sidebar list
+                dev.lastMessageTime = Date.now();
+                filterDevs(); // re-sort and re-render sidebar list with cyan pulse
             }
             
+            // Find matching device key in cache regardless of srcKey prefix mismatch
             if (!window.cache) window.cache = {};
-            if (!window.cache[k]) window.cache[k] = [];
+            const cacheKeys = Object.keys(window.cache);
+            const matchingKey = cacheKeys.find(k => k.toLowerCase().endsWith(':' + targetDevId)) || ((msg.srcKey || 'default') + ':' + msg.deviceId);
+            
+            if (!window.cache[matchingKey]) window.cache[matchingKey] = [];
 
-            const isDuplicate = window.cache[k].some(existingMsg => 
-                (existingMsg.message === msg.message && existingMsg.sender === msg.sender && Math.abs((existingMsg.timestamp||0) - (msg.timestamp||0)) < 5000)
-            );
+            const msgTime = Number(msg.id || msg.timestamp || Date.now());
+            const isDuplicate = window.cache[matchingKey].some(existingMsg => {
+                if (existingMsg._fbKey && msg._fbKey && existingMsg._fbKey === msg._fbKey) return true;
+                if (existingMsg.id && msg.id && existingMsg.id === msg.id) return true;
+                const existingTime = Number(existingMsg.id || existingMsg.timestamp || 0);
+                return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingTime > 0 && Math.abs(existingTime - msgTime) < 3000);
+            });
 
             if (!isDuplicate) {
                 const formattedMsg = {
+                    _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
                     type: msg.type || 'incoming',
-                    dateTime: msg.dateTime || msg.date || new Date().toLocaleString(),
-                    ...msg,
-                    _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+                    dateTime: msg.dateTime || msg.date || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    sender: msg.sender || msg.address || msg.number || 'Unknown',
+                    message: msg.message || msg.body || msg.text || msg.msg || '',
+                    timestamp: msgTime
                 };
 
-                window.cache[k].push(formattedMsg);
+                window.cache[matchingKey].push(formattedMsg);
                 
-                if ((!selDev || (selDev._src === msg.srcKey && selDev._id === msg.deviceId)) && (curTab === 'messages' || curTab === 'finance')) {
+                // Instant UI update
+                if (selDev && selDev._id.toLowerCase() === targetDevId && (curTab === 'messages' || curTab === 'finance')) {
                     if (document.getElementById('mList')) {
                         renderMList();
                     } else {
