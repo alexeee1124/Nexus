@@ -1448,10 +1448,10 @@ async function bootNexus() {
             const data = await res.json();
             if (data.success) {
                 window.CURRENT_ROLE = data.role;
-            window.CURRENT_PERMISSIONS = data.permissions || {};
-            if (data.role === 'admin') { const ah = document.getElementById('adminHubBtn'); if(ah) ah.style.display = 'block'; }
+                window.CURRENT_PERMISSIONS = data.permissions || {};
+                if (data.role === 'admin') { const ah = document.getElementById('adminHubBtn'); if(ah) ah.style.display = 'block'; }
                 window.CAN_EDIT_PHONE = data.role === 'admin' || data.permissions?.canEditPhone;
-                
+                window.CAN_USE_AUTO_DISCOVERY = data.role === 'admin' || data.permissions?.canUseAutoDiscovery;
             } else {
                 localStorage.removeItem('token');
                 location.reload();
