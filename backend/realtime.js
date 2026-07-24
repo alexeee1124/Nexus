@@ -87,6 +87,7 @@ function setupMessageStream(src, id) {
         const es = new EventSource(url);
         activeStreams.set(streamKey, es);
 
+        const seenMsgIds = new Set();
         let isInitialSnapshot = true;
 
         es.addEventListener('put', async (e) => {
@@ -94,44 +95,56 @@ function setupMessageStream(src, id) {
                 const payload = JSON.parse(e.data);
                 if (!payload || payload.data === undefined || payload.data === null) return;
                 
-                // Skip initial full history snapshot to prevent duplicate echo on boot
-                if (isInitialSnapshot && (payload.path === '/' || payload.path === '')) {
-                    isInitialSnapshot = false;
-                    return;
-                }
-                isInitialSnapshot = false;
-
-                let messageObj = null;
-                let msgId = '';
-
                 if (payload.path === '/' || payload.path === '') {
                     if (typeof payload.data === 'object') {
                         const keys = Object.keys(payload.data);
-                        if (keys.length === 0) return;
-                        msgId = keys[keys.length - 1];
-                        messageObj = payload.data[msgId];
+                        if (isInitialSnapshot) {
+                            // Populate seen IDs from initial snapshot without broadcasting history
+                            keys.forEach(k => seenMsgIds.add(k));
+                            isInitialSnapshot = false;
+                            return;
+                        }
+                        
+                        // Check for new keys in root payload
+                        for (let k of keys) {
+                            if (!seenMsgIds.has(k)) {
+                                seenMsgIds.add(k);
+                                const messageObj = payload.data[k];
+                                if (messageObj && typeof messageObj === 'object') {
+                                    console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
+                                    ioInstance.emit('newMessage', {
+                                        srcKey: src.key,
+                                        deviceId: id,
+                                        timestamp: messageObj.id || messageObj.timestamp || Date.now(),
+                                        type: messageObj.type || 'incoming',
+                                        dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
+                                        message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || '',
+                                        sender: messageObj.sender || messageObj.address || messageObj.number || 'Unknown'
+                                    });
+                                }
+                            }
+                        }
                     }
                 } else {
-                    // New live incoming SMS event! Path e.g. "/1784918833776"
-                    msgId = payload.path.replace('/', '');
-                    messageObj = payload.data;
+                    // Specific path push event! e.g. "/1784918833776"
+                    const msgId = payload.path.replace('/', '');
+                    if (!seenMsgIds.has(msgId)) {
+                        seenMsgIds.add(msgId);
+                        const messageObj = payload.data;
+                        if (messageObj && typeof messageObj === 'object') {
+                            console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
+                            ioInstance.emit('newMessage', {
+                                srcKey: src.key,
+                                deviceId: id,
+                                timestamp: messageObj.id || messageObj.timestamp || Date.now(),
+                                type: messageObj.type || 'incoming',
+                                dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
+                                message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || '',
+                                sender: messageObj.sender || messageObj.address || messageObj.number || 'Unknown'
+                            });
+                        }
+                    }
                 }
-
-                if (!messageObj || typeof messageObj !== 'object') return;
-                
-                console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
-
-                // Broadcast live SMS to Socket.io
-                ioInstance.emit('newMessage', {
-                    srcKey: src.key,
-                    deviceId: id,
-                    timestamp: messageObj.id || messageObj.timestamp || Date.now(),
-                    type: messageObj.type || 'incoming',
-                    dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
-                    message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || '',
-                    sender: messageObj.sender || messageObj.address || messageObj.number || 'Unknown'
-                });
-
             } catch (err) {
                 console.error('[Realtime] Parse error:', err);
             }
