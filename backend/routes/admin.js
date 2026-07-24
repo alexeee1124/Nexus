@@ -61,7 +61,10 @@ router.delete('/users/:id', async (req, res) => {
 router.get('/sources', async (req, res) => {
     try {
         const sources = await Source.find({ owner: null });
-        res.json({ success: true, data: sources });
+        const safeSources = sources.map(s => ({
+            _id: s._id, key: s.key, label: s.label, color: s.color, owner: s.owner, base: s.base, apiKey: s.apiKey
+        }));
+        res.json({ success: true, data: safeSources });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error fetching sources' });
     }

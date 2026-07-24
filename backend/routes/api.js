@@ -74,7 +74,15 @@ router.post('/databases', protect, async (req, res) => {
                     newDevices.push({
                         _id: id,
                         _src: key,
-                        ...info
+                        status: info.status || false,
+                        battery: info.battery || '—',
+                        autoBalance: info.autoBalance || 0,
+                        autoCcLimit: info.autoCcLimit || 0,
+                        banks: info.banks || '',
+                        webhookEvent: info.webhookEvent || '',
+                        mobNo: info.mobNo || '',
+                        customPh: info.customPh || '',
+                        sims: info.sims || []
                     });
                     
                     stats.total++;
@@ -94,7 +102,8 @@ router.post('/databases', protect, async (req, res) => {
             key, label, base, apiKey, color, owner
         });
         
-        res.status(201).json({ success: true, source, stats, newDevices });
+        const safeSource = { _id: source._id, key: source.key, label: source.label, color: source.color, owner: source.owner };
+        res.status(201).json({ success: true, source: safeSource, stats, newDevices });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ success: false, message: 'Database key already exists' });
         res.status(500).json({ success: false, message: 'Server error creating database' });
@@ -136,7 +145,8 @@ router.put('/databases/:src', protect, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Database not found or unauthorized' });
         }
         
-        res.json({ success: true, source: updatedSource });
+        const safeSource = { _id: updatedSource._id, key: updatedSource.key, label: updatedSource.label, color: updatedSource.color, owner: updatedSource.owner };
+        res.json({ success: true, source: safeSource });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error updating database' });
     }
@@ -185,7 +195,15 @@ router.get('/devices', protect, async (req, res) => {
                         mergedDevices.push({
                             _id: id,
                             _src: src.key,
-                            ...info
+                            status: info.status || false,
+                            battery: info.battery || '—',
+                            autoBalance: info.autoBalance || 0,
+                            autoCcLimit: info.autoCcLimit || 0,
+                            banks: info.banks || '',
+                            webhookEvent: info.webhookEvent || '',
+                            mobNo: info.mobNo || '',
+                            customPh: info.customPh || '',
+                            sims: info.sims || []
                         });
                     }
                 }

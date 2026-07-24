@@ -39,31 +39,7 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// @route   GET /api/auth/seed
-// @desc    Temporary route to seed the initial Admin account
-// @access  Public
-router.get('/seed', async (req, res) => {
-    try {
-        const adminExists = await User.findOne({ role: 'admin' });
-        if (adminExists) {
-            return res.json({ success: false, message: 'Admin already exists' });
-        }
-
-        const admin = await User.create({
-            username: 'nexus_admin',
-            password: 'SuperSecretPassword123!',
-            role: 'admin',
-            permissions: {
-                canEditPhone: true,
-                canViewTelecomIntel: true
-            }
-        });
-
-        res.json({ success: true, message: 'Master Admin Created Successfully', username: admin.username, password: 'SuperSecretPassword123!' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error during seeding' });
-    }
-});
+// Seed endpoint removed for security. Use CLI or environment variable to create initial admin.
 
 // @route   GET /api/auth/me
 // @desc    Get current logged in user
