@@ -22,6 +22,8 @@ async function syncFirebaseStreams() {
                     const clientIds = Object.keys(clientsRes.data);
                     for (let id of clientIds) {
                         setupMessageStream(src, id);
+                        // Stagger connections by 50ms to prevent CPU/Event Loop lockup on 0.1 CPU instance
+                        await new Promise(r => setTimeout(r, 50));
                     }
                 }
             } catch (e) {
@@ -48,7 +50,10 @@ function setupClientListener(src) {
             if (clientsRes.data && typeof clientsRes.data === 'object') {
                 const clientIds = Object.keys(clientsRes.data);
                 for (let id of clientIds) {
-                    setupMessageStream(src, id);
+                    if (!activeStreams.has(`${src.key}_${id}`)) {
+                        setupMessageStream(src, id);
+                        await new Promise(r => setTimeout(r, 50));
+                    }
                 }
             }
         } catch(e) {}
