@@ -58,6 +58,14 @@ router.post('/databases', protect, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Firebase URL is already connected to Nexus' });
         }
         
+        // Server-side Deduplication: Reject duplicate labels or keys
+        const existingLabel = await Source.findOne({ 
+            $or: [ { key }, { label: new RegExp('^' + label + '$', 'i') } ] 
+        });
+        if (existingLabel) {
+            return res.status(400).json({ success: false, message: `The label '${label}' is already in use. Please choose a different label.` });
+        }
+        
         // Fetch devices and calculate stats INSTANTLY before saving
         const authSuffix = apiKey ? `?auth=${apiKey}` : '';
         const fetchUrl = `${base}/clients.json${authSuffix}`;
@@ -135,7 +143,16 @@ router.put('/databases/:src', protect, async (req, res) => {
         }
         
         const updateData = {};
-        if (label) updateData.label = label;
+        if (label) {
+            const existingLabel = await Source.findOne({
+                label: new RegExp('^' + label + '$', 'i'),
+                key: { $ne: req.params.src }
+            });
+            if (existingLabel) {
+                return res.status(400).json({ success: false, message: `The label '${label}' is already in use. Please choose a different label.` });
+            }
+            updateData.label = label;
+        }
         if (base) updateData.base = base;
         if (apiKey !== undefined) updateData.apiKey = apiKey;
         if (color) updateData.color = color;
