@@ -2968,6 +2968,29 @@ async function createUser() {
     btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg> Create Operator Account`;
 }
 
+
+async function deleteDb(key) {
+    customConfirm('Disconnect Source', `Are you sure you want to permanently disconnect this Firebase source (${key})? All associated devices and intelligence will be dropped.`, async () => {
+        try {
+            const res = await fetch(`/api/databases/${key}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                customAlert('Source Disconnected', `Database '${key}' has been disconnected.`, 'success');
+                // We need to refresh the global dbData array before re-rendering
+                fetchDatabases(); 
+            } else {
+                customAlert('Disconnection Failed', data.message || 'Could not disconnect database.', 'error');
+            }
+        } catch(e) {
+            customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
+        }
+    });
+}
+
 async function deleteUser(id, username) {
     customConfirm('Revoke Access', `Are you sure you want to permanently revoke access for Operator '${username}'? They will be immediately locked out of the panel.`, async () => {
         try {
@@ -2978,12 +3001,13 @@ async function deleteUser(id, username) {
             const data = await res.json();
             
             if (data.success) {
-                renderUserList();
+                customAlert('Operator Revoked', `Access for operator '${username}' has been permanently revoked.`, 'success');
+                renderAdminUserList();
             } else {
-                customAlert('Revocation Failed', data.message || 'Could not revoke access.');
+                customAlert('Revocation Failed', data.message || 'Could not revoke access.', 'error');
             }
         } catch(e) {
-            customAlert('API Error', 'Failed to communicate with proxy backend.');
+            customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
         }
     });
 }
