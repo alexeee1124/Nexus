@@ -25,7 +25,7 @@ async function syncFirebaseStreams() {
                     }
                 }
             } catch (e) {
-                console.error(`[REALTIME] Failed to fetch clients for ${src.key}`);
+                console.error(`[REALTIME] Failed to fetch clients for ${src.key}: ${e.message}`);
             }
             
             // 2. Setup a stream to /clients to catch NEW devices automatically
