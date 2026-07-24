@@ -27,14 +27,14 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Catch-all route to serve the frontend for SPA navigation (if needed)
-app.use((req, res, next) => {
-    if (req.path.startsWith('/api/')) return next();
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
-
 // Keep-Alive Ping Route for Render
 app.get('/ping', (req, res) => {
     res.status(200).send('pong');
+});
+
+app.use((req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 // Initialize Realtime Engine
