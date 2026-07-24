@@ -29,18 +29,18 @@ async function syncFirebaseStreams() {
             try {
                 const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}shallow=true`);
                 if (clientsRes.data && typeof clientsRes.data === 'object') {
-                    const clientIds = Object.keys(clientsRes.data);
+                    const clientIds = Object.keys(clientsRes.data).filter(id => clientsRes.data[id] === true || typeof clientsRes.data[id] === 'object');
                     
                     for (let id of clientIds) {
                         const streamKey = `${src.key}_${id}`;
                         const existing = activeStreams.get(streamKey);
                         if (existing && existing !== 'PENDING' && existing.readyState === 2) {
-                            // Dead stream detected, purge for reconnect
+                            // Purge dead stream
                             activeStreams.delete(streamKey);
                         }
                         if (!activeStreams.has(streamKey)) {
                             setupMessageStream(src, id);
-                            await new Promise(r => setTimeout(r, 50)); // stagger connections
+                            await new Promise(r => setTimeout(r, 50));
                         }
                     }
                 }
