@@ -21,16 +21,32 @@ async function syncFirebaseStreams() {
                 if (clientsRes.data && typeof clientsRes.data === 'object') {
                     const clientIds = Object.keys(clientsRes.data);
                     
-                    // Probe specific nodes to find where messages are actually stored
-                    let schemaTemplate = '/clients/{id}/messages.json'; // Assume nested by default
+                    // Bulletproof schema probe: Check up to 10 clients across all 4 possible paths
+                    let schemaTemplate = '/messages/{id}.json'; // Default fallback
                     try {
                         const authS = src.apiKey ? `?auth=${src.apiKey}&` : '?';
-                        const [msgRes, smsRes] = await Promise.allSettled([
-                            axios.get(`${src.base}/messages.json${authS}shallow=true`),
-                            axios.get(`${src.base}/sms.json${authS}shallow=true`)
-                        ]);
-                        if (msgRes.status === 'fulfilled' && msgRes.value.data) schemaTemplate = '/messages/{id}.json';
-                        else if (smsRes.status === 'fulfilled' && smsRes.value.data) schemaTemplate = '/sms/{id}.json';
+                        let found = false;
+                        const checkClients = clientIds.slice(0, 10);
+                        
+                        for (let cId of checkClients) {
+                            const paths = [
+                                `/messages/${cId}.json`, 
+                                `/clients/${cId}/messages.json`, 
+                                `/sms/${cId}.json`, 
+                                `/clients/${cId}/sms.json`
+                            ];
+                            for (let p of paths) {
+                                try {
+                                    const probe = await axios.get(`${src.base}${p}${authS}shallow=true`);
+                                    if (probe.data) {
+                                        schemaTemplate = p.replace(cId, '{id}');
+                                        found = true;
+                                        break;
+                                    }
+                                } catch(e) {}
+                            }
+                            if (found) break;
+                        }
                     } catch(e) {}
                     
                     src.cachedSchema = schemaTemplate; // Save for periodic checks
