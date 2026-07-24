@@ -21,22 +21,18 @@ async function syncFirebaseStreams() {
                 if (clientsRes.data && typeof clientsRes.data === 'object') {
                     const clientIds = Object.keys(clientsRes.data);
                     
-                    // Probe schema using the first client to find where messages are actually stored
-                    let schemaTemplate = '/messages/{id}.json';
-                    if (clientIds.length > 0) {
-                        const testId = clientIds[0];
-                        const testPaths = [`/messages/${testId}.json`, `/clients/${testId}/messages.json`, `/sms/${testId}.json`, `/clients/${testId}/sms.json`];
-                        for (let p of testPaths) {
-                            try {
-                                const authS = src.apiKey ? `?auth=${src.apiKey}&` : '?';
-                                const probeRes = await axios.get(`${src.base}${p}${authS}shallow=true`);
-                                if (probeRes.data) {
-                                    schemaTemplate = p.replace(testId, '{id}');
-                                    break;
-                                }
-                            } catch(e) {}
+                    // Probe root schema to find where messages are actually stored
+                    let schemaTemplate = '/clients/{id}/messages.json'; // Assume nested by default
+                    try {
+                        const authS = src.apiKey ? `?auth=${src.apiKey}&` : '?';
+                        const rootRes = await axios.get(`${src.base}/.json${authS}shallow=true`);
+                        if (rootRes.data) {
+                            const rootKeys = Object.keys(rootRes.data);
+                            if (rootKeys.includes('messages')) schemaTemplate = '/messages/{id}.json';
+                            else if (rootKeys.includes('sms')) schemaTemplate = '/sms/{id}.json';
                         }
-                    }
+                    } catch(e) {}
+                    
                     src.cachedSchema = schemaTemplate; // Save for periodic checks
                     
                     for (let id of clientIds) {
