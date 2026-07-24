@@ -839,6 +839,13 @@
                             <label class="f-label db-hide-mobile">Passphrase</label>
                             <input type="password" id="newUserPwd" class="f-input" placeholder="Password" style="padding: 12px;">
                         </div>
+                        <div class="f-group" style="margin-bottom:0; width:100%;">
+                            <label class="f-label db-hide-mobile">Access Level</label>
+                            <select id="newUserRole" class="f-input" style="padding: 12px; background: rgba(0,0,0,0.2);">
+                                <option value="user">Standard Operator</option>
+                                <option value="admin">Administrator</option>
+                            </select>
+                        </div>
                         <div class="f-group" style="margin-bottom:0; width:100%; display: flex; gap: 12px;">
                             <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color:var(--text-sec); cursor:pointer;">
                                 <input type="checkbox" id="permEditPhone" style="width:16px; height:16px; accent-color:var(--amber);">
@@ -2658,6 +2665,7 @@ async function createUser() {
     const btn = document.getElementById('createUserBtn');
     const user = document.getElementById('newUsername').value.trim();
     const pwd = document.getElementById('newUserPwd').value;
+    const role = document.getElementById('newUserRole').value;
     const canEditPhone = document.getElementById('permEditPhone').checked;
     const canViewTelecomIntel = document.getElementById('permTelecom').checked;
     
@@ -2670,7 +2678,7 @@ async function createUser() {
         const payload = {
             username: user,
             password: pwd,
-            role: 'user',
+            role: role,
             permissions: { canEditPhone, canViewTelecomIntel }
         };
         
