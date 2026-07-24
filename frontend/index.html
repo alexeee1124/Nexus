@@ -3198,24 +3198,18 @@ function startDiscoveryScan(receiverId, selectedDevices) {
             return;
         }
         
-        const paths = [`/messages/${rDev._id}.json`, `/clients/${rDev._id}/messages.json`, `/sms/${rDev._id}.json`, `/clients/${rDev._id}/sms.json`];
-        const src = SOURCES.find(s => s.key === rDev._src);
-        const token = src ? await getAuthToken(src) : null;
-        const authSuffix = token ? `?auth=${token}` : '';
-        
         let allMsgs = [];
-        for (const p of paths) {
-            try {
-                let res = await proxyFirebase(rDev._src, rDev._id, p, 'GET');
-                if (res.ok) {
-                    let txt = await res.text();
-                    if (txt && txt !== 'null') {
-                        let json = JSON.parse(txt);
-                        let arr = Array.isArray(json) ? json.filter(x=>x) : Object.values(json);
-                        allMsgs.push(...arr);
-                    }
+        try {
+            let r = await fetch(`/api/messages/${rDev._src}/${rDev._id}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (r.ok) {
+                let res = await r.json();
+                if (res.success && res.data) {
+                    allMsgs = res.data;
                 }
-            } catch(e) {}
+            }
+        } catch (e) {}
         }
         
         if (allMsgs.length === 0) return;
