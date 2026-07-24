@@ -2744,12 +2744,8 @@ async function addDb() {
             SOURCES.push(data.source);
         }
         
+        await fetchAll(true);
         if (typeof renderAdminDbGrid === 'function') renderAdminDbGrid();
-        
-        // Run sync in background without freezing the UI button
-        fetchAll(true).then(() => {
-            if (typeof renderAdminDbGrid === 'function') renderAdminDbGrid();
-        });
         
         resetAddBtn(btn);
         
