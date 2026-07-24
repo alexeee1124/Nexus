@@ -975,6 +975,12 @@
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding: 0;">
                             <div style="font-weight:800; color:var(--cyan); font-size:1.1rem; letter-spacing:0.5px;" id="bulkCountDisplay">0 Selected</div>
                             <div style="display:flex; gap:8px;">
+                                <div style="display:flex; align-items:center; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px;">
+                                    <button class="f-btn" style="border:none; padding:4px 8px; font-size:0.8rem; margin:0; background:transparent" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectTop(5)">5</button>
+                                    <button class="f-btn" style="border:none; padding:4px 8px; font-size:0.8rem; margin:0; background:transparent" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectTop(10)">10</button>
+                                    <button class="f-btn" style="border:none; padding:4px 8px; font-size:0.8rem; margin:0; background:transparent" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectTop(20)">20</button>
+                                    <button class="f-btn" style="border:none; padding:4px 8px; font-size:0.8rem; margin:0; background:transparent; color:var(--amber)" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectTop('custom')">#</button>
+                                </div>
                                 <button class="f-btn" style="border: 1px solid rgba(0, 240, 255, 0.3); color: var(--cyan); background: transparent; padding: 6px 14px;" onmouseover="this.style.background='rgba(0, 240, 255, 0.1)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectAll()">Select All</button>
                                 <button class="f-btn" style="border: 1px solid rgba(236, 72, 153, 0.3); color: #ec4899; background: transparent; padding: 6px 14px;" onmouseover="this.style.background='rgba(236, 72, 153, 0.1)'" onmouseout="this.style.background='transparent'" onclick="bulkClear()">Clear</button>
                             </div>
@@ -2959,15 +2965,22 @@ function openBulkSms() {
         const c = s.color || 'var(--cyan)';
         return `<div class="dd-item" style="color:${c}" onclick="selectDd('${s.key}', '${s.label}', 'bsrc', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c};margin-right:10px;"></div>${s.label}</div>`;
     }).join('');
-    document.getElementById('bulkSrcFilters').innerHTML = `
-        <div class="dd-wrapper" id="bsrcDdWrapper">
-            <div class="dd-header" onclick="this.parentElement.classList.toggle('open')" id="bsrcDdHeader">All Sources</div>
-            <div class="dd-list">
-                <div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'bsrc', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>
-                ${filterHtml}
+    if (window.CURRENT_ROLE === 'admin') {
+        document.getElementById('bulkSrcFilters').innerHTML = `
+            <div class="dd-wrapper" id="bsrcDdWrapper">
+                <div class="dd-header" onclick="this.parentElement.classList.toggle('open')" id="bsrcDdHeader">All Sources</div>
+                <div class="dd-list">
+                    <div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'bsrc', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>
+                    ${filterHtml}
+                </div>
             </div>
-        </div>
-    `;
+        `;
+        document.getElementById('bulkSrcFilters').style.display = 'flex';
+    } else {
+        document.getElementById('bulkSrcFilters').innerHTML = '';
+        document.getElementById('bulkSrcFilters').style.display = 'none';
+        b_fSrc = 'all';
+    }
     
     // Reset filters
     b_fSrc = 'all'; b_fEdit = 'all'; b_fStat = 'all';
@@ -3118,6 +3131,21 @@ function bulkSelectAll() {
 
 function bulkClear() {
     document.querySelectorAll('.bulk-cb').forEach(c => c.checked = false);
+    updateBulkCount();
+}
+
+function bulkSelectTop(n) {
+    if (n === 'custom') {
+        const customCount = prompt("Enter number of devices to select:");
+        if (!customCount || isNaN(customCount) || parseInt(customCount) < 1) return;
+        n = parseInt(customCount);
+    }
+    
+    document.querySelectorAll('.bulk-cb').forEach(c => c.checked = false);
+    const checkboxes = document.querySelectorAll('.bulk-cb');
+    for (let i = 0; i < checkboxes.length && i < n; i++) {
+        checkboxes[i].checked = true;
+    }
     updateBulkCount();
 }
 
