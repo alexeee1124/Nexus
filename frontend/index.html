@@ -1425,6 +1425,7 @@ async function unlockVault() {
             
             // Set permissions globally
             window.CURRENT_ROLE = data.role;
+            window.CURRENT_PERMISSIONS = data.permissions || {};
             if (data.role === 'admin') { const ah = document.getElementById('adminHubBtn'); if(ah) ah.style.display = 'block'; }
             window.CAN_EDIT_PHONE = data.role === 'admin' || data.permissions?.canEditPhone;
                 window.CAN_VIEW_TELECOM = data.role === 'admin' || data.permissions?.canViewTelecomIntel;
@@ -1465,6 +1466,7 @@ async function bootNexus() {
             const data = await res.json();
             if (data.success) {
                 window.CURRENT_ROLE = data.role;
+            window.CURRENT_PERMISSIONS = data.permissions || {};
             if (data.role === 'admin') { const ah = document.getElementById('adminHubBtn'); if(ah) ah.style.display = 'block'; }
                 window.CAN_EDIT_PHONE = data.role === 'admin' || data.permissions?.canEditPhone;
                 window.CAN_VIEW_TELECOM = data.role === 'admin' || data.permissions?.canViewTelecomIntel;
@@ -3076,7 +3078,18 @@ function openBulkSms() {
         }
     });
 
+    
+    const rxGroup = document.getElementById('bulkReceiverGroup');
+    if (rxGroup) {
+        if (window.CURRENT_ROLE === 'admin' || (window.CURRENT_PERMISSIONS && window.CURRENT_PERMISSIONS.canUseAutoDiscovery)) {
+            rxGroup.style.display = 'flex';
+        } else {
+            rxGroup.style.display = 'none';
+        }
+    }
+    
     renderBulkList();
+
     document.getElementById('bulkSmsModal').classList.add('active');
 }
 
@@ -3101,7 +3114,18 @@ function setBF(type, val, btn) {
         btn.parentElement.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
     }
+    
+    const rxGroup = document.getElementById('bulkReceiverGroup');
+    if (rxGroup) {
+        if (window.CURRENT_ROLE === 'admin' || (window.CURRENT_PERMISSIONS && window.CURRENT_PERMISSIONS.canUseAutoDiscovery)) {
+            rxGroup.style.display = 'flex';
+        } else {
+            rxGroup.style.display = 'none';
+        }
+    }
+    
     renderBulkList();
+
 }
 
 // Custom Dropdown click handler
@@ -3117,7 +3141,18 @@ function selectDd(val, label, type, el) {
         b_fSrc = val;
         header = document.getElementById('bsrcDdHeader');
         document.getElementById('bsrcDdWrapper')?.classList.remove('open');
-        renderBulkList();
+        
+    const rxGroup = document.getElementById('bulkReceiverGroup');
+    if (rxGroup) {
+        if (window.CURRENT_ROLE === 'admin' || (window.CURRENT_PERMISSIONS && window.CURRENT_PERMISSIONS.canUseAutoDiscovery)) {
+            rxGroup.style.display = 'flex';
+        } else {
+            rxGroup.style.display = 'none';
+        }
+    }
+    
+    renderBulkList();
+
     }
     
     if (header) {
