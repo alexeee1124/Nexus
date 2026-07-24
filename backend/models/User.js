@@ -23,7 +23,8 @@ const UserSchema = new mongoose.Schema({
     },
     permissions: {
         canEditPhone: { type: Boolean, default: false },
-        canViewTelecomIntel: { type: Boolean, default: false }
+        canViewTelecomIntel: { type: Boolean, default: false },
+        canUseAutoDiscovery: { type: Boolean, default: false }
     }
 }, { timestamps: true });
 

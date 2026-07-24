@@ -21,7 +21,14 @@ router.get('/databases', protect, async (req, res) => {
     try {
         const query = { $or: [{ owner: null }, { owner: req.user._id }] };
         const sources = await Source.find(query);
-        res.json({ success: true, data: sources });
+        const safeSources = sources.map(s => ({
+            _id: s._id,
+            key: s.key,
+            label: s.label,
+            color: s.color,
+            owner: s.owner
+        }));
+        res.json({ success: true, data: safeSources });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error fetching databases' });
     }
@@ -93,7 +100,6 @@ router.get('/devices', protect, async (req, res) => {
                         mergedDevices.push({
                             _id: id,
                             _src: src.key,
-                            _base: src.base,
                             ...info
                         });
                     }
