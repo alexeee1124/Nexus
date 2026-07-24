@@ -1319,7 +1319,7 @@ async function bootNexus() {
         document.getElementById('loader').classList.add('hidden');
     } catch (e) {
         console.error("Boot Error:", e);
-        customAlert('Uplink Failed', 'Could not establish connection to the Middleman API.');
+        customAlert('Uplink Failed', 'Could not establish connection to the Middleman API. Error: ' + (e.message || e));
         document.getElementById('loader').classList.add('hidden');
     }
 }
