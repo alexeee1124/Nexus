@@ -27,6 +27,48 @@ router.get('/databases', protect, async (req, res) => {
     }
 });
 
+// @route   POST /api/databases
+// @desc    Add a database connection
+// @access  Private
+router.post('/databases', protect, async (req, res) => {
+    try {
+        const { key, label, base, apiKey, color } = req.body;
+        const owner = req.user.role === 'admin' ? null : req.user._id;
+        
+        const source = await Source.create({
+            key, label, base, apiKey, color, owner
+        });
+        
+        // Return a mock stats object to prevent the frontend detailsHtml from showing undefined
+        const stats = { total: 0, online: 0, offline: 0 };
+        res.status(201).json({ success: true, source, stats });
+    } catch (error) {
+        if (error.code === 11000) return res.status(400).json({ success: false, message: 'Database key already exists' });
+        res.status(500).json({ success: false, message: 'Server error creating database' });
+    }
+});
+
+// @route   DELETE /api/databases/:src
+// @desc    Delete a database connection
+// @access  Private
+router.delete('/databases/:src', protect, async (req, res) => {
+    try {
+        const query = { key: req.params.src, $or: [{ owner: null }, { owner: req.user._id }] };
+        if (req.user.role !== 'admin') {
+            // Standard users can only delete their own private sources
+            query.owner = req.user._id;
+            delete query.$or;
+        }
+        
+        const deleted = await Source.findOneAndDelete(query);
+        if (!deleted) return res.status(404).json({ success: false, message: 'Database not found or unauthorized' });
+        
+        res.json({ success: true, message: 'Database deleted' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error deleting database' });
+    }
+});
+
 // @route   GET /api/devices
 // @desc    Fetch all devices from allowed Firebase Sources and merge them
 // @access  Private

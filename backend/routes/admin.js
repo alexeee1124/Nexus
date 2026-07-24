@@ -67,19 +67,6 @@ router.get('/sources', async (req, res) => {
     }
 });
 
-// @route   POST /api/admin/sources
-// @desc    Add a global master Firebase source
-router.post('/sources', async (req, res) => {
-    try {
-        const { key, label, base, apiKey, color } = req.body;
-        const source = await Source.create({
-            key, label, base, apiKey, color, owner: null
-        });
-        res.status(201).json({ success: true, data: source });
-    } catch (error) {
-        if (error.code === 11000) return res.status(400).json({ success: false, message: 'Source key already exists' });
-        res.status(500).json({ success: false, message: 'Server error creating source' });
-    }
-});
+
 
 module.exports = router;
