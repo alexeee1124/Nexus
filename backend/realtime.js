@@ -19,7 +19,8 @@ function initRealtime(io) {
 
 async function syncFirebaseStreams() {
     try {
-        const sources = await Source.find({ isActive: true });
+        const sources = await Source.find({});
+        console.log(`[Realtime] Found ${sources.length} sources to stream.`);
         
         for (let src of sources) {
             if (!src.base) continue;
