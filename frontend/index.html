@@ -4157,18 +4157,21 @@ function openAddDbDrawer() {
             if (!window.cache[targetDevId]) window.cache[targetDevId] = [];
 
             const msgTime = Number(msg.id || msg.timestamp || Date.now());
+            const msgDateStr = msg.dateTime || msg.date || '';
+
+            // Exact match deduplication (prevents false positive drops)
             const isDuplicate = window.cache[targetDevId].some(existingMsg => {
                 if (existingMsg._fbKey && msg._fbKey && existingMsg._fbKey === msg._fbKey) return true;
-                if (existingMsg.id && msg.id && existingMsg.id === msg.id) return true;
-                const existingTime = Number(existingMsg.id || existingMsg.timestamp || 0);
-                return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingTime > 0 && Math.abs(existingTime - msgTime) < 3000);
+                const eTime = Number(existingMsg.id || existingMsg.timestamp || 0);
+                if (eTime > 0 && msgTime > 0 && eTime === msgTime) return true;
+                return (existingMsg.message === msg.message && existingMsg.sender === msg.sender && existingMsg.dateTime === msgDateStr);
             });
 
             if (!isDuplicate) {
                 const formattedMsg = {
                     _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
                     type: msg.type || 'incoming',
-                    dateTime: msg.dateTime || msg.date || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    dateTime: msgDateStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     sender: msg.sender || msg.address || msg.number || 'Unknown',
                     message: msg.message || msg.body || msg.text || msg.msg || '',
                     timestamp: msgTime,
@@ -4178,17 +4181,11 @@ function openAddDbDrawer() {
                 window.cache[targetDevId].push(formattedMsg);
             }
             
-            // Instant UI update
+            // Unconditional live UI re-render whenever selected device matches target
             if (selDev && selDev._id.toLowerCase() === targetDevId) {
-                if (document.getElementById('mList')) {
-                    renderMList();
-                } else {
-                    renderTab(true);
-                }
-            } else if (!selDev && curTab === 'messages') {
-                if (document.getElementById('mList')) {
-                    renderMList();
-                }
+                renderMList();
+            } else if (curTab === 'messages') {
+                renderMList();
             }
         });
     </script>
