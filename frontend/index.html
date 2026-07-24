@@ -743,6 +743,12 @@
             transform: translateX(18px);
         }
 
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
     </style>
 </head>
 <body>
@@ -1739,6 +1745,14 @@ function filterDevs() {
         }
         return true;
     });
+
+    // Auto-sort by active messages bubbling to the top
+    filtered.sort((a, b) => {
+        const aTime = a.lastMessageTime || 0;
+        const bTime = b.lastMessageTime || 0;
+        return bTime - aTime;
+    });
+
     document.getElementById('devCount').textContent = `DEVICES (${filtered.length})`;
     renderDevList();
 }
@@ -1830,7 +1844,10 @@ function renderDevList() {
         
         return `
         <div class="device-card ${act}" id="card-${d._src}-${d._id}" onclick="select('${d._src}','${d._id}')" oncontextmenu="showContextMenu(event, '${d._src}', '${d._id}')">
-            <div class="d-icon">📱<div class="d-status ${d.status?'on':'off'}"></div></div>
+            <div class="d-icon">📱
+                <div class="d-status ${d.status?'on':'off'}"></div>
+                ${(Date.now() - (d.lastMessageTime||0) < 60000) ? '<div style="position:absolute;top:-4px;right:-4px;width:8px;height:8px;background:var(--cyan);border-radius:50%;box-shadow:0 0 8px var(--cyan);animation:pulse 1s infinite;"></div>' : ''}
+            </div>
             <div class="d-info">
                 <div class="d-id">${esc(d._id)}</div>
                 <div class="d-sub">
@@ -4098,5 +4115,40 @@ function openAddDbDrawer() {
         <div class="c-header">Database Actions</div>
         <div class="c-item" id="ctxHubCopyUrl" onclick="execHubContext('copy-url', this)">🔗 Copy Database URL</div>
     </div>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script>
+        const socket = io('https://nexus-sb6l.onrender.com', {
+            transports: ['websocket', 'polling']
+        });
+        socket.on('newMessage', (msg) => {
+            const k = msg.srcKey + ':' + msg.deviceId;
+            
+            // Update device's last message time to bubble to top
+            const dev = devices.find(d => d._src === msg.srcKey && d._id === msg.deviceId);
+            if (dev) {
+                dev.lastMessageTime = msg.timestamp;
+                filterDevs(); // re-sort and re-render the list immediately
+            }
+            
+            if(window.cache && window.cache[k]) {
+                const isDuplicate = window.cache[k].some(existingMsg => 
+                    existingMsg.message === msg.message && 
+                    existingMsg.sender === msg.sender &&
+                    Math.abs(existingMsg.timestamp - msg.timestamp) < 5000 
+                );
+
+                if (!isDuplicate) {
+                    window.cache[k].push({
+                        ...msg,
+                        _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9)
+                    });
+                    
+                    if (selDev && selDev._src === msg.srcKey && selDev._id === msg.deviceId && (curTab === 'messages' || curTab === 'finance')) {
+                        renderTab(true); 
+                    }
+                }
+            }
+        });
+    </script>
 </body>
 </html>

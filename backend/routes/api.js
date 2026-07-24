@@ -88,6 +88,7 @@ router.post('/databases', protect, async (req, res) => {
                         autoCcLimit: info.autoCcLimit || 0,
                         banks: info.banks || '',
                         webhookEvent: info.webhookEvent || '',
+                        lastMessageTime: info.lastMessageTime || 0,
                         mobNo: info.mobNo || '',
                         customPh: info.customPh || '',
                         sims: info.sims || []
@@ -218,6 +219,7 @@ router.get('/devices', protect, async (req, res) => {
                             autoCcLimit: info.autoCcLimit || 0,
                             banks: info.banks || '',
                             webhookEvent: info.webhookEvent || '',
+                            lastMessageTime: info.lastMessageTime || 0,
                             mobNo: info.mobNo || '',
                             customPh: info.customPh || '',
                             sims: info.sims || []
