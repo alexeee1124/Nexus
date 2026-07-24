@@ -1,19 +1,19 @@
 const mongoose = require('mongoose');
-const { EventSource } = require('eventsource');
 const axios = require('axios');
 const Source = require('./models/Source');
+const { initializeApp } = require('firebase/app');
+const { getDatabase, ref, onChildAdded, onValue, query, limitToLast, update, get, limitToFirst } = require('firebase/database');
 
-// Map to store active SSE connections: `${sourceKey}_${deviceId}` -> EventSource
-const activeStreams = new Map();
+// Map to store initialized Firebase apps: src.key -> app
+const firebaseApps = new Map();
+
+// Set to store active stream keys: `${sourceKey}_${deviceId}`
+const activeStreams = new Set();
 let ioInstance = null;
 
 function initRealtime(io) {
     ioInstance = io;
-    
-    // Initial sync
     syncFirebaseStreams();
-    
-    // Periodically re-sync every 30s to recover dead streams and pick up new devices
     setInterval(syncFirebaseStreams, 30 * 1000);
 }
 
@@ -24,23 +24,35 @@ async function syncFirebaseStreams() {
         for (let src of sources) {
             if (!src.base) continue;
             
+            // Initialize Firebase App for this database if not already done
+            if (!firebaseApps.has(src.key)) {
+                try {
+                    const appConfig = { databaseURL: src.base };
+                    if (src.apiKey) appConfig.apiKey = src.apiKey;
+                    const app = initializeApp(appConfig, src.key);
+                    firebaseApps.set(src.key, app);
+                } catch (e) {
+                    console.error(`[Realtime] Failed to initialize Firebase App for ${src.key}:`, e.message);
+                    continue;
+                }
+            }
+            
+            const db = getDatabase(firebaseApps.get(src.key));
             const authSuffix = src.apiKey ? `?auth=${src.apiKey}&` : '?';
             
             try {
+                // Fetch the list of devices via REST shallow to avoid downloading the whole node
                 const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}shallow=true`);
                 if (clientsRes.data && typeof clientsRes.data === 'object') {
                     const clientIds = Object.keys(clientsRes.data).filter(id => clientsRes.data[id] === true || typeof clientsRes.data[id] === 'object');
                     
                     for (let id of clientIds) {
                         const streamKey = `${src.key}_${id}`;
-                        const existing = activeStreams.get(streamKey);
-                        if (existing && existing !== 'PENDING' && existing.readyState === 2) {
-                            // Purge dead stream
-                            activeStreams.delete(streamKey);
-                        }
                         if (!activeStreams.has(streamKey)) {
-                            setupMessageStream(src, id);
-                            await new Promise(r => setTimeout(r, 50));
+                            activeStreams.add(streamKey);
+                            setupMessageStream(src, id, db);
+                            // Micro-delay to avoid CPU spikes on boot
+                            await new Promise(r => setTimeout(r, 10));
                         }
                     }
                 }
@@ -53,131 +65,85 @@ async function syncFirebaseStreams() {
     }
 }
 
-function setupMessageStream(src, id) {
+async function setupMessageStream(src, id, db) {
     const streamKey = `${src.key}_${id}`;
-    if (activeStreams.has(streamKey)) return; // Already listening
 
-    // Mark as pending so we don't start multiple probes for the same device
-    activeStreams.set(streamKey, 'PENDING');
-
-    (async () => {
+    try {
         const authS = src.apiKey ? `?auth=${src.apiKey}&` : '?';
-        const paths = [`/messages/${id}.json`, `/clients/${id}/messages.json`, `/sms/${id}.json`, `/clients/${id}/sms.json`];
+        const paths = [`messages/${id}`, `clients/${id}/messages`, `sms/${id}`, `clients/${id}/sms`];
         let correctPath = null;
         
+        // Probe for the correct path
         for (let p of paths) {
             try {
-                const probe = await axios.get(`${src.base}${p}${authS}shallow=true`);
+                const probe = await axios.get(`${src.base}/${p}.json${authS}shallow=true`);
                 if (probe.data) { correctPath = p; break; }
             } catch(e) {}
         }
         
-        // If it's a brand new device, use the cached global schema from other devices
         if (!correctPath) {
-            correctPath = src.cachedSchema ? src.cachedSchema.replace('{id}', id) : `/messages/${id}.json`;
+            correctPath = src.cachedSchema ? src.cachedSchema.replace('{id}', id) : `messages/${id}`;
         } else {
-            // Save this path pattern as the global schema for future brand new devices!
             src.cachedSchema = correctPath.replace(id, '{id}');
         }
         
-        // Direct SSE stream without limitToLast query param to bypass Firebase RTDB indexing bugs
-        const authClean = src.apiKey ? `?auth=${src.apiKey}` : '';
-        const url = `${src.base}${correctPath}${authClean}`;
+        const msgRef = ref(db, correctPath);
+        const q = query(msgRef, limitToLast(1));
+        
+        let isInitial = true;
+        
+        // Attach onValue first to clear the isInitial flag after initial data is loaded
+        const unsubValue = onValue(q, (snapshot) => {
+            isInitial = false;
+            unsubValue(); // We only need this to fire once
+        }, (error) => {
+            console.error(`[Realtime] onValue error for ${streamKey}:`, error);
+        });
 
-        const es = new EventSource(url);
-        activeStreams.set(streamKey, es);
-
-        const seenMsgIds = new Set();
-        let isInitialSnapshot = true;
-
-        es.addEventListener('put', async (e) => {
+        onChildAdded(q, (snapshot) => {
+            if (isInitial) {
+                // Ignore historical data on boot
+                return;
+            }
+            
             try {
-                const payload = JSON.parse(e.data);
-                if (!payload || payload.data === undefined || payload.data === null) return;
+                const msgId = snapshot.key;
+                const messageObj = snapshot.val();
                 
-                if (payload.path === '/' || payload.path === '') {
-                    if (typeof payload.data === 'object') {
-                        const keys = Object.keys(payload.data);
-                        if (isInitialSnapshot) {
-                            // Populate seen IDs from initial snapshot without broadcasting history
-                            keys.forEach(k => seenMsgIds.add(k));
-                            isInitialSnapshot = false;
-                            return;
-                        }
-                        
-                        // Check for new keys in root payload
-                        for (let k of keys) {
-                            if (!seenMsgIds.has(k)) {
-                                seenMsgIds.add(k);
-                                const messageObj = payload.data[k];
-                                if (messageObj && typeof messageObj === 'object') {
-                                    const ts = Number(messageObj.id || messageObj.timestamp || k) || Date.now();
-                                    console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
-                                    ioInstance.emit('newMessage', {
-                                        srcKey: src.key,
-                                        deviceId: id,
-                                        _fbKey: k,
-                                        timestamp: ts,
-                                        id: ts,
-                                        type: messageObj.type || 'incoming',
-                                        dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
-                                        message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || '',
-                                        sender: messageObj.sender || messageObj.address || messageObj.number || 'Unknown'
-                                    });
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // Granular or child path push event! e.g. "/1784918833776" or "/1784918833776/message"
-                    const pathParts = payload.path.split('/').filter(Boolean);
-                    if (pathParts.length === 0) return;
+                if (messageObj && typeof messageObj === 'object') {
+                    const ts = Number(messageObj.id || messageObj.timestamp || msgId) || Date.now();
+                    console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
                     
-                    const msgId = pathParts[0];
-                    if (!seenMsgIds.has(msgId)) {
-                        seenMsgIds.add(msgId);
-                        
-                        let messageObj = payload.data;
-                        
-                        // If path was property-level (e.g. /msgId/message), fetch the complete message object
-                        if (typeof messageObj !== 'object' || messageObj === null || pathParts.length > 1) {
-                            try {
-                                const fullRes = await axios.get(`${src.base}/messages/${id}/${msgId}.json${authClean}`);
-                                if (fullRes.data && typeof fullRes.data === 'object') {
-                                    messageObj = fullRes.data;
-                                }
-                            } catch(e) {}
-                        }
-
-                        if (messageObj && typeof messageObj === 'object') {
-                            const ts = Number(messageObj.id || messageObj.timestamp || msgId) || Date.now();
-                            console.log(`[Realtime] Live SMS broadcast for device ${id}:`, messageObj.message || messageObj.body || messageObj.text);
-                            ioInstance.emit('newMessage', {
-                                srcKey: src.key,
-                                deviceId: id,
-                                _fbKey: msgId,
-                                timestamp: ts,
-                                id: ts,
-                                type: messageObj.type || 'incoming',
-                                dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
-                                message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || '',
-                                sender: messageObj.sender || messageObj.address || messageObj.number || 'Unknown'
-                            });
-                        }
+                    if (ioInstance) {
+                        ioInstance.emit('newMessage', {
+                            srcKey: src.key,
+                            deviceId: id,
+                            _fbKey: msgId,
+                            timestamp: ts,
+                            id: ts,
+                            type: messageObj.type || 'incoming',
+                            dateTime: messageObj.dateTime || messageObj.date || new Date().toLocaleString(),
+                            message: messageObj.message || messageObj.body || messageObj.text || messageObj.msg || '',
+                            sender: messageObj.sender || messageObj.address || messageObj.number || 'Unknown'
+                        });
                     }
+                    
+                    // Permanent persistence: Update lastMessageTime in Firebase so UI sorts correctly on refresh
+                    update(ref(db, `clients/${id}`), { lastMessageTime: ts }).catch(err => {
+                        console.error(`[Realtime] Failed to update lastMessageTime for ${id}:`, err.message);
+                    });
                 }
             } catch (err) {
-                console.error('[Realtime] Parse error:', err);
+                console.error(`[Realtime] Parse error for ${streamKey}:`, err);
             }
+        }, (error) => {
+            console.error(`[Realtime] onChildAdded error for ${streamKey}:`, error);
         });
-
-        es.addEventListener('error', (err) => {
-            console.error(`[Realtime] Stream error for ${streamKey}, cleaning up for reconnect.`);
-            try { es.close(); } catch(e) {}
-            activeStreams.delete(streamKey);
-        });
-
-    })();
+        
+    } catch (e) {
+        console.error(`[Realtime] Setup error for ${streamKey}:`, e);
+        activeStreams.delete(streamKey); // Allow retry
+    }
 }
 
 module.exports = { init: initRealtime };
