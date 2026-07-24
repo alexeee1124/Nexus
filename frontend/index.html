@@ -1423,9 +1423,11 @@ async function fetchAll(isBg = false) {
             }
         }
 
+        const pingStart = performance.now();
         const res = await fetch('/api/devices', {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
+        window.lastPing = Math.round(performance.now() - pingStart);
         if (res.ok) {
             const result = await res.json();
             if (result.success) {
@@ -1784,7 +1786,7 @@ function renderTab(silent = false) {
         let operatorHtml = '';
         if (window.CURRENT_ROLE !== 'admin') {
             const ratio = devices.length ? ((on / devices.length) * 100).toFixed(1) : 0;
-            const ping = Math.floor(Math.random() * 20 + 30);
+            const ping = window.lastPing || '-- ';
             
             operatorHtml = `<div style="margin-top: 48px; ${silent ? '' : 'animation: fadeUp 0.4s ease forwards;'}">
                 <h3 style="margin-bottom: 24px; font-size: 1.4rem; color: #fff; display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.5px;">🖥️ System Health</h3>
