@@ -972,17 +972,25 @@
                                 <button class="f-btn f-amber" onclick="setBF('stat','offline',this)" style="flex:1; border:none; margin:0">Offline</button>
                             </div>
                         </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding: 0;">
-                            <div style="font-weight:800; color:var(--cyan); font-size:1.1rem; letter-spacing:0.5px;" id="bulkCountDisplay">0 Selected</div>
-                            <div style="display:flex; gap:8px;">
-                                <div style="display:flex; align-items:center; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:4px; padding:2px;">
-                                    <button class="f-btn" style="border:none; padding:4px 8px; font-size:0.8rem; margin:0; background:transparent" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectTop(5)">5</button>
-                                    <button class="f-btn" style="border:none; padding:4px 8px; font-size:0.8rem; margin:0; background:transparent" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectTop(10)">10</button>
-                                    <button class="f-btn" style="border:none; padding:4px 8px; font-size:0.8rem; margin:0; background:transparent" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectTop(20)">20</button>
-                                    <button class="f-btn" style="border:none; padding:4px 8px; font-size:0.8rem; margin:0; background:transparent; color:var(--amber)" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectTop('custom')">#</button>
+                        <div style="display:flex; flex-direction:column; gap:12px; margin-top:12px; padding: 0;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <div style="font-weight:800; color:var(--cyan); font-size:1.1rem; letter-spacing:0.5px;" id="bulkCountDisplay">0 Selected</div>
+                                <div style="display:flex; gap:8px;">
+                                    <button class="f-btn" style="border: 1px solid rgba(0, 240, 255, 0.3); color: var(--cyan); background: transparent; padding: 6px 14px;" onmouseover="this.style.background='rgba(0, 240, 255, 0.1)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectAll()">Select All</button>
+                                    <button class="f-btn" style="border: 1px solid rgba(236, 72, 153, 0.3); color: #ec4899; background: transparent; padding: 6px 14px;" onmouseover="this.style.background='rgba(236, 72, 153, 0.1)'" onmouseout="this.style.background='transparent'" onclick="bulkClear()">Clear</button>
                                 </div>
-                                <button class="f-btn" style="border: 1px solid rgba(0, 240, 255, 0.3); color: var(--cyan); background: transparent; padding: 6px 14px;" onmouseover="this.style.background='rgba(0, 240, 255, 0.1)'" onmouseout="this.style.background='transparent'" onclick="bulkSelectAll()">Select All</button>
-                                <button class="f-btn" style="border: 1px solid rgba(236, 72, 153, 0.3); color: #ec4899; background: transparent; padding: 6px 14px;" onmouseover="this.style.background='rgba(236, 72, 153, 0.1)'" onmouseout="this.style.background='transparent'" onclick="bulkClear()">Clear</button>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:6px 12px; justify-content:space-between;">
+                                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; font-weight:700;">Quick Select</div>
+                                <div style="display:flex; align-items:center; gap:4px;">
+                                    <button class="f-btn" style="border:1px solid rgba(255,255,255,0.1); padding:4px 12px; font-size:0.8rem; margin:0; background:rgba(255,255,255,0.02); border-radius:4px;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'" onclick="bulkSelectTop(5)">5</button>
+                                    <button class="f-btn" style="border:1px solid rgba(255,255,255,0.1); padding:4px 12px; font-size:0.8rem; margin:0; background:rgba(255,255,255,0.02); border-radius:4px;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'" onclick="bulkSelectTop(10)">10</button>
+                                    <button class="f-btn" style="border:1px solid rgba(255,255,255,0.1); padding:4px 12px; font-size:0.8rem; margin:0; background:rgba(255,255,255,0.02); border-radius:4px;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'" onclick="bulkSelectTop(20)">20</button>
+                                    <div id="bulkCustomWrap" style="display:flex; align-items:center; position:relative;">
+                                        <button id="bulkCustomBtn" class="f-btn" style="border:1px solid rgba(255,255,255,0.1); padding:4px 12px; font-size:0.8rem; margin:0; background:rgba(255,255,255,0.02); border-radius:4px; color:var(--amber)" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.02)'" onclick="document.getElementById('bulkCustomInput').style.display='block'; document.getElementById('bulkCustomInput').focus(); this.style.display='none'">Custom</button>
+                                        <input type="number" id="bulkCustomInput" style="display:none; width:65px; background:rgba(0,0,0,0.6); border:1px solid var(--amber); color:var(--amber); padding:4px 8px; border-radius:4px; font-size:0.8rem; outline:none; text-align:center; font-family:var(--font-mono)" placeholder="Qty" onkeydown="if(event.key==='Enter') { bulkSelectTop(parseInt(this.value)); this.style.display='none'; document.getElementById('bulkCustomBtn').style.display='block'; this.value=''; }" onblur="this.style.display='none'; document.getElementById('bulkCustomBtn').style.display='block'; this.value='';">
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3135,12 +3143,7 @@ function bulkClear() {
 }
 
 function bulkSelectTop(n) {
-    if (n === 'custom') {
-        const customCount = prompt("Enter number of devices to select:");
-        if (!customCount || isNaN(customCount) || parseInt(customCount) < 1) return;
-        n = parseInt(customCount);
-    }
-    
+    if (!n || isNaN(n) || n < 1) return;
     document.querySelectorAll('.bulk-cb').forEach(c => c.checked = false);
     const checkboxes = document.querySelectorAll('.bulk-cb');
     for (let i = 0; i < checkboxes.length && i < n; i++) {
