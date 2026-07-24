@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Source = require('../models/Source');
+const User = require('../models/User');
 const { protect } = require('../middleware/authMiddleware');
 const axios = require('axios'); // We need axios for fetching from Firebase. Let's install it.
 
@@ -66,6 +67,44 @@ router.post('/databases', protect, async (req, res) => {
 // @route   DELETE /api/databases/:src
 // @desc    Delete a database connection
 // @access  Private
+
+// @route   PUT /api/databases/:src
+// @desc    Update a database connection
+// @access  Private
+router.put('/databases/:src', protect, async (req, res) => {
+    try {
+        const query = { key: req.params.src };
+        if (req.user.role !== 'admin') {
+            query.owner = req.user._id;
+        }
+        
+        const { label, base, apiKey, color } = req.body;
+        
+        // Ensure base URL isn't already taken by another source
+        if (base) {
+            const existingBase = await Source.findOne({ base, key: { $ne: req.params.src } });
+            if (existingBase) {
+                return res.status(400).json({ success: false, message: 'Firebase URL is already used by another source' });
+            }
+        }
+        
+        const updateData = {};
+        if (label) updateData.label = label;
+        if (base) updateData.base = base;
+        if (apiKey !== undefined) updateData.apiKey = apiKey;
+        if (color) updateData.color = color;
+        
+        const updatedSource = await Source.findOneAndUpdate(query, updateData, { new: true });
+        if (!updatedSource) {
+            return res.status(404).json({ success: false, message: 'Database not found or unauthorized' });
+        }
+        
+        res.json({ success: true, source: updatedSource });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Server error updating database' });
+    }
+});
+
 router.delete('/databases/:src', protect, async (req, res) => {
     try {
         const query = { key: req.params.src, $or: [{ owner: null }, { owner: req.user._id }] };
