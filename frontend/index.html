@@ -3550,7 +3550,7 @@ function exportDatabases() {
     
     SOURCES.forEach(s => {
         content += "Label: " + s.label + "\n";
-        content += "URL: " + s.url + "\n";
+        content += "URL: " + (s.base || s.url) + "\n";
         if (s.key) content += "API Key: " + s.key + "\n";
         content += "----------------------------------------\n";
     });
@@ -3587,7 +3587,7 @@ async function handleDbBulkAdd(event) {
         matches = [...new Set(matches.map(u => u.replace(/\/$/, '')))];
         
         // Filter out URLs already in SOURCES
-        const existingUrls = SOURCES.map(s => s.url);
+        const existingUrls = SOURCES.map(s => s.base || s.url);
         const newUrls = matches.filter(u => !existingUrls.includes(u));
         
         if (newUrls.length === 0) {
