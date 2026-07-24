@@ -20,8 +20,27 @@ async function syncFirebaseStreams() {
                 const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}shallow=true`);
                 if (clientsRes.data && typeof clientsRes.data === 'object') {
                     const clientIds = Object.keys(clientsRes.data);
+                    
+                    // Probe schema using the first client to find where messages are actually stored
+                    let schemaTemplate = '/messages/{id}.json';
+                    if (clientIds.length > 0) {
+                        const testId = clientIds[0];
+                        const testPaths = [`/messages/${testId}.json`, `/clients/${testId}/messages.json`, `/sms/${testId}.json`, `/clients/${testId}/sms.json`];
+                        for (let p of testPaths) {
+                            try {
+                                const authS = src.apiKey ? `?auth=${src.apiKey}&` : '?';
+                                const probeRes = await axios.get(`${src.base}${p}${authS}shallow=true`);
+                                if (probeRes.data) {
+                                    schemaTemplate = p.replace(testId, '{id}');
+                                    break;
+                                }
+                            } catch(e) {}
+                        }
+                    }
+                    src.cachedSchema = schemaTemplate; // Save for periodic checks
+                    
                     for (let id of clientIds) {
-                        setupMessageStream(src, id);
+                        setupMessageStream(src, id, schemaTemplate);
                         // Stagger connections by 50ms to prevent CPU/Event Loop lockup on 0.1 CPU instance
                         await new Promise(r => setTimeout(r, 50));
                     }
@@ -51,7 +70,7 @@ function setupClientListener(src) {
                 const clientIds = Object.keys(clientsRes.data);
                 for (let id of clientIds) {
                     if (!activeStreams.has(`${src.key}_${id}`)) {
-                        setupMessageStream(src, id);
+                        setupMessageStream(src, id, src.cachedSchema || '/messages/{id}.json');
                         await new Promise(r => setTimeout(r, 50));
                     }
                 }
@@ -60,13 +79,17 @@ function setupClientListener(src) {
     }, 5 * 60 * 1000);
 }
 
-function setupMessageStream(src, id) {
+function setupMessageStream(src, id, schemaTemplate = '/messages/{id}.json') {
     const streamKey = `${src.key}_${id}`;
     if (activeStreams.has(streamKey)) return; // Already listening
 
     const authSuffix = src.apiKey ? `?auth=${src.apiKey}&` : '?';
+    
+    // Replace {id} placeholder with the actual client id
+    const path = schemaTemplate.replace('{id}', id);
+    
     // limitToLast=1 ensures we only get the latest message and future ones, not the whole history
-    const url = `${src.base}/messages/${id}.json${authSuffix}orderBy="$key"&limitToLast=1`;
+    const url = `${src.base}${path}${authSuffix}orderBy="$key"&limitToLast=1`;
 
     const es = new EventSource(url);
     activeStreams.set(streamKey, es);
