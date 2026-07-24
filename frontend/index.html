@@ -3541,6 +3541,146 @@ async function extractFirebaseConfig(file) {
     
     return (!dbUrl && !apiKey) ? null : { firebaseUrl: dbUrl, apiKey: apiKey };
 }
+
+function exportDatabases() {
+    if (!SOURCES || SOURCES.length === 0) return customAlert("Export Failed", "No databases connected.");
+    let content = "===== NEXUS DATABASE EXPORT =====\n";
+    content += "Total Databases: " + SOURCES.length + "\n";
+    content += "Exported on: " + new Date().toLocaleString() + "\n\n";
+    
+    SOURCES.forEach(s => {
+        content += "Label: " + s.label + "\n";
+        content += "URL: " + s.url + "\n";
+        if (s.key) content += "API Key: " + s.key + "\n";
+        content += "----------------------------------------\n";
+    });
+    
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Nexus_Databases_Export.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function handleDbBulkAdd(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const text = e.target.result;
+        
+        // Regex to find Firebase URLs
+        const urlRegex = /https:\/\/[a-zA-Z0-9-]+\.(?:firebaseio\.com|asia-southeast1\.firebasedatabase\.app)[^\s]*/g;
+        let matches = text.match(urlRegex) || [];
+        
+        if (matches.length === 0) {
+            event.target.value = ''; // Reset
+            return customAlert("Import Failed", "No valid Firebase URLs found in the text file.");
+        }
+        
+        // Deduplicate in the file itself and remove trailing slashes
+        matches = [...new Set(matches.map(u => u.replace(/\/$/, '')))];
+        
+        // Filter out URLs already in SOURCES
+        const existingUrls = SOURCES.map(s => s.url);
+        const newUrls = matches.filter(u => !existingUrls.includes(u));
+        
+        if (newUrls.length === 0) {
+            event.target.value = ''; // Reset
+            return customAlert("Import Complete", "All Firebase URLs in the file are already connected to Nexus.");
+        }
+        
+        const dbsToConnect = [];
+        
+        newUrls.forEach(url => {
+            // Find a label: extract first word before the hyphen
+            let label = "Unknown";
+            const labelMatch = url.match(/https:\/\/([a-zA-Z0-9]+)-/);
+            if (labelMatch && labelMatch[1]) {
+                label = labelMatch[1];
+            } else {
+                const altMatch = url.match(/https:\/\/([a-zA-Z0-9]+)\./);
+                if (altMatch && altMatch[1]) label = altMatch[1];
+            }
+            
+            // Handle collision
+            let baseLabel = label.charAt(0).toUpperCase() + label.slice(1);
+            label = baseLabel;
+            let counter = 1;
+            while (SOURCES.some(s => s.label.toLowerCase() === label.toLowerCase()) || dbsToConnect.some(d => d.label.toLowerCase() === label.toLowerCase())) {
+                label = `${baseLabel} ${counter}`;
+                counter++;
+            }
+            
+            // Try to find API key in the vicinity
+            const urlIdx = text.indexOf(url);
+            let apiKey = '';
+            if (urlIdx !== -1) {
+                const chunk = text.slice(urlIdx, urlIdx + 300);
+                const keyMatch = chunk.match(/(?:KEY|Key|key).*?(AIza[a-zA-Z0-9-_]+)/);
+                if (keyMatch && keyMatch[1]) {
+                    apiKey = keyMatch[1];
+                } else {
+                    const rawKeyMatch = chunk.match(/AIza[a-zA-Z0-9-_]{30,}/);
+                    if (rawKeyMatch) apiKey = rawKeyMatch[0];
+                }
+            }
+            
+            dbsToConnect.push({ label, url, apiKey });
+        });
+        
+        // Execute the bulk add
+        const confirmMsg = `Found ${dbsToConnect.length} new databases. Proceed with bulk connection? This may take a moment.`;
+        customConfirm("Bulk Add", confirmMsg, async () => {
+            document.getElementById('loader').classList.remove('hidden');
+            let successCount = 0;
+            let failCount = 0;
+            
+            for (let i = 0; i < dbsToConnect.length; i++) {
+                const db = dbsToConnect[i];
+                document.getElementById('loadText').textContent = `Connecting Database ${i + 1} of ${dbsToConnect.length}...`;
+                document.getElementById('loadSubtext').textContent = db.label;
+                
+                try {
+                    const res = await fetch('/api/databases', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({
+                            label: db.label,
+                            url: db.url,
+                            apiKey: db.apiKey || undefined
+                        })
+                    });
+                    
+                    const data = await res.json();
+                    if (data.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch(e) {
+                    failCount++;
+                }
+            }
+            
+            await fetchAll();
+            renderDbList();
+            
+            document.getElementById('loader').classList.add('hidden');
+            customAlert("Bulk Add Complete", `Successfully connected ${successCount} databases.<br>Failed: ${failCount}`);
+            event.target.value = ''; // Reset
+        });
+    };
+    reader.readAsText(file);
+}
 </script>
 
     <div class="modal-overlay" id="delMsgModal">
