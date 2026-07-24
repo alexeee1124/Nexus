@@ -19,7 +19,7 @@ function initRealtime(io) {
 
 async function syncFirebaseStreams() {
     try {
-        const sources = await Source.find({ isActive: true });
+        const sources = await Source.find({});
         
         for (let src of sources) {
             if (!src.base) continue;
@@ -32,7 +32,13 @@ async function syncFirebaseStreams() {
                     const clientIds = Object.keys(clientsRes.data);
                     
                     for (let id of clientIds) {
-                        if (!activeStreams.has(`${src.key}_${id}`)) {
+                        const streamKey = `${src.key}_${id}`;
+                        const existing = activeStreams.get(streamKey);
+                        if (existing && existing !== 'PENDING' && existing.readyState === 2) {
+                            // Dead stream detected, purge for reconnect
+                            activeStreams.delete(streamKey);
+                        }
+                        if (!activeStreams.has(streamKey)) {
                             setupMessageStream(src, id);
                             await new Promise(r => setTimeout(r, 50)); // stagger connections
                         }
