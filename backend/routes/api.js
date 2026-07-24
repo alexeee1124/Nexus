@@ -26,7 +26,9 @@ router.get('/databases', protect, async (req, res) => {
             key: s.key,
             label: s.label,
             color: s.color,
-            owner: s.owner
+            owner: s.owner,
+            base: s.base,
+            apiKey: s.apiKey
         }));
         res.json({ success: true, data: safeSources });
     } catch (error) {
