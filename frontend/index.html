@@ -2721,9 +2721,6 @@ async function addDb() {
         const payload = { key, label: lbl, base: url };
         if (apiKey) payload.apiKey = apiKey;
         
-        // If editing, you could include the old ID/key, assuming the proxy handles updates vs creates.
-        // We'll treat all adds/edits through the same route for now.
-        
         const res = await fetch('/api/databases', {
             method: 'POST',
             headers: { 
@@ -2743,10 +2740,12 @@ async function addDb() {
         // Push locally for immediate UI response
         if (editingDbIdx >= 0) {
             SOURCES[editingDbIdx] = data.source;
-            fetchAll(true);
         } else {
-            fetchAll(true);
+            SOURCES.push(data.source);
         }
+        
+        await fetchAll(true);
+        if (typeof renderAdminDbGrid === 'function') renderAdminDbGrid();
         
         resetAddBtn(btn);
         
@@ -2761,12 +2760,14 @@ async function addDb() {
             addFormTitle.style.color = 'var(--text-muted)';
         }
         
-        renderDbList();
-        renderDbSidebarFilters();
-        fetchAll();
+        // Now calculate stats purely from the frontend array since the backend doesn't send mock stats anymore
+        const sDevs = devices.filter(d => d._src === key);
+        const stats = {
+            total: sDevs.length,
+            online: sDevs.filter(d => d.status).length,
+            offline: sDevs.length - sDevs.filter(d => d.status).length
+        };
         
-        // Show success alert with stats passed back from the proxy validation
-        const stats = data.stats || { total: 0, online: 0, offline: 0 };
         const detailsHtml = `
             <div style="margin-top: 16px; display: flex; gap: 8px; justify-content: center; font-family: var(--font-mono);">
                 <div style="background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 20px; padding: 6px 12px; font-size: 0.75rem; color: var(--cyan); display: flex; align-items: center; gap: 6px; font-weight: 700; box-shadow: 0 2px 10px rgba(0,240,255,0.1);">
@@ -2780,11 +2781,11 @@ async function addDb() {
                 </div>
             </div>
         `;
-        customAlert('Connection Successful', `Database <b>'${lbl}'</b> was securely connected and saved.<br>${detailsHtml}`);
+        customAlert('Connection Successful', `Database <b>'${lbl}'</b> was securely connected and saved.<br>${detailsHtml}`, 'success');
         
     } catch (e) {
         resetAddBtn(btn);
-        return customAlert('API Error', 'Failed to communicate with proxy backend.');
+        return customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
     }
 }
 
@@ -2976,8 +2977,9 @@ async function deleteDb(key) {
             
             if (data.success) {
                 customAlert('Source Disconnected', `Database '${key}' has been disconnected.`, 'success');
-                // We need to refresh the global dbData array before re-rendering
-                fetchAll(true); 
+                // Wait for background sync to complete then force the grid to re-render
+                await fetchAll(true);
+                if (typeof renderAdminDbGrid === 'function') renderAdminDbGrid();
             } else {
                 customAlert('Disconnection Failed', data.message || 'Could not disconnect database.', 'error');
             }
