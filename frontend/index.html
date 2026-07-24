@@ -3327,7 +3327,8 @@ function openDupScanner() {
             const srcBadges = arr.map(d => {
                 const sData = SOURCES.find(s => s.key === d._src);
                 const col = sData ? sData.color : 'var(--cyan)';
-                return `<span style="padding:4px 8px; border-radius:4px; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid ${col}; color:${col}">${d._src}</span>`;
+                const label = sData ? sData.label : d._src;
+                return `<span style="padding:4px 8px; border-radius:4px; font-size:0.75rem; background:rgba(255,255,255,0.05); border:1px solid ${col}; color:${col}">${label}</span>`;
             }).join('');
             
             return `
