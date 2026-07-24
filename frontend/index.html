@@ -3654,8 +3654,9 @@ async function handleDbBulkAdd(event) {
                             'Authorization': `Bearer ${localStorage.getItem('token')}`
                         },
                         body: JSON.stringify({
+                            key: db.label.toLowerCase().replace(/[^a-z0-9]/g, '') + (Math.random() + 1).toString(36).substring(7),
                             label: db.label,
-                            url: db.url,
+                            base: db.url,
                             apiKey: db.apiKey || undefined
                         })
                     });
