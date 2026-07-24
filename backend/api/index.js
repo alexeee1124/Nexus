@@ -9,6 +9,15 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Database Connection (Executes on boot in Serverless)
+const connectDB = require('../config/db');
+connectDB();
+
+// Mount Routes
+app.use('/api/auth', require('../routes/auth'));
+app.use('/api', require('../routes/api'));
+app.use('/api/admin', require('../routes/admin'));
+
 // Health Check Route
 app.get('/api/health', (req, res) => {
     res.status(200).json({ status: 'Nexus V2 Middleman API is Online', timestamp: new Date() });

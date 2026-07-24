@@ -1,71 +1,56 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const connectDB = require('../config/db');
+const jwt = require('jsonwebtoken');
+
+// Generate JWT
+const generateToken = (id) => {
+    return jwt.sign({ id }, process.env.JWT_SECRET, {
+        expiresIn: '30d',
+    });
+};
 
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token
 // @access  Public
 router.post('/login', async (req, res) => {
     try {
-        await connectDB();
-        
         const { username, password } = req.body;
 
-        // Basic validation
-        if (!username || !password) {
-            return res.status(400).json({ message: 'Please provide both username and password.' });
-        }
-
-        // Check for user in database
+        // Check for user
         const user = await User.findOne({ username });
-        if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials.' });
+        
+        // Ensure user exists, is active, and password matches
+        if (user && user.isActive && (await user.comparePassword(password))) {
+            res.json({
+                success: true,
+                _id: user._id,
+                username: user.username,
+                role: user.role,
+                permissions: user.permissions,
+                token: generateToken(user._id)
+            });
+        } else {
+            res.status(401).json({ success: false, message: 'Invalid credentials or account suspended' });
         }
-
-        // Check if account is active
-        if (!user.isActive) {
-            return res.status(403).json({ message: 'Account suspended. Contact administrator.' });
-        }
-
-        // Validate password using our schema method
-        const isMatch = await user.comparePassword(password);
-        if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid credentials.' });
-        }
-
-        // Create JWT Payload
-        const payload = {
-            id: user._id,
-            username: user.username,
-            role: user.role,
-            permissions: user.permissions
-        };
-
-        // Sign token (expires in 24 hours)
-        jwt.sign(
-            payload,
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' },
-            (err, token) => {
-                if (err) throw err;
-                res.json({
-                    token,
-                    user: {
-                        id: user._id,
-                        username: user.username,
-                        role: user.role,
-                        permissions: user.permissions
-                    }
-                });
-            }
-        );
-
-    } catch (err) {
-        console.error('Login Error:', err);
-        res.status(500).json({ message: 'Server Error during authentication.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Server error during login' });
     }
+});
+
+// @route   GET /api/auth/me
+// @desc    Get current logged in user
+// @access  Private
+const { protect } = require('../middleware/authMiddleware');
+router.get('/me', protect, (req, res) => {
+    res.json({
+        success: true,
+        _id: req.user._id,
+        username: req.user.username,
+        role: req.user.role,
+        permissions: req.user.permissions
+    });
 });
 
 module.exports = router;
