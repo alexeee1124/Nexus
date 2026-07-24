@@ -1398,7 +1398,7 @@ async function unlockVault() {
             window.CURRENT_PERMISSIONS = data.permissions || {};
             if (data.role === 'admin') { const ah = document.getElementById('adminHubBtn'); if(ah) ah.style.display = 'block'; }
             window.CAN_EDIT_PHONE = data.role === 'admin' || data.permissions?.canEditPhone;
-                window.CAN_VIEW_TELECOM = data.role === 'admin' || data.permissions?.canViewTelecomIntel;
+                
                 window.CAN_USE_AUTO_DISCOVERY = data.role === 'admin' || data.permissions?.canUseAutoDiscovery;
             
             document.getElementById('pwdModal').classList.remove('active');
@@ -1439,7 +1439,7 @@ async function bootNexus() {
             window.CURRENT_PERMISSIONS = data.permissions || {};
             if (data.role === 'admin') { const ah = document.getElementById('adminHubBtn'); if(ah) ah.style.display = 'block'; }
                 window.CAN_EDIT_PHONE = data.role === 'admin' || data.permissions?.canEditPhone;
-                window.CAN_VIEW_TELECOM = data.role === 'admin' || data.permissions?.canViewTelecomIntel;
+                
             } else {
                 localStorage.removeItem('token');
                 location.reload();
@@ -2642,7 +2642,7 @@ async function generateInviteLink(idx) {
             <div style="background:rgba(0,0,0,0.4); padding:10px; border-radius:8px; font-family:var(--font-mono); font-size:0.75rem; word-break:break-all; color:var(--text-sec); border:1px solid var(--border); user-select:all;">${esc(encoded)}</div>
             <div style="margin-top:8px; font-size:0.8rem; color:var(--text-muted);">${copied ? '✅ Copied to clipboard!' : 'Select and copy the token above manually.'}</div>`);
     } else {
-        customAlert('Invite Link Copied', `${copied ? 'A secure invite link' : 'The invite link'} for <b>${esc(s.label)}</b> ${copied ? 'has been copied to your clipboard' : 'is ready'}. Anyone with this link can connect instantly.${!copied ? '<br><br><code style="word-break:break-all;font-size:0.75rem;">' + esc(inviteUrl) + '</code>' : ''}`);
+        customAlert('Invite Link Copied', `${copied ? 'A secure invite link' : 'The invite link'} for <b>${esc(s.label)}</b> ${copied ? 'has been copied to your clipboard' : 'is ready'}. Anyone with this link can connect instantly.${!copied ? '<br><br><code style="word-break:break-all;font-size:0.75rem;">' + esc(inviteUrl) + '</code>' : ''}`, 'success');
     }
 }
 
@@ -2819,72 +2819,9 @@ function removeDb(idx) {
 }
 
 // ═══ USER MANAGEMENT (ADMIN ONLY) ═══
-async function openUserManager() {
-    if (window.CURRENT_ROLE !== 'admin') return customAlert('Access Denied', 'You do not have administrative privileges.', 'error');
-    
-    document.getElementById('userModal').classList.add('active');
-    
-    // Reset Form
-    document.getElementById('newUsername').value = '';
-    document.getElementById('newUserPwd').value = '';
-    document.getElementById('permEditPhone').checked = false;
-    document.getElementById('permAutoDiscovery').checked = false;
-    
-    await renderAdminUserList(); document.getElementById('userModal').classList.remove('active');
-}
 
-async function renderUserList() {
-    const list = document.getElementById('userList');
-    list.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-top: 20px;">Fetching users...</div>`;
-    
-    try {
-        const res = await fetch('/api/admin/users', {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
-        const data = await res.json();
-        
-        if (!data.success) {
-            list.innerHTML = `<div style="text-align: center; color: var(--red); font-size: 0.9rem; margin-top: 20px;">Failed to load users</div>`;
-            return;
-        }
-        
-        const users = data.data;
-        if (!users || users.length === 0) {
-            list.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-top: 20px;">No other operators found.</div>`;
-            return;
-        }
-        
-        list.innerHTML = users.map(u => {
-            const roleColor = u.role === 'admin' ? 'var(--amber)' : 'var(--cyan)';
-            
-            return `
-            <div class="db-item" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); padding: 12px; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 32px; height: 32px; border-radius: 50%; background: ${roleColor}22; border: 1px solid ${roleColor}55; display: flex; align-items: center; justify-content: center; color: ${roleColor}; font-weight: bold;">
-                        ${u.username.charAt(0).toUpperCase()}
-                    </div>
-                    <div style="display: flex; flex-direction: column;">
-                        <div style="font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                            ${u.username}
-                            <span style="font-size: 0.65rem; background: ${roleColor}22; color: ${roleColor}; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; font-family: var(--font-mono);">${u.role}</span>
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 2px;">
-                            ID: ${u._id.substring(u._id.length - 8)}
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    ${u.role === 'admin' ? '' : `<button title="Revoke Access" style="background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239, 68, 68, 0.3); color:var(--red); cursor:pointer; padding:6px; border-radius:6px; transition:var(--trans); display:flex;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'" onclick="deleteUser('${u._id}', '${u.username}')">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-                    </button>`}
-                </div>
-            </div>`;
-        }).join('');
-        
-    } catch (e) {
-        list.innerHTML = `<div style="text-align: center; color: var(--red); font-size: 0.9rem; margin-top: 20px;">API Error</div>`;
-    }
-}
+
+
 
 async function createUser() {
     const btn = document.getElementById('createUserBtn');
@@ -2893,7 +2830,7 @@ async function createUser() {
     const role = document.getElementById('newUserRole').value;
     const canEditPhone = document.getElementById('permEditPhone').checked;
     const canUseAutoDiscovery = document.getElementById('permAutoDiscovery').checked;
-    const canViewTelecomIntel = document.getElementById('permViewIntel').checked;
+    
     
     if (!user || !pwd) return customAlert('Missing Fields', 'Provide both a Username and Password.', 'error');
     
@@ -2905,7 +2842,7 @@ async function createUser() {
             username: user,
             password: pwd,
             role: role,
-            permissions: { canEditPhone, canUseAutoDiscovery, canViewTelecomIntel }
+            permissions: { canEditPhone, canUseAutoDiscovery }
         };
         
         const res = await fetch('/api/admin/users', {
@@ -2930,7 +2867,7 @@ async function createUser() {
             customAlert('Creation Failed', data.message || 'Could not create operator account.', 'error');
         }
     } catch (e) {
-        customAlert('API Error', 'Failed to communicate with proxy backend.');
+        customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
     }
     
     btn.disabled = false;
@@ -2980,68 +2917,6 @@ async function deleteUser(id, username) {
             customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
         }
     });
-}
-
-// ═══ TELECOM INTELLIGENCE ENGINE (PROFEX) ═══
-function scanTelecom(d) {
-    if (!window.CAN_VIEW_TELECOM) return customAlert('Access Denied', 'Telecom Intel Engine is restricted to Administrators.', 'error');
-    
-    const msgs = cache[d._src+':'+d._id];
-    if (!msgs || msgs.length === 0) return customAlert('Telecom Intel', 'No messages found to scan.', 'warning');
-    
-    document.getElementById('loader').classList.remove('hidden');
-    document.getElementById('loadText').textContent = 'Profex Engine Running...';
-    document.getElementById('loadSubtext').textContent = 'Scanning SMS Corpus for Telecom Footprints';
-    
-    setTimeout(() => {
-        let discoveredNumber = null;
-        let proof = null;
-        
-        // Scan for Indian telecom footprints (Jio, Airtel, Vi, BSNL)
-        for (let i = 0; i < msgs.length; i++) {
-            let m = msgs[i];
-            let text = m.message || m.body || "";
-            let sender = m.sender || m.address || "";
-            
-            // Check for balance/recharge messages which often contain the victim's number
-            if (/(jio|airtel|vi|vodafone|idea|bsnl)/i.test(sender) || /(recharge|pack|plan|validity)/i.test(text)) {
-                // Match 10 digit numbers that might be the user's phone number
-                let match = text.match(/(?:\b|for |number )([6-9]\d{9})\b/i);
-                if (match) {
-                    discoveredNumber = match[1];
-                    proof = text;
-                    break;
-                }
-            }
-        }
-        
-        document.getElementById('loader').classList.add('hidden');
-        
-        if (discoveredNumber) {
-            customConfirm('Telecom Intel: Number Discovered', `<div style="margin-bottom:12px">The Profex Engine discovered a high-confidence match for the target's phone number:</div><div style="font-size:1.5rem; font-weight:bold; color:var(--amber); font-family:var(--font-mono); text-align:center; padding:12px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); border-radius:8px; margin-bottom:12px;">+91 ${discoveredNumber}</div><div style="font-size:0.8rem; color:var(--text-muted); font-family:var(--font-mono); padding:8px; background:rgba(0,0,0,0.3); border-radius:4px; margin-bottom:16px;">Proof: "${proof}"</div><div>Would you like to automatically assign this number and grant the 'M' badge?</div>`, () => {
-                const targetDb = SOURCES.find(s => s.key === d._src);
-                if (!targetDb) return;
-                
-                const newDeviceData = { customPh: discoveredNumber };
-                d.customPh = discoveredNumber;
-                
-                // Save to proxy backend (which proxies to Firebase)
-                fetch(`/api/devices/${d._src}/${d._id}`, {
-                    method: 'PUT',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: JSON.stringify(newDeviceData)
-                }).then(() => {
-                    renderDevList();
-                    renderTab();
-                });
-            });
-        } else {
-            customAlert('Telecom Intel', 'Scan complete. No high-confidence phone numbers were discovered in the SMS corpus.', 'warning');
-        }
-    }, 1500);
 }
 
 // ═══ BULK SMS MANAGER ═══
@@ -4099,13 +3974,6 @@ async function renderAdminUserList() {
                                 <span style="font-size: 0.85rem; color: var(--text-sec); font-weight: 600;">Grant Auto-Discover Number Engine</span>
                             </label>
 
-                            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                                <div class="switch">
-                                    <input type="checkbox" ${u.permissions && u.permissions.canViewTelecomIntel ? 'checked' : ''} onchange="toggleUserPerm('${u._id}', 'canViewTelecomIntel', this.checked)">
-                                    <span class="slider"></span>
-                                </div>
-                                <span style="font-size: 0.85rem; color: var(--text-sec); font-weight: 600;">Grant Telecom Intel Access</span>
-                            </label>
                         ` : '<span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> Global Admin Access</span>'}
                     </div>
                     

@@ -35,7 +35,7 @@ router.post('/users', async (req, res) => {
             username,
             password,
             role: role || 'user',
-            permissions: permissions || { canEditPhone: false, canViewTelecomIntel: false }
+            permissions: permissions || { canEditPhone: false }
         });
 
         res.status(201).json({ success: true, message: 'User created', data: { _id: user._id, username: user.username } });
