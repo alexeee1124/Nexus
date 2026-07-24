@@ -2255,8 +2255,10 @@ function renderMList() {
 
     // Sort ascending by ID / timestamp so newest is guaranteed to be at the end before reverse
     msgs.sort((a, b) => {
-        const tA = Number(a.id || a.timestamp || 0);
-        const tB = Number(b.id || b.timestamp || 0);
+        const rawA = a.timestamp || a.id || 0;
+        const rawB = b.timestamp || b.id || 0;
+        const tA = (typeof rawA === 'number' ? rawA : parseFloat(rawA)) || 0;
+        const tB = (typeof rawB === 'number' ? rawB : parseFloat(rawB)) || 0;
         return tA - tB;
     });
 
@@ -4170,7 +4172,7 @@ function openAddDbDrawer() {
             if (!isDuplicate) {
                 const formattedMsg = {
                     _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9),
-                    type: msg.type || 'incoming',
+                    type: String(msg.type || 'incoming').toLowerCase().includes('out') ? 'outgoing' : 'incoming',
                     dateTime: msgDateStr || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     sender: msg.sender || msg.address || msg.number || 'Unknown',
                     message: msg.message || msg.body || msg.text || msg.msg || '',
