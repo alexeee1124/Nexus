@@ -117,4 +117,4 @@ function setupMessageStream(src, id) {
     })();
 }
 
-module.exports = { initRealtime };
+module.exports = { init: initRealtime };
