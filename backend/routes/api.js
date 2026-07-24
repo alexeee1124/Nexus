@@ -145,7 +145,7 @@ router.put('/databases/:src', protect, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Database not found or unauthorized' });
         }
         
-        const safeSource = { _id: updatedSource._id, key: updatedSource.key, label: updatedSource.label, color: updatedSource.color, owner: updatedSource.owner };
+        const safeSource = { _id: updatedSource._id, key: updatedSource.key, label: updatedSource.label, base: updatedSource.base, color: updatedSource.color, owner: updatedSource.owner };
         res.json({ success: true, source: safeSource });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error updating database' });

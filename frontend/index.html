@@ -1197,9 +1197,18 @@
                     </div>
                     <div style="display: flex; gap: 12px; align-items: center;">
                         <input type="file" id="dbBulkAddInputAdmin" accept=".txt" style="display: none;" onchange="handleDbBulkAdd(event)">
-                        <button class="f-btn" style="background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.2); color: var(--cyan); padding: 8px 16px; font-weight: 700; font-size: 0.85rem;" onclick="document.getElementById('dbBulkAddInputAdmin').click()">📁 Bulk Add TXT</button>
-                        <button class="f-btn" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-muted); padding: 8px 16px; font-weight: 700; font-size: 0.85rem;" onclick="exportDatabases()">⬇️ Export</button>
-                        <button class="f-btn" style="background: var(--cyan); color: #000; padding: 8px 16px; font-weight: 800; font-size: 0.85rem;" onclick="openAddDbDrawer()">+ Add Source</button>
+                        <button class="f-btn" style="background: rgba(0, 240, 255, 0.1); border: 1px solid rgba(0, 240, 255, 0.2); color: var(--cyan); padding: 8px 16px; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; white-space: nowrap;" onclick="document.getElementById('dbBulkAddInputAdmin').click()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            Bulk Add
+                        </button>
+                        <button class="f-btn" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: var(--text-main); padding: 8px 16px; font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; white-space: nowrap;" onclick="exportDatabases()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Export
+                        </button>
+                        <button class="f-btn" style="background: var(--cyan); color: #000; padding: 8px 16px; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; white-space: nowrap;" onclick="openAddDbDrawer()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Add Source
+                        </button>
                     </div>
                 </div>
                 
@@ -2382,9 +2391,9 @@ function emp(msg) {
 function copyToClip(text, btnEl) {
     const doAnim = () => {
         if (btnEl) {
-            const orig = btnEl.innerText;
-            btnEl.innerText = '✅';
-            setTimeout(() => { btnEl.innerText = orig; }, 1000);
+            const orig = btnEl.innerHTML;
+            btnEl.innerHTML = '✅';
+            setTimeout(() => { btnEl.innerHTML = orig; }, 1000);
         }
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2694,14 +2703,27 @@ async function addDb() {
         const payload = { key, label: lbl, base: url };
         if (apiKey) payload.apiKey = apiKey;
         
-        const res = await fetch('/api/databases', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify(payload)
-        });
+        let res;
+        if (editingDbIdx >= 0) {
+            const srcKey = SOURCES[editingDbIdx].key;
+            res = await fetch(`/api/databases/${srcKey}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify(payload)
+            });
+        } else {
+            res = await fetch('/api/databases', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify(payload)
+            });
+        }
         
         const data = await res.json();
         
@@ -4003,6 +4025,23 @@ function openAddDbDrawer() {
         const leftPanel = modal.querySelector('.bulk-left');
         if (leftPanel) leftPanel.style.display = 'none';
         modal.classList.add('active');
+        
+        editingDbIdx = -1;
+        if(document.getElementById('newDbLabel')) document.getElementById('newDbLabel').value = '';
+        if(document.getElementById('newDbUrl')) document.getElementById('newDbUrl').value = '';
+        if(document.getElementById('newDbApiKey')) document.getElementById('newDbApiKey').value = '';
+        
+        const addFormTitle = document.getElementById('addFormTitle');
+        if (addFormTitle) {
+            addFormTitle.textContent = 'Add / Edit Database Node';
+            addFormTitle.style.color = '#fff';
+        }
+        const btn = document.getElementById('addDbBtn');
+        if(btn) {
+            btn.textContent = '+ Connect Source';
+            btn.style.background = 'var(--cyan)';
+            btn.style.color = '#000';
+        }
     }
 }
 
