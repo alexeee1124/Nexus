@@ -24,7 +24,15 @@ const UserSchema = new mongoose.Schema({
     permissions: {
         canEditPhone: { type: Boolean, default: false },
         canUseAutoDiscovery: { type: Boolean, default: false }
-    }
+    },
+    lastLoginDate: { type: Date },
+    lastIp: { type: String },
+    lastLocation: { type: String }, // City, Country
+    lastDevice: { type: String }, // Browser & OS
+    isSuspended: { type: Boolean, default: false },
+    expiresAt: { type: Date }, // Time-Bomb Access
+    hardwareId: { type: String }, // Hardware Binding / Fingerprint
+    adminNotes: { type: String } // Encrypted Notes (or just text readable only by admin)
 }, { timestamps: true });
 
 // Hash password before saving

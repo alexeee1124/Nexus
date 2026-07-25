@@ -45,12 +45,40 @@ router.post('/users', async (req, res) => {
     }
 });
 
+// @route   PUT /api/admin/users/:id
+// @desc    Update user details (Role, permissions, suspension, expiration, hardware unlock, notes)
+router.put('/users/:id', async (req, res) => {
+    try {
+        const { role, permissions, isSuspended, expiresAt, resetHardware, adminNotes, password } = req.body;
+        
+        const user = await User.findById(req.params.id);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+        
+        if (role) user.role = role;
+        if (permissions) user.permissions = permissions;
+        if (isSuspended !== undefined) user.isSuspended = isSuspended;
+        if (expiresAt !== undefined) user.expiresAt = expiresAt; // null to remove expiry
+        if (resetHardware) user.hardwareId = null; // Unlocks the hardware bind
+        if (adminNotes !== undefined) user.adminNotes = adminNotes;
+        if (password) user.password = password; // Will trigger pre-save hash
+        
+        await user.save();
+        
+        // Return without password
+        const updatedUser = await User.findById(user._id).select('-password');
+        res.json({ success: true, message: 'User updated successfully', data: updatedUser });
+    } catch (error) {
+        console.error("Error updating user:", error);
+        res.status(500).json({ success: false, message: 'Server error updating user' });
+    }
+});
+
 // @route   DELETE /api/admin/users/:id
-// @desc    Suspend or Delete a user
+// @desc    Hard Delete a user
 router.delete('/users/:id', async (req, res) => {
     try {
         await User.findByIdAndDelete(req.params.id);
-        res.json({ success: true, message: 'User deleted' });
+        res.json({ success: true, message: 'User permanently deleted' });
     } catch (error) {
         res.status(500).json({ success: false, message: 'Server error deleting user' });
     }

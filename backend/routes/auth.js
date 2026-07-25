@@ -8,31 +8,67 @@ const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
-};
+const requestIp = require('request-ip');
+const geoip = require('geoip-lite');
+const parser = require('ua-parser-js');
 
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token
 // @access  Public
 router.post('/login', async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, hardwareId } = req.body; // Expecting frontend to send a basic browser fingerprint
 
         // Check for user
         const user = await User.findOne({ username });
         
-        // Ensure user exists, is active, and password matches
-        if (user && user.isActive && (await user.comparePassword(password))) {
-            res.json({
-                success: true,
-                _id: user._id,
-                username: user.username,
-                role: user.role,
-                permissions: user.permissions,
-                token: generateToken(user._id)
-            });
-        } else {
-            res.status(401).json({ success: false, message: 'Invalid credentials or account suspended' });
+        if (!user || !user.isActive) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials or account deactivated' });
         }
+        
+        if (user.isSuspended) {
+            return res.status(403).json({ success: false, message: 'Account suspended. Contact administrator.' });
+        }
+        
+        if (user.expiresAt && new Date() > new Date(user.expiresAt)) {
+            return res.status(403).json({ success: false, message: 'Account access has expired.' });
+        }
+
+        // Check password
+        if (!(await user.comparePassword(password))) {
+             return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        // Enforce Hardware Binding if provided by frontend
+        if (hardwareId && user.role !== 'admin') { // Admins might bypass hardware locks
+            if (!user.hardwareId) {
+                // First time login, bind hardware
+                user.hardwareId = hardwareId;
+            } else if (user.hardwareId !== hardwareId) {
+                return res.status(403).json({ success: false, message: 'Hardware mismatch. Device locked.' });
+            }
+        }
+
+        // Telemetry extraction
+        const clientIp = requestIp.getClientIp(req);
+        const geo = geoip.lookup(clientIp);
+        const ua = parser(req.headers['user-agent']);
+        
+        user.lastLoginDate = new Date();
+        user.lastIp = clientIp;
+        user.lastLocation = geo ? `${geo.city || 'Unknown'}, ${geo.country || 'Unknown'}` : 'Unknown';
+        user.lastDevice = `${ua.browser.name || 'Unknown'} on ${ua.os.name || 'Unknown'}`;
+        
+        await user.save();
+
+        res.json({
+            success: true,
+            _id: user._id,
+            username: user.username,
+            role: user.role,
+            permissions: user.permissions,
+            token: generateToken(user._id)
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: 'Server error during login' });
