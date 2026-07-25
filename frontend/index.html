@@ -1725,6 +1725,11 @@ async function fetchAll(isBg = false) {
         const dbRes = await fetch('/api/databases', {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
+        if (dbRes.status === 401) {
+            localStorage.removeItem('token');
+            location.reload();
+            return;
+        }
         if (dbRes.ok) {
             const dbResult = await dbRes.json();
             if (dbResult.success) {
@@ -1737,6 +1742,11 @@ async function fetchAll(isBg = false) {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         window.lastPing = Math.round(performance.now() - pingStart);
+        if (res.status === 401) {
+            localStorage.removeItem('token');
+            location.reload();
+            return;
+        }
         if (res.ok) {
             const result = await res.json();
             if (result.success) {
