@@ -17,6 +17,13 @@ app.use('/api', (req, res, next) => {
     next();
 });
 
+// Analytics Tracker
+const metricsTracker = require('../utils/metricsTracker');
+app.use('/api', (req, res, next) => {
+    metricsTracker.recordRequest(req);
+    next();
+});
+
 // Database Connection (Executes on boot in Serverless)
 const connectDB = require('../config/db');
 connectDB();
