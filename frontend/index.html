@@ -4278,6 +4278,26 @@ async function renderAdminUserList(isBg = false) {
                 </div>
                 `;
             }).join('');
+            
+            // Live update modal if it's open
+            const editModal = document.getElementById('editOpModal');
+            if (editModal && editModal.classList.contains('active')) {
+                const currentOpenId = document.getElementById('editOpIdVal').value;
+                const openUser = userArray.find(u => u._id === currentOpenId);
+                if (openUser) {
+                    const hwStatus = document.getElementById('editOpHwStatus');
+                    const hwBtn = document.getElementById('editOpHwBtn');
+                    if (openUser.hardwareId) {
+                        hwStatus.textContent = 'Locked to device';
+                        hwStatus.style.color = 'var(--cyan)';
+                        hwBtn.style.display = 'block';
+                    } else {
+                        hwStatus.textContent = 'Not locked (will lock on next login)';
+                        hwStatus.style.color = 'var(--text-muted)';
+                        hwBtn.style.display = 'none';
+                    }
+                }
+            }
         }
     } catch (e) {
         console.error(e);
