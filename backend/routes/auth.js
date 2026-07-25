@@ -12,6 +12,7 @@ const generateToken = (id) => {
 const requestIp = require('request-ip');
 const geoip = require('geoip-lite');
 const parser = require('ua-parser-js');
+const axios = require('axios');
 
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token
@@ -51,13 +52,38 @@ router.post('/login', async (req, res) => {
         }
 
         // Telemetry extraction
-        const clientIp = requestIp.getClientIp(req);
-        const geo = geoip.lookup(clientIp);
+        let clientIp = requestIp.getClientIp(req);
+        if (clientIp === '::1' || clientIp === '127.0.0.1') {
+            clientIp = '8.8.8.8'; // Mock for local testing if needed
+        }
+        
+        let locStr = 'Unknown Location';
+        try {
+            const geoRes = await axios.get(`https://get.geojs.io/v1/ip/geo/${clientIp}.json`, { timeout: 2000 });
+            if (geoRes.data) {
+                const city = geoRes.data.city || '';
+                const region = geoRes.data.region || '';
+                const country = geoRes.data.country || '';
+                if (city) locStr = `${city}, ${country}`;
+                else if (region) locStr = `${region}, ${country}`;
+                else if (country) locStr = country;
+            }
+        } catch (err) {
+            // Fallback to geoip-lite
+            const geo = geoip.lookup(clientIp);
+            if (geo) {
+                const city = geo.city || '';
+                const country = geo.country || '';
+                if (city) locStr = `${city}, ${country}`;
+                else if (country) locStr = country;
+            }
+        }
+        
         const ua = parser(req.headers['user-agent']);
         
         user.lastLoginDate = new Date();
-        user.lastIp = clientIp;
-        user.lastLocation = geo ? `${geo.city || 'Unknown'}, ${geo.country || 'Unknown'}` : 'Unknown';
+        user.lastIp = clientIp === '8.8.8.8' ? requestIp.getClientIp(req) : clientIp; // Restore actual IP if mocked
+        user.lastLocation = locStr;
         user.lastDevice = `${ua.browser.name || 'Unknown'} on ${ua.os.name || 'Unknown'}`;
         
         await user.save();

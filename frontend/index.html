@@ -1102,7 +1102,7 @@
                     </select>
                 </div>
 
-                <div class="f-group" style="margin: 0;">
+                <div class="f-group" id="editOpExpiryBlock" style="margin: 0;">
                     <label class="f-label" style="display:flex; justify-content:space-between;">
                         <span>Time-Bomb Access (Expiry)</span>
                         <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: none; font-weight: 400;">Leave blank for permanent</span>
@@ -1110,7 +1110,7 @@
                     <input type="date" class="f-input" id="editOpExpiry" style="background: rgba(0,0,0,0.3);">
                 </div>
 
-                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+                <div id="editOpAccessControlsBlock" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
                     <div style="font-size: 0.8rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 1px;">Access Controls</div>
                     
                     <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
@@ -4228,13 +4228,31 @@ function openEditOpModal(id) {
     const user = window.adminUsers.find(u => u._id === id);
     if (!user) return;
     
+    // Self-check to prevent self-deletion or self-demotion
+    // We assume window.CURRENT_USERNAME is set somewhere, or we can use the ID if we have window.CURRENT_USER_ID.
+    // Wait, let's look for how we know who the current user is.
+    // It's fetched in /api/auth/me but maybe not saved with ID.
+    // Let's decode the token to get ID, or we can just parse the JWT from localStorage.
+    let currentUserId = null;
+    try {
+        const token = localStorage.getItem('token');
+        if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            currentUserId = payload.id;
+        }
+    } catch(e) {}
+
+    const isSelf = currentUserId === id;
+    
     document.getElementById('editOpIdVal').value = user._id;
-    document.getElementById('editOpName').textContent = user.username;
+    document.getElementById('editOpName').textContent = user.username + (isSelf ? ' (You)' : '');
     document.getElementById('editOpId').textContent = 'ID: ' + user._id;
-    document.getElementById('editOpRole').value = user.role;
+    
+    const roleSelect = document.getElementById('editOpRole');
+    roleSelect.value = user.role;
+    roleSelect.disabled = isSelf; // Can't change own role
     
     if (user.expiresAt) {
-        // Format to YYYY-MM-DD for input type date
         document.getElementById('editOpExpiry').value = new Date(user.expiresAt).toISOString().split('T')[0];
     } else {
         document.getElementById('editOpExpiry').value = '';
@@ -4257,8 +4275,9 @@ function openEditOpModal(id) {
     
     // Bind Delete Button
     const delBtn = document.getElementById('deleteOpBtn');
-    if (user.role !== 'admin') {
+    if (!isSelf) {
         delBtn.style.display = 'block';
+        delBtn.textContent = user.role === 'admin' ? 'Delete Admin' : 'Delete Operator';
         delBtn.onclick = () => {
             document.getElementById('editOpModal').classList.remove('active');
             deleteUser(user._id, user.username.replace(/'/g, "\\'"));
@@ -4267,14 +4286,24 @@ function openEditOpModal(id) {
         delBtn.style.display = 'none';
     }
 
-    // Bind Permissions
+    // Bind Permissions and UI Visibility based on Role
     const permBlock = document.getElementById('opEnginePermissions');
+    const expiryBlock = document.getElementById('editOpExpiryBlock');
+    const accessBlock = document.getElementById('editOpAccessControlsBlock');
+
     if (user.role !== 'admin') {
+        // Operator
         permBlock.style.display = 'flex';
+        expiryBlock.style.display = 'block';
+        accessBlock.style.display = 'flex';
+        
         document.getElementById('editOpCanEditPhone').checked = user.permissions && user.permissions.canEditPhone;
         document.getElementById('editOpCanUseAutoDiscovery').checked = user.permissions && user.permissions.canUseAutoDiscovery;
     } else {
+        // Admin
         permBlock.style.display = 'none';
+        expiryBlock.style.display = 'none';
+        accessBlock.style.display = 'none';
     }
     
     document.getElementById('editOpModal').classList.add('active');

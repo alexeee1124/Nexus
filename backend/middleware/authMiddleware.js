@@ -18,6 +18,14 @@ const protect = async (req, res, next) => {
                 return res.status(401).json({ success: false, message: 'Not authorized or account suspended' });
             }
             
+            if (req.user.isSuspended) {
+                return res.status(401).json({ success: false, message: 'Account is suspended.' });
+            }
+            
+            if (req.user.expiresAt && new Date() > new Date(req.user.expiresAt)) {
+                return res.status(401).json({ success: false, message: 'Account access has expired.' });
+            }
+            
             next();
         } catch (error) {
             console.error('JWT Verification Error:', error);
