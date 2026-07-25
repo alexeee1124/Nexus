@@ -766,8 +766,17 @@
 
     <!-- Session Invalidation Modal -->
     <div class="modal-overlay" id="authKickModal" style="background: rgba(6,9,19,0.98); z-index: 10001; backdrop-filter: blur(24px);">
-        <div class="modal vault-modal" style="max-width: 400px; text-align: center; background: #0A101D; border: 1px solid rgba(239, 68, 68, 0.3); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 60px rgba(0,0,0,0.8), 0 0 50px rgba(239, 68, 68, 0.15); border-radius: 24px; padding: 48px 32px;">
-            <div id="authKickEmoji" style="font-size: 4rem; margin-bottom: 24px; filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.4)); animation: pulse 2s infinite;">🚫</div>
+        <style>
+            @keyframes pulse-safe {
+                0% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.15); opacity: 0.8; }
+                100% { transform: scale(1); opacity: 1; }
+            }
+        </style>
+        <div class="modal vault-modal" style="max-width: 400px; text-align: center; background: #0A101D; border: 1px solid rgba(239, 68, 68, 0.3); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 60px rgba(0,0,0,0.8), 0 0 50px rgba(239, 68, 68, 0.15); border-radius: 24px; padding: 48px 32px; overflow: hidden;">
+            <div style="height: 80px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;">
+                <div id="authKickEmoji" style="font-size: 4rem; filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.4)); animation: pulse-safe 2s infinite;">🚫</div>
+            </div>
             <div style="font-size: 1.6rem; font-weight: 900; color: #fff; letter-spacing: 0.5px; margin-bottom: 12px; text-transform: uppercase;">Access Revoked</div>
             <div id="authKickMsg" style="color: var(--red); font-size: 1.1rem; font-weight: 600; line-height: 1.5; margin-bottom: 32px;">Your session has been terminated.</div>
             <button class="btn primary" style="width: 100%; justify-content: center; padding: 16px; font-size: 1.1rem; font-weight: 800; background: linear-gradient(135deg, var(--red), #991b1b); border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4); text-transform: uppercase; letter-spacing: 1px; color: #fff; transition: all 0.3s;" onclick="document.getElementById('authKickModal').classList.remove('active'); document.getElementById('pwdModal').classList.add('active');" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 30px rgba(239, 68, 68, 0.6)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 20px rgba(239, 68, 68, 0.4)';">Acknowledge</button>
@@ -1086,110 +1095,120 @@
     </div>
 
     <!-- Edit Operator Modal -->
-    <div class="modal-overlay" id="editOpModal">
-        <div class="modal" style="max-width: 500px; padding: 0; overflow: hidden;">
-            <div style="padding: 24px; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2);">
-                <div class="m-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px; margin-bottom: 8px;">
-                    <div style="display:flex;align-items:center;gap:10px">
-                        <div style="background: rgba(168,85,247,0.15); color: var(--purple); padding: 8px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(168,85,247,0.3);">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+    <div class="modal-overlay" id="editOpModal" style="background: rgba(6,9,19,0.85); backdrop-filter: blur(16px); z-index: 9999;">
+        <div class="modal vault-modal" style="max-width: 540px; padding: 0; overflow: hidden; background: #0A101D; border: 1px solid rgba(255,255,255,0.1); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(168,85,247,0.1); border-radius: 20px;">
+            <div style="padding: 24px 32px; border-bottom: 1px solid rgba(255,255,255,0.05); background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent); display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <div style="display:flex;align-items:center;gap:12px; margin-bottom: 8px;">
+                        <div style="background: rgba(168,85,247,0.15); color: var(--purple); padding: 10px; border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(168,85,247,0.3); box-shadow: 0 0 15px rgba(168,85,247,0.2);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         </div>
-                        <span id="editOpName" style="font-size: 1.4rem; font-weight: 800;">Edit Operator</span>
+                        <span id="editOpName" style="font-size: 1.6rem; font-weight: 900; color: #fff; letter-spacing: 0.5px;">Edit Operator</span>
                     </div>
-                    <button style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; padding:4px; border-radius:50%; transition:var(--trans); display:flex; align-items:center; justify-content:center" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='var(--text-muted)'" onclick="document.getElementById('editOpModal').classList.remove('active')">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
+                    <div style="font-size: 0.85rem; color: var(--text-sec); font-family: var(--font-mono); display: flex; align-items: center; gap: 8px;">
+                        <span style="color: var(--text-muted);">ID:</span> <span id="editOpId" style="color: var(--cyan);"></span>
+                    </div>
                 </div>
-                <div style="font-size: 0.85rem; color: var(--text-sec); font-family: var(--font-mono);" id="editOpId"></div>
+                <button style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:var(--text-sec); cursor:pointer; padding:6px; border-radius:50%; transition:all 0.3s; display:flex; align-items:center; justify-content:center" onmouseover="this.style.background='rgba(255,255,255,0.15)';this.style.color='#fff';this.style.transform='rotate(90deg)';" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='var(--text-sec)';this.style.transform='rotate(0deg)';" onclick="document.getElementById('editOpModal').classList.remove('active')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
             </div>
             
-            <div style="padding: 24px; max-height: 65vh; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;">
+            <div style="padding: 24px 32px; max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 24px;">
                 <input type="hidden" id="editOpIdVal">
                 
-                <div class="f-group" style="margin: 0;">
-                    <label class="f-label">Role Tier</label>
-                    <select class="f-input" id="editOpRole" style="background: rgba(0,0,0,0.3);">
-                        <option value="user">Operator</option>
-                        <option value="admin">Global Admin</option>
-                    </select>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="f-group" style="margin: 0;">
+                        <label class="f-label" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Role Tier</label>
+                        <select class="f-input" id="editOpRole" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; font-weight: 600;">
+                            <option value="user">Operator</option>
+                            <option value="admin">Global Admin</option>
+                        </select>
+                    </div>
+
+                    <div class="f-group" id="editOpExpiryBlock" style="margin: 0;">
+                        <label class="f-label" style="display:flex; flex-direction: column; gap: 4px;">
+                            <span style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted);">Time-Bomb (Expiry)</span>
+                        </label>
+                        <input type="date" class="f-input" id="editOpExpiry" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); padding: 12px; color: var(--cyan); font-family: var(--font-mono);">
+                    </div>
                 </div>
 
-                <div class="f-group" id="editOpExpiryBlock" style="margin: 0;">
-                    <label class="f-label" style="display:flex; justify-content:space-between;">
-                        <span>Time-Bomb Access (Expiry)</span>
-                        <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: none; font-weight: 400;">Leave blank for permanent</span>
-                    </label>
-                    <input type="date" class="f-input" id="editOpExpiry" style="background: rgba(0,0,0,0.3);">
-                </div>
-
-                <div id="editOpAccessControlsBlock" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;">
-                    <div style="font-size: 0.8rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 1px;">Access Controls</div>
+                <div id="editOpAccessControlsBlock" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);">
+                    <div style="font-size: 0.85rem; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--cyan);"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        Access Controls
+                    </div>
                     
-                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                    <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 8px 0;">
                         <div>
-                            <div style="font-size: 0.9rem; color: #fff; font-weight: 600;">Suspend Account</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);">Instantly lock the operator out.</div>
+                            <div style="font-size: 0.95rem; color: #fff; font-weight: 700;">Suspend Account</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Instantly terminate active sessions.</div>
                         </div>
                         <div class="switch">
                             <input type="checkbox" id="editOpSuspended">
-                            <span class="slider" style="background-color: rgba(239, 68, 68, 0.2);"></span>
+                            <span class="slider" style="background-color: rgba(239, 68, 68, 0.2); box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);"></span>
                         </div>
                     </label>
                     
-                    <div style="height: 1px; background: rgba(255,255,255,0.05); margin: 4px 0;"></div>
+                    <div style="height: 1px; background: rgba(255,255,255,0.05);"></div>
                     
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0;">
                         <div>
-                            <div style="font-size: 0.9rem; color: #fff; font-weight: 600;">Hardware Lock</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted);" id="editOpHwStatus">Checking...</div>
+                            <div style="font-size: 0.95rem; color: #fff; font-weight: 700;">Hardware Lock</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;" id="editOpHwStatus">Checking...</div>
                         </div>
-                        <button class="f-btn" id="editOpHwBtn" style="background: rgba(245, 158, 11, 0.1); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.2); font-size: 0.75rem; padding: 6px 12px; border-radius: 12px;">Release Lock</button>
+                        <button class="btn" id="editOpHwBtn" style="background: rgba(245, 158, 11, 0.1); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.3); font-size: 0.8rem; padding: 8px 16px; border-radius: 8px; font-weight: 700; transition: all 0.3s;" onmouseover="this.style.boxShadow='0 0 15px rgba(245,158,11,0.3)'; this.style.transform='translateY(-1px)';" onmouseout="this.style.boxShadow='none'; this.style.transform='none';">RELEASE LOCK</button>
                     </div>
 
-                    <div id="opEnginePermissions" style="display: none; flex-direction: column; gap: 12px; margin-top: 8px;">
-                        <div style="height: 1px; background: rgba(255,255,255,0.05); margin: 4px 0;"></div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--cyan); text-transform: uppercase; letter-spacing: 1px;">Engine Permissions</div>
+                    <div id="opEnginePermissions" style="display: none; flex-direction: column; gap: 16px; margin-top: 8px;">
+                        <div style="height: 1px; background: rgba(255,255,255,0.05);"></div>
+                        <div style="font-size: 0.85rem; font-weight: 800; color: #fff; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--purple);"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                            Engine Permissions
+                        </div>
                         
                         <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
                             <div>
-                                <div style="font-size: 0.9rem; color: #fff; font-weight: 600;">Edit 'M' Badge Numbers</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted);">Allow operator to edit numbers in database.</div>
+                                <div style="font-size: 0.95rem; color: #fff; font-weight: 700;">Edit 'M' Badge Numbers</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Allow operator to inject targets.</div>
                             </div>
                             <div class="switch">
                                 <input type="checkbox" id="editOpCanEditPhone">
-                                <span class="slider"></span>
+                                <span class="slider" style="box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);"></span>
                             </div>
                         </label>
 
                         <label style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
                             <div>
-                                <div style="font-size: 0.9rem; color: #fff; font-weight: 600;">Auto-Discovery Engine</div>
-                                <div style="font-size: 0.75rem; color: var(--text-muted);">Allow operator to bulk scan/send.</div>
+                                <div style="font-size: 0.95rem; color: #fff; font-weight: 700;">Auto-Discovery Engine</div>
+                                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">Allow bulk target scanning.</div>
                             </div>
                             <div class="switch">
                                 <input type="checkbox" id="editOpCanUseAutoDiscovery">
-                                <span class="slider"></span>
+                                <span class="slider" style="box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);"></span>
                             </div>
                         </label>
                     </div>
                 </div>
 
                 <div class="f-group" style="margin: 0;">
-                    <label class="f-label" style="display: flex; align-items: center; gap: 6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--amber)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    <label class="f-label" style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--amber)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                         Admin Dossier (Encrypted Notes)
                     </label>
-                    <textarea class="f-input f-area" id="editOpNotes" placeholder="Private notes visible only to admins..." style="background: rgba(0,0,0,0.3); min-height: 80px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--amber); resize: vertical; border-color: rgba(245, 158, 11, 0.2);"></textarea>
+                    <textarea class="f-input f-area" id="editOpNotes" placeholder="Private reconnaissance notes (visible only to Global Admins)..." style="background: rgba(0,0,0,0.4); min-height: 100px; font-family: var(--font-mono); font-size: 0.9rem; color: var(--amber); resize: vertical; border: 1px solid rgba(245, 158, 11, 0.2); box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);"></textarea>
                 </div>
             </div>
             
-            <div style="padding: 20px 24px; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2); display: flex; justify-content: space-between;">
-                <button class="m-btn cancel" onclick="document.getElementById('editOpModal').classList.remove('active')" style="background: rgba(255,255,255,0.05);">Cancel</button>
-                <div style="display: flex; gap: 8px;">
-                    <button class="m-btn cancel" id="deleteOpBtn" style="background: rgba(239, 68, 68, 0.1); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.2); display: none;">Delete Operator</button>
-                    <button class="m-btn confirm" id="saveOpBtn" style="background: linear-gradient(135deg, var(--purple), #c026d3); color: #fff; border: none; padding: 12px 24px; font-weight: 700; display: flex; align-items: center; gap: 8px;" onclick="saveOperator()">
+            <div style="padding: 20px 32px; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.4); display: flex; justify-content: space-between; align-items: center;">
+                <button class="m-btn cancel" id="deleteOpBtn" style="background: rgba(239, 68, 68, 0.1); color: var(--red); border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 700; padding: 12px 20px; transition: all 0.3s; display: none;" onmouseover="this.style.boxShadow='0 0 15px rgba(239,68,68,0.3)'; this.style.background='rgba(239,68,68,0.2)';" onmouseout="this.style.boxShadow='none'; this.style.background='rgba(239,68,68,0.1)';">DELETE OPERATOR</button>
+                <div style="flex: 1;"></div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="m-btn cancel" onclick="document.getElementById('editOpModal').classList.remove('active')" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); font-weight: 600; padding: 12px 20px; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';" onmouseout="this.style.background='rgba(255,255,255,0.05)';">Cancel</button>
+                    <button class="m-btn confirm" id="saveOpBtn" style="background: linear-gradient(135deg, var(--purple), #c026d3); color: #fff; border: none; padding: 12px 28px; font-weight: 800; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 20px rgba(168,85,247,0.4); transition: all 0.3s; text-transform: uppercase; letter-spacing: 1px;" onclick="saveOperator()" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 30px rgba(168,85,247,0.6)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 20px rgba(168,85,247,0.4)';">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                        Save Changes
+                        Save
                     </button>
                 </div>
             </div>
@@ -4317,33 +4336,37 @@ async function renderAdminUserList(isBg = false) {
                 const statusColor = isSuspended || isExpired ? 'var(--red)' : isAdmin ? 'var(--purple)' : 'var(--cyan)';
                 
                 return `
-                <div class="admin-user-row" style="${isSuspended || isExpired ? 'opacity: 0.6; filter: grayscale(50%);' : ''}">
-                    <div style="display: flex; align-items: center; gap: 14px;">
-                        <div style="width: 44px; height: 44px; border-radius: 50%; background: ${isAdmin ? 'rgba(168,85,247,0.15)' : 'rgba(0,240,255,0.15)'}; border: 1px solid ${isAdmin ? 'rgba(168,85,247,0.3)' : 'rgba(0,240,255,0.3)'}; color: ${statusColor}; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.4rem;">
-                            ${isSuspended ? '🚫' : u.username.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                            <div style="font-weight: 800; font-size: 1.1rem; color: #fff; display: flex; align-items: center; gap: 6px;">
-                                ${esc(u.username)}
-                                ${isSuspended ? '<span style="font-size: 0.7rem; background: rgba(239, 68, 68, 0.2); color: var(--red); padding: 2px 6px; border-radius: 4px;">SUSPENDED</span>' : ''}
+                <div class="admin-user-row">
+                    <!-- Wrapper for dimmed details -->
+                    <div style="display: contents; ${isSuspended || isExpired ? 'opacity: 0.5; filter: grayscale(80%);' : ''}">
+                        <div style="display: flex; align-items: center; gap: 14px;">
+                            <div style="width: 44px; height: 44px; border-radius: 50%; background: ${isAdmin ? 'rgba(168,85,247,0.15)' : 'rgba(0,240,255,0.15)'}; border: 1px solid ${isAdmin ? 'rgba(168,85,247,0.3)' : 'rgba(0,240,255,0.3)'}; color: ${statusColor}; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.4rem;">
+                                ${isSuspended ? '🚫' : u.username.charAt(0).toUpperCase()}
                             </div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 4px;">ID: ${u._id.slice(-8)}</div>
+                            <div>
+                                <div style="font-weight: 800; font-size: 1.1rem; color: #fff; display: flex; align-items: center; gap: 6px;">
+                                    ${esc(u.username)}
+                                    ${isSuspended ? '<span style="font-size: 0.7rem; background: rgba(239, 68, 68, 0.2); color: var(--red); padding: 2px 6px; border-radius: 4px;">SUSPENDED</span>' : ''}
+                                    ${u.adminNotes ? '<span style="font-size: 0.7rem; background: rgba(245, 158, 11, 0.15); color: var(--amber); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(245,158,11,0.3);" title="Has Dossier Notes">📝 DOSSIER</span>' : ''}
+                                </div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); margin-top: 4px;">ID: ${u._id.slice(-8)}</div>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 4px; justify-content: center;">
-                        <div>
-                            <span style="font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; background: ${isAdmin ? 'rgba(168,85,247,0.1)' : 'rgba(0,240,255,0.1)'}; color: ${isAdmin ? 'var(--purple)' : 'var(--cyan)'}; border: 1px solid ${isAdmin ? 'rgba(168,85,247,0.2)' : 'rgba(0,240,255,0.2)'}; text-transform: uppercase; letter-spacing: 1px;">
-                                ${isAdmin ? 'Admin' : 'Operator'}
-                            </span>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 4px; justify-content: center;">
+                            <div>
+                                <span style="font-size: 0.7rem; font-weight: 800; padding: 4px 10px; border-radius: 20px; background: ${isAdmin ? 'rgba(168,85,247,0.1)' : 'rgba(0,240,255,0.1)'}; color: ${isAdmin ? 'var(--purple)' : 'var(--cyan)'}; border: 1px solid ${isAdmin ? 'rgba(168,85,247,0.2)' : 'rgba(0,240,255,0.2)'}; text-transform: uppercase; letter-spacing: 1px;">
+                                    ${isAdmin ? 'Admin' : 'Operator'}
+                                </span>
+                            </div>
+                            ${expiryStr ? `<div style="font-size: 0.7rem; margin-top: 4px; font-weight: 600;">${expiryStr}</div>` : ''}
                         </div>
-                        ${expiryStr ? `<div style="font-size: 0.7rem; margin-top: 4px; font-weight: 600;">${expiryStr}</div>` : ''}
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; color: var(--text-sec); font-family: var(--font-mono); justify-content: center;">
-                        <div style="color: #fff; font-weight: 600;">${locStr}</div>
-                        <div>${ipStr}</div>
-                        <div>${devStr}</div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; color: var(--text-sec); font-family: var(--font-mono); justify-content: center;">
+                            <div style="color: #fff; font-weight: 600;">${locStr}</div>
+                            <div>${ipStr}</div>
+                            <div>${devStr}</div>
+                        </div>
                     </div>
                     
                     <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px;">
