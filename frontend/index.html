@@ -1588,7 +1588,7 @@ async function bootNexus() {
     try {
         // Fetch identity to restore permissions on page reload if token exists
         if (!window.CURRENT_ROLE) {
-            const res = await fetch('/api/auth/me', {
+            const res = await fetch(`/api/auth/me?t=${Date.now()}`, {
                 headers: { 'Authorization': `Bearer ${MASTER_KEY}` }
             });
             const data = await res.json();
@@ -1722,7 +1722,7 @@ async function fetchAll(isBg = false) {
     let newDevices = [];
 
     try {
-        const dbRes = await fetch('/api/databases', {
+        const dbRes = await fetch(`/api/databases?t=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         if (dbRes.status === 401) {
@@ -1738,7 +1738,7 @@ async function fetchAll(isBg = false) {
         }
 
         const pingStart = performance.now();
-        const res = await fetch('/api/devices', {
+        const res = await fetch(`/api/devices?t=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         window.lastPing = Math.round(performance.now() - pingStart);
