@@ -2315,12 +2315,8 @@ function renderTab(silent = false) {
 
                 </div>
                 
-                <div style="margin-top: 48px; display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+                <div style="margin-top: 48px; margin-bottom: 24px;">
                     <h3 style="font-size: 1.4rem; color: #fff; display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.5px;">📡 Live Telemetry</h3>
-                    <div style="display: flex; gap: 8px; background: rgba(0,0,0,0.4); padding: 4px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                        <button id="btnWaveLive" style="background: rgba(0,240,255,0.15); color: var(--cyan); border: 1px solid rgba(0,240,255,0.3); padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; cursor: pointer; transition: all 0.3s;" onclick="setWaveMode('live')">LIVE</button>
-                        <button id="btnWaveHist" style="background: transparent; color: var(--text-muted); border: 1px solid transparent; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: all 0.3s;" onclick="setWaveMode('historical')">24H</button>
-                    </div>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px;">
@@ -2336,10 +2332,6 @@ function renderTab(silent = false) {
                         <div style="font-size: 0.7rem; color: var(--amber); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">Throughput</div>
                         <div id="dashThroughput" style="font-size: 1.6rem; font-weight: 900; color: #fff; font-family: var(--font-mono);">-- KB</div>
                     </div>
-                </div>
-
-                <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-lg); padding: 24px; position: relative; overflow: hidden; height: 300px; box-shadow: inset 0 4px 20px rgba(0,0,0,0.5);">
-                    <canvas id="apiVelocityChart" style="width: 100%; height: 100%;"></canvas>
                 </div>
 
             </div>`;
@@ -4844,16 +4836,9 @@ function openAddDbDrawer() {
                         const kb = (totalBytesIngested / 1024).toFixed(1);
 
                         if (userDashVisible) {
-                            if (!velocityChart) initCharts();
                             document.getElementById('dashApiLatency').innerText = `${apiLatency} ms`;
                             document.getElementById('dashSyncRate').innerText = `${syncRate} ops/m`;
                             document.getElementById('dashThroughput').innerText = `${kb} KB`;
-                            
-                            // Mock Historical Data if toggled
-                            const chartData = currentWaveMode === 'live' ? velocityArray : Array.from({length: 60}, () => Math.floor(Math.random() * 50) + 10);
-                            
-                            velocityChart.data.datasets[0].data = chartData;
-                            velocityChart.update();
                         }
 
                         if (adminTabVisible) {
