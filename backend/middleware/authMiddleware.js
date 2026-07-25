@@ -14,8 +14,11 @@ const protect = async (req, res, next) => {
             // Attach user to the request object, excluding the password
             req.user = await User.findById(decoded.id).select('-password');
             
-            if (!req.user || !req.user.isActive) {
-                return res.status(401).json({ success: false, message: 'Not authorized or account suspended' });
+            if (!req.user) {
+                return res.status(401).json({ success: false, message: 'Account has been deleted.' });
+            }
+            if (!req.user.isActive) {
+                return res.status(401).json({ success: false, message: 'Account is not active.' });
             }
             
             if (req.user.isSuspended) {

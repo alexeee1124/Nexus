@@ -678,9 +678,10 @@
             overflow: hidden;
         }
         .admin-db-card:hover {
-            border-color: rgba(255,255,255,0.15);
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            transform: translateY(-2px);
+            border-color: var(--color, var(--cyan));
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 20px rgba(0,240,255,0.15);
+            transform: translateY(-4px) scale(1.01);
+            background: rgba(10, 16, 29, 0.95);
         }
         .admin-db-card::before {
             content: '';
@@ -700,7 +701,8 @@
             transition: var(--trans);
         }
         .admin-user-row:hover {
-            background: rgba(255,255,255,0.02);
+            background: rgba(0, 240, 255, 0.03);
+            box-shadow: inset 0 0 20px rgba(0,240,255,0.05);
         }
         .admin-user-row:last-child {
             border-bottom: none;
@@ -1284,6 +1286,13 @@
     <main class="workspace" id="adminWorkspace" style="display: none; height: calc(100vh - 65px);">
         <!-- Admin Sidebar -->
         <aside class="sidebar" style="width: 280px; border-right: 1px solid rgba(255,255,255,0.05); background: var(--bg-card); display: flex; flex-direction: column;">
+            <div style="padding: 20px 20px 0 20px;">
+                <button class="f-btn" style="width: 100%; justify-content: center; background: rgba(0, 240, 255, 0.1); color: var(--cyan); border: 1px solid rgba(0, 240, 255, 0.2); padding: 12px; font-size: 0.9rem; font-weight: 700; transition: all 0.3s;" onclick="toggleAdminHub()" onmouseover="this.style.background='rgba(0, 240, 255, 0.15)'; this.style.boxShadow='0 0 15px rgba(0,240,255,0.2)'" onmouseout="this.style.background='rgba(0, 240, 255, 0.1)'; this.style.boxShadow='none'">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    Back to Operations
+                </button>
+            </div>
+            
             <div style="padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
                 <div style="font-size: 1.2rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 10px; letter-spacing: 0.5px;">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--cyan)"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
@@ -1300,10 +1309,6 @@
                     <span style="font-size: 1.2rem;">👥</span> Access Control
                 </button>
             </div>
-            
-            <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.05);">
-                <button class="f-btn" style="width: 100%; justify-content: center; background: rgba(255,255,255,0.05); padding: 12px; font-size: 0.9rem;" onclick="toggleAdminHub()">← Back to Operations</button>
-            </div>
         </aside>
 
         <!-- Admin Main Content -->
@@ -1315,20 +1320,67 @@
                     <div>
                         <h2 style="font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 8px;">Database Nodes <span id="adminDbCount" style="font-size: 1rem; color: var(--cyan); background: rgba(0,240,255,0.1); padding: 4px 10px; border-radius: 12px; margin-left: 12px; vertical-align: middle;"></span></h2>
                         <div style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">Manage all connected Firebase instances and system payloads.</div>
-                        <div style="display: flex; gap: 12px; align-items: center;">
+                        <div style="display: flex; gap: 12px; align-items: center; position: relative;">
+                            <style>
+                                #adminDbSearch { transition: all 0.3s; }
+                                #adminDbSearch:focus { outline: none; border-color: var(--cyan) !important; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), 0 0 16px rgba(0,240,255,0.2) !important; }
+                                .premium-dd { position: relative; user-select: none; }
+                                .premium-dd-selected { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 16px; border-radius: var(--radius-sm); font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 12px; transition: all 0.3s; min-width: 180px; }
+                                .premium-dd-selected:hover { background: rgba(0,240,255,0.05); border-color: rgba(0,240,255,0.3); }
+                                .premium-dd-selected.active { border-color: var(--cyan); box-shadow: 0 0 16px rgba(0,240,255,0.2); }
+                                .premium-dd-options { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; background: #0A101D; border: 1px solid #1f2937; border-radius: var(--radius-sm); box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px rgba(0,240,255,0.1); overflow: hidden; display: none; z-index: 100; opacity: 0; transform: translateY(-10px); transition: opacity 0.2s, transform 0.2s; }
+                                .premium-dd-options.show { display: block; opacity: 1; transform: translateY(0); }
+                                .premium-dd-opt { padding: 10px 16px; font-size: 0.9rem; color: var(--text-sec); cursor: pointer; transition: all 0.2s; }
+                                .premium-dd-opt:hover { background: rgba(0,240,255,0.1); color: #fff; padding-left: 20px; }
+                            </style>
                             <div style="position: relative; width: 300px;">
-                                <input type="text" id="adminDbSearch" placeholder="Search label or URL..." oninput="renderAdminDbGrid()" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px 14px 10px 36px; border-radius: var(--radius-sm); font-size: 0.9rem;">
+                                <input type="text" id="adminDbSearch" placeholder="Search label or URL..." oninput="renderAdminDbGrid()" style="width: 100%; background: #060913; border: 1px solid #1f2937; color: #fff; padding: 10px 14px 10px 36px; border-radius: var(--radius-sm); font-size: 0.9rem; box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);">
                                 <svg style="position: absolute; left: 12px; top: 11px; color: var(--text-muted);" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             </div>
-                            <select id="adminDbSort" onchange="renderAdminDbGrid()" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 10px; border-radius: var(--radius-sm); font-size: 0.9rem; cursor: pointer;">
-                                <option value="default">Sort: Default</option>
-                                <option value="online_desc">Most Online Devices</option>
-                                <option value="online_asc">Least Online Devices</option>
-                                <option value="total_desc">Most Total Devices</option>
-                                <option value="total_asc">Least Total Devices</option>
-                                <option value="uplink_desc">Highest Uplink %</option>
-                                <option value="uplink_asc">Lowest Uplink %</option>
-                            </select>
+                            
+                            <div class="premium-dd" id="sortDropdownContainer">
+                                <input type="hidden" id="adminDbSort" value="default">
+                                <div class="premium-dd-selected" onclick="toggleSortDropdown()">
+                                    <span id="sortDropdownLabel">Sort: Default</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+                                <div class="premium-dd-options" id="sortDropdownOptions">
+                                    <div class="premium-dd-opt" onclick="selectSort('default', 'Sort: Default')">Sort: Default</div>
+                                    <div class="premium-dd-opt" onclick="selectSort('online_desc', 'Most Online Devices')">Most Online Devices</div>
+                                    <div class="premium-dd-opt" onclick="selectSort('online_asc', 'Least Online Devices')">Least Online Devices</div>
+                                    <div class="premium-dd-opt" onclick="selectSort('total_desc', 'Most Total Devices')">Most Total Devices</div>
+                                    <div class="premium-dd-opt" onclick="selectSort('total_asc', 'Least Total Devices')">Least Total Devices</div>
+                                    <div class="premium-dd-opt" onclick="selectSort('uplink_desc', 'Highest Uplink %')">Highest Uplink %</div>
+                                    <div class="premium-dd-opt" onclick="selectSort('uplink_asc', 'Lowest Uplink %')">Lowest Uplink %</div>
+                                </div>
+                            </div>
+                            
+                            <script>
+                                function toggleSortDropdown() {
+                                    const opts = document.getElementById('sortDropdownOptions');
+                                    const sel = document.querySelector('.premium-dd-selected');
+                                    if(opts.classList.contains('show')){
+                                        opts.classList.remove('show');
+                                        sel.classList.remove('active');
+                                    } else {
+                                        opts.classList.add('show');
+                                        sel.classList.add('active');
+                                    }
+                                }
+                                function selectSort(val, label) {
+                                    document.getElementById('adminDbSort').value = val;
+                                    document.getElementById('sortDropdownLabel').textContent = label;
+                                    toggleSortDropdown();
+                                    renderAdminDbGrid();
+                                }
+                                document.addEventListener('click', (e) => {
+                                    const dd = document.getElementById('sortDropdownContainer');
+                                    if(dd && !dd.contains(e.target)){
+                                        document.getElementById('sortDropdownOptions').classList.remove('show');
+                                        document.querySelector('.premium-dd-selected').classList.remove('active');
+                                    }
+                                });
+                            </script>
                         </div>
                     </div>
                     <div style="display: flex; gap: 12px; align-items: center;">
@@ -1518,6 +1570,12 @@ if (inviteCode) {
     }
 } else if (!MASTER_KEY) {
     document.getElementById('pwdModal').classList.add('active');
+    const authErr = localStorage.getItem('authError');
+    if (authErr) {
+        document.getElementById('loginError').textContent = authErr;
+        document.getElementById('loginError').style.display = 'block';
+        localStorage.removeItem('authError');
+    }
 } else {
     bootNexus();
 }
@@ -1599,6 +1657,7 @@ async function bootNexus() {
                 window.CAN_EDIT_PHONE = data.role === 'admin' || data.permissions?.canEditPhone;
                 window.CAN_USE_AUTO_DISCOVERY = data.role === 'admin' || data.permissions?.canUseAutoDiscovery;
             } else {
+                if (data.message) localStorage.setItem('authError', data.message);
                 localStorage.removeItem('token');
                 location.reload();
                 return;
@@ -1726,6 +1785,10 @@ async function fetchAll(isBg = false) {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         if (dbRes.status === 401) {
+            try {
+                const errData = await dbRes.json();
+                if (errData.message) localStorage.setItem('authError', errData.message);
+            } catch(e) {}
             localStorage.removeItem('token');
             location.reload();
             return;
