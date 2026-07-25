@@ -132,7 +132,7 @@ const metricsTracker = require('../utils/metricsTracker');
 router.get('/metrics', protect, admin, (req, res) => {
     try {
         const mem = process.memoryUsage();
-        const uptime = os.uptime();
+        const uptime = process.uptime();
         // Since active sockets isn't directly exposed in express without tracking raw sockets, we simulate/estimate it based on velocity or just hardcode a realistic number. We can use the velocity to guess connections.
         const baseSockets = 15;
         const activeSockets = baseSockets + metricsTracker.getMetrics().currentVelocity;
