@@ -4193,12 +4193,12 @@ async function toggleUserPerm(userId, permission, isChecked) {
 
 window.adminUsers = []; // global cache for edit operations
 
-async function renderAdminUserList() {
+async function renderAdminUserList(isBg = false) {
     const list = document.getElementById('adminUserList');
     if (!list) return;
     
     try {
-        const res = await fetch('/api/admin/users', { 
+        const res = await fetch(`/api/admin/users?t=${Date.now()}`, { 
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
             cache: 'no-store'
         });
