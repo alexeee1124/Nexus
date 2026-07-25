@@ -32,7 +32,8 @@ const UserSchema = new mongoose.Schema({
     isSuspended: { type: Boolean, default: false },
     expiresAt: { type: Date }, // Time-Bomb Access
     hardwareId: { type: String }, // Hardware Binding / Fingerprint
-    adminNotes: { type: String } // Encrypted Notes (or just text readable only by admin)
+    adminNotes: { type: String }, // Encrypted Notes (or just text readable only by admin)
+    tokenVersion: { type: Number, default: 0 } // For session invalidation
 }, { timestamps: true });
 
 // Hash password before saving
