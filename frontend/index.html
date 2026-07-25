@@ -764,6 +764,16 @@
         <div style="color:var(--text-muted); font-size: 0.85rem; letter-spacing: 1px;" id="loadSubtext">Connecting to Secure Nexus</div>
     </div>
 
+    <!-- Session Invalidation Modal -->
+    <div class="modal-overlay" id="authKickModal" style="background: rgba(6,9,19,0.98); z-index: 10001; backdrop-filter: blur(24px);">
+        <div class="modal vault-modal" style="max-width: 400px; text-align: center; background: #0A101D; border: 1px solid rgba(239, 68, 68, 0.3); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 60px rgba(0,0,0,0.8), 0 0 50px rgba(239, 68, 68, 0.15); border-radius: 24px; padding: 48px 32px;">
+            <div id="authKickEmoji" style="font-size: 4rem; margin-bottom: 24px; filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.4)); animation: pulse 2s infinite;">🚫</div>
+            <div style="font-size: 1.6rem; font-weight: 900; color: #fff; letter-spacing: 0.5px; margin-bottom: 12px; text-transform: uppercase;">Access Revoked</div>
+            <div id="authKickMsg" style="color: var(--red); font-size: 1.1rem; font-weight: 600; line-height: 1.5; margin-bottom: 32px;">Your session has been terminated.</div>
+            <button class="btn primary" style="width: 100%; justify-content: center; padding: 16px; font-size: 1.1rem; font-weight: 800; background: linear-gradient(135deg, var(--red), #991b1b); border: none; border-radius: 12px; box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4); text-transform: uppercase; letter-spacing: 1px; color: #fff; transition: all 0.3s;" onclick="document.getElementById('authKickModal').classList.remove('active'); document.getElementById('pwdModal').classList.add('active');" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 30px rgba(239, 68, 68, 0.6)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 20px rgba(239, 68, 68, 0.4)';">Acknowledge</button>
+        </div>
+    </div>
+
     <!-- Single Login Portal Modal -->
     <div class="modal-overlay" id="pwdModal" style="background: rgba(6,9,19,0.95); z-index: 10000; backdrop-filter: blur(16px);">
         <div class="modal vault-modal" style="max-width: 440px; text-align: center; background: #0A101D; border: 1px solid #1f2937; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 60px rgba(0,0,0,0.8), 0 0 40px rgba(0,240,255,0.1); border-radius: 20px; padding: 40px 32px;">
@@ -1569,12 +1579,19 @@ if (inviteCode) {
         }
     }
 } else if (!MASTER_KEY) {
-    document.getElementById('pwdModal').classList.add('active');
     const authErr = localStorage.getItem('authError');
     if (authErr) {
-        document.getElementById('loginError').textContent = authErr;
-        document.getElementById('loginError').style.display = 'block';
+        document.getElementById('authKickMsg').textContent = authErr;
+        let emoji = '⚠️';
+        const lowerErr = authErr.toLowerCase();
+        if (lowerErr.includes('deleted')) emoji = '💀';
+        else if (lowerErr.includes('suspended')) emoji = '🚫';
+        else if (lowerErr.includes('hardware') || lowerErr.includes('login')) emoji = '🔒';
+        document.getElementById('authKickEmoji').textContent = emoji;
+        document.getElementById('authKickModal').classList.add('active');
         localStorage.removeItem('authError');
+    } else {
+        document.getElementById('pwdModal').classList.add('active');
     }
 } else {
     bootNexus();
