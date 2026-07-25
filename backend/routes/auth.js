@@ -3,11 +3,12 @@ const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
-// Generate JWT
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
+};
+
 const requestIp = require('request-ip');
 const geoip = require('geoip-lite');
 const parser = require('ua-parser-js');
