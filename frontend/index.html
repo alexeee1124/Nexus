@@ -4770,7 +4770,6 @@ function openAddDbDrawer() {
                 renderMList();
             }
         });
-    <script>
         // --- ANALYTICS & TELEMETRY ENGINE ---
         let velocityChart = null;
         let adminVelocityChart = null;
@@ -4828,8 +4827,11 @@ function openAddDbDrawer() {
         async function pollTelemetry() {
             try {
                 // Determine visibility
-                const userDashVisible = document.querySelector('.main-workspace').style.display !== 'none' && curTab === 'overview';
-                const adminTabVisible = document.getElementById('adminTabAnalytics')?.style.display === 'flex';
+                const mainWs = document.getElementById('mainWorkspace');
+                const adminTabVis = document.getElementById('adminTabAnalytics')?.style.display === 'flex';
+                
+                const userDashVisible = mainWs && mainWs.style.display !== 'none' && curTab === 'overview';
+                const adminTabVisible = adminTabVis;
 
                 if (!userDashVisible && !adminTabVisible) return;
 
