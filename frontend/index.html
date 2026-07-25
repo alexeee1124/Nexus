@@ -3556,7 +3556,7 @@ function openDupScanner() {
 }
 
 // ═══ BACKGROUND AUTO-REFRESH ═══
-// Automatically pull live data every 10 seconds silently
+// Automatically pull live data every 3 seconds silently
 setInterval(() => {
     // Only run if there isn't already an active manual fetch happening
     if (document.getElementById('loader').classList.contains('hidden')) {
@@ -3565,7 +3565,7 @@ setInterval(() => {
             renderAdminUserList(true); // true = silent background mode
         }
     }
-}, 10000);
+}, 3000);
 
 // Initialize removed to prevent double-fetch before bootNexus completes
 // Mobile Pull-to-Refresh Logic
