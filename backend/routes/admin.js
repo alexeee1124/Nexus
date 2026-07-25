@@ -58,7 +58,10 @@ router.put('/users/:id', async (req, res) => {
         if (permissions) user.permissions = permissions;
         if (isSuspended !== undefined) user.isSuspended = isSuspended;
         if (expiresAt !== undefined) user.expiresAt = expiresAt; // null to remove expiry
-        if (resetHardware) user.hardwareId = null; // Unlocks the hardware bind
+        if (resetHardware) {
+            user.hardwareId = null;
+            user.tokenVersion = (user.tokenVersion || 0) + 1; // Kill active sessions on old hardware
+        }
         if (adminNotes !== undefined) user.adminNotes = adminNotes;
         if (password) user.password = password; // Will trigger pre-save hash
         

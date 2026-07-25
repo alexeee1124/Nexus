@@ -26,6 +26,11 @@ const protect = async (req, res, next) => {
                 return res.status(401).json({ success: false, message: 'Account access has expired.' });
             }
             
+            const tokenVer = decoded.version || 0;
+            if (req.user.tokenVersion !== tokenVer) {
+                return res.status(401).json({ success: false, message: 'Session invalidated by a new login or hardware reset.' });
+            }
+            
             next();
         } catch (error) {
             console.error('JWT Verification Error:', error);

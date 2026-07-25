@@ -3,8 +3,8 @@ const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (id, version = 0) => {
+    return jwt.sign({ id, version }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
 };
@@ -94,7 +94,7 @@ router.post('/login', async (req, res) => {
             username: user.username,
             role: user.role,
             permissions: user.permissions,
-            token: generateToken(user._id)
+            token: generateToken(user._id, user.tokenVersion)
         });
     } catch (error) {
         console.error(error);
