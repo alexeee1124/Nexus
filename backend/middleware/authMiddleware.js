@@ -27,7 +27,8 @@ const protect = async (req, res, next) => {
             }
             
             const tokenVer = decoded.version || 0;
-            if (req.user.tokenVersion !== tokenVer) {
+            const userTokenVer = req.user.tokenVersion || 0;
+            if (userTokenVer !== tokenVer) {
                 return res.status(401).json({ success: false, message: 'Session invalidated by a new login or hardware reset.' });
             }
             
