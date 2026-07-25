@@ -3556,13 +3556,22 @@ function openDupScanner() {
 }
 
 // ═══ BACKGROUND AUTO-REFRESH ═══
-// Automatically pull live data every 3 seconds silently
+// Automatically pull live dashboard data every 10 seconds silently
 setInterval(() => {
     // Only run if there isn't already an active manual fetch happening
     if (document.getElementById('loader').classList.contains('hidden')) {
         fetchAll(true); // true = silent background mode
+    }
+}, 10000);
+
+// Admin Hub: Access Control rapid polling (every 3 seconds)
+setInterval(() => {
+    const adminWorkspace = document.getElementById('adminWorkspace');
+    const adminTabUsers = document.getElementById('adminTabUsers');
+    // Only poll if the Admin Hub is open AND the Access Control tab is active
+    if (adminWorkspace && adminWorkspace.style.display === 'flex' && adminTabUsers && adminTabUsers.style.display === 'flex') {
         if (window.CURRENT_ROLE === 'admin' && typeof renderAdminUserList === 'function') {
-            renderAdminUserList(true); // true = silent background mode
+            renderAdminUserList(true);
         }
     }
 }, 3000);
