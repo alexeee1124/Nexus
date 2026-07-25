@@ -1530,19 +1530,12 @@ async function unlockVault() {
     document.getElementById('loginBtn').textContent = 'Authenticating...';
     
     // Generate a simple hardware fingerprint for Device Locking
-    let localDeviceId = localStorage.getItem('nexus_device_id');
-    if (!localDeviceId) {
-        localDeviceId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('nexus_device_id', localDeviceId);
-    }
-    
     const hwStr = [
         navigator.userAgent,
         window.screen.width,
         window.screen.height,
         navigator.language,
-        navigator.hardwareConcurrency || '',
-        localDeviceId
+        navigator.hardwareConcurrency || ''
     ].join('||');
     const hardwareId = btoa(hwStr).replace(/=/g, '');
     
