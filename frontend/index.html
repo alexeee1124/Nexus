@@ -2663,7 +2663,8 @@ function renderMList() {
 
 function switchSim(n) {
     selSim = n;
-    document.querySelectorAll('.sim-card').forEach((el, idx) => {
+    const cards = document.querySelectorAll('.form-panel .sim-grid .sim-card');
+    cards.forEach((el, idx) => {
         if (idx === n - 1) el.classList.add('active');
         else el.classList.remove('active');
     });
