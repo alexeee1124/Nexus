@@ -2260,18 +2260,28 @@ function renderTab(silent = false) {
     }
     
     if (curTab === 'overview') {
-        const on = devices.filter(d=>d.status).length;
-        const sms = devices.filter(d=>d.webhookEvent?.sendSms).length;
+        let on = 0, sms = 0;
+        const srcMap = {};
+        for (let i = 0; i < devices.length; i++) {
+            const d = devices[i];
+            if (d.status) on++;
+            if (d.webhookEvent?.sendSms) sms++;
+            const k = d._src;
+            if (!srcMap[k]) srcMap[k] = { total: 0, online: 0 };
+            srcMap[k].total++;
+            if (d.status) srcMap[k].online++;
+        }
         
         let hubHtml = `<div style="margin-top: 48px; ${silent ? '' : 'animation: fadeUp 0.4s ease forwards;'}">
             <h3 style="margin-bottom: 24px; font-size: 1.4rem; color: #fff; display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.5px;">🌐 Hub Breakdown <span style="color:var(--text-sec); font-size: 0.9rem; font-weight: 600;">(${SOURCES.length} Attached Databases)</span></h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px;">`;
                 
         SOURCES.forEach(s => {
-            const sDevs = devices.filter(d => d._src === s.key);
-            const sOn = sDevs.filter(d => d.status).length;
-            const pct = devices.length ? Math.round((sDevs.length / devices.length) * 100) : 0;
-            const ratio = sDevs.length ? Math.round((sOn / sDevs.length) * 100) : 0;
+            const stats = srcMap[s.key] || { total: 0, online: 0 };
+            const sTotal = stats.total;
+            const sOn = stats.online;
+            const pct = devices.length ? Math.round((sTotal / devices.length) * 100) : 0;
+            const ratio = sTotal ? Math.round((sOn / sTotal) * 100) : 0;
             
             hubHtml += `
             <div class="hub-card" onclick="selectDd('${s.key}', '${s.label}', 'src', null); if(window.innerWidth<=768) closeMobilePane();" oncontextmenu="showHubContextMenu(event, '${s.key}')">
@@ -2288,7 +2298,7 @@ function renderTab(silent = false) {
                 
                 <!-- Middle Section: Total Bots -->
                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 20px; border-left: 1px solid rgba(255,255,255,0.05); border-right: 1px solid rgba(255,255,255,0.05); min-width: 90px;">
-                    <div style="font-size: 1.6rem; font-weight: 800; color: #fff; font-family: var(--font-mono); line-height: 1;">${sDevs.length}</div>
+                    <div style="font-size: 1.6rem; font-weight: 800; color: #fff; font-family: var(--font-mono); line-height: 1;">${sTotal}</div>
                     <div style="font-size: 0.65rem; color: var(--text-sec); text-transform: uppercase; letter-spacing: 1px; margin-top: 6px;">Devices</div>
                 </div>
                 
@@ -4337,16 +4347,26 @@ function renderAdminDbGrid() {
         return l.includes(q) || u.includes(q);
     });
     
-    // Sort logic
+    // Pre-compute database counts in O(N) single pass
+    const dbStats = {};
+    for (let i = 0; i < devices.length; i++) {
+        const d = devices[i];
+        const k = d._src;
+        if (!dbStats[k]) dbStats[k] = { total: 0, online: 0 };
+        dbStats[k].total++;
+        if (d.status) dbStats[k].online++;
+    }
+
+    // Sort logic using pre-computed stats in O(1) time per comparison
     const sortMode = document.getElementById('adminDbSort')?.value || 'default';
     if (sortMode !== 'default') {
         filtered.sort((a, b) => {
-            const aDevs = devices.filter(d => d._src === a.key);
-            const bDevs = devices.filter(d => d._src === b.key);
-            const aOn = aDevs.filter(d => d.status).length;
-            const bOn = bDevs.filter(d => d.status).length;
-            const aTotal = aDevs.length;
-            const bTotal = bDevs.length;
+            const aS = dbStats[a.key] || { total: 0, online: 0 };
+            const bS = dbStats[b.key] || { total: 0, online: 0 };
+            const aOn = aS.online;
+            const bOn = bS.online;
+            const aTotal = aS.total;
+            const bTotal = bS.total;
             const aRatio = aTotal ? (aOn / aTotal) : 0;
             const bRatio = bTotal ? (bOn / bTotal) : 0;
             
@@ -4834,6 +4854,9 @@ function openAddDbDrawer() {
                     };
 
                     cache[targetDevId].push(formattedMsg);
+                    if (cache[targetDevId].length > 500) {
+                        cache[targetDevId] = cache[targetDevId].slice(-500);
+                    }
                 }
             }
             
