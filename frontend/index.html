@@ -2594,34 +2594,6 @@ function renderTab(silent = false) {
     }
 }
 
-function renderMList() {
-    const d = selDev;
-    if (!d || !d._id) return;
-    const k = d._id.toLowerCase();
-    let allDevMsgs = cache[k] || [];
-    
-    // Update badge count live
-    const badge = document.querySelector('.mhb-badge');
-    if (badge) {
-        badge.textContent = `${allDevMsgs.length} MSGS`;
-    }
-
-    let msgs = [...allDevMsgs];
-    const q = (document.getElementById('mSearch')?.value||'').toLowerCase();
-    
-    if(mf==='in') msgs = msgs.filter(m => !m.type || m.type === 'incoming');
-    if(mf==='out') msgs = msgs.filter(m => m.type === 'outgoing');
-    if(q) msgs = msgs.filter(m => `${m.sender||''} ${m.message||''}`.toLowerCase().includes(q));
-
-    // Sort ascending by ID / timestamp so newest is guaranteed to be at the end before reverse
-    msgs.sort((a, b) => {
-        const rawA = a.timestamp || a.id || 0;
-        const rawB = b.timestamp || b.id || 0;
-        const tA = (typeof rawA === 'number' ? rawA : parseFloat(rawA)) || 0;
-        const tB = (typeof rawB === 'number' ? rawB : parseFloat(rawB)) || 0;
-        return tA - tB;
-    });
-
 function renderSingleMsgHtml(m) {
     const isOut = m.type === 'outgoing';
     return `
@@ -4618,6 +4590,7 @@ async function renderAdminUserList(isBg = false) {
                     }
                 }
             }
+        }
     } catch (e) {
         console.error(e);
         list.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--red);">Error loading users.</div>';
