@@ -1874,8 +1874,25 @@ async function fetchAll(isBg = false) {
     if (_fetchAllInFlight && isBg) return;
     _fetchAllInFlight = true;
     try {
-        let newDevices = [];
+        const l = document.getElementById('loader');
+        if (!isBg) {
+            document.getElementById('devList').innerHTML = renderSkeletons();
+            document.getElementById('devCount').textContent = 'DEVICES (···)';
+            
+            document.getElementById('hTotal').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
+            document.getElementById('hOnline').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
+            document.getElementById('hOffline').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
+            const ratioEl = document.getElementById('hRatio');
+            if(ratioEl) ratioEl.innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:10px;border-radius:4px;"></span>';
+            const barEl = document.getElementById('hProgressBar');
+            if(barEl) { barEl.style.width = '100%'; barEl.style.background = 'rgba(255,255,255,0.05)'; barEl.style.boxShadow = 'none'; }
+            
+            if (curTab === 'overview') {
+                document.getElementById('pane').innerHTML = renderMainSkeletons();
+            }
+        }
 
+        let newDevices = [];
         try {
         const dbRes = await fetch(`/api/databases?t=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
