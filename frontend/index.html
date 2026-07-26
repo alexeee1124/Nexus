@@ -2147,10 +2147,22 @@ function updateAccentColor() {
     }
 }
 
-function renderDevList() {
-    updateAccentColor();
+let sidebarLimit = 150;
 
-    const html = filtered.map((d, index) => {
+function renderDevList(resetLimit = true) {
+    updateAccentColor();
+    if (resetLimit) sidebarLimit = 150;
+
+    // Selected Index Guard: ensure selected device is always within the rendered slice
+    if (selDev) {
+        const selIdx = filtered.findIndex(d => d._id === selDev._id && d._src === selDev._src);
+        if (selIdx >= sidebarLimit) {
+            sidebarLimit = selIdx + 20;
+        }
+    }
+
+    const slice = filtered.slice(0, sidebarLimit);
+    const html = slice.map((d, index) => {
         const ph = d.customPh || d.mobNo || d.sims?.[0]?.phoneNumber || 'Unknown';
         const act = selDev && selDev._id === d._id && selDev._src === d._src ? 'active' : '';
         const bnum = parseInt(d.battery)||0;
@@ -2774,7 +2786,15 @@ function parseFinancialSms(text, sender) {
     return null;
 }
 
-function esc(s) { if(s==null) return ''; const d=document.createElement('div'); d.textContent=String(s); return d.innerHTML; }
+function esc(s) {
+    if (s == null) return '';
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 function emp(msg) { 
     return `<div class="empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 40px 20px; background: rgba(0,240,255,0.02); border: 1px dashed rgba(0,240,255,0.2); border-radius: var(--radius-lg); margin: 20px;">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(0,240,255,0.5)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 16px;"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"></path><circle cx="12" cy="12" r="4"></circle><path d="M12 12v-9"></path></svg>
@@ -2971,10 +2991,20 @@ async function editPhone(src, id) {
         newPh = newPh.trim();
         // If the number was changed, OR if they are confirming the original number to force the M badge
         if (newPh && (d.customPh !== newPh)) {
-            // Optimistic UI update
+            // In-place UI update without destroying 60,000 DOM nodes
             d.customPh = newPh;
-            filterDevs(); // re-render sidebar
-            if(selDev && selDev._id === id) renderTab(); // re-render main pane
+            const phEl = document.getElementById('ph-' + id);
+            if (phEl) {
+                phEl.textContent = newPh;
+                if (!phEl.nextElementSibling || phEl.nextElementSibling.title !== 'Manually Edited') {
+                    const mBadge = document.createElement('span');
+                    mBadge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:var(--cyan);color:#000;border-radius:3px;font-size:0.65rem;margin-left:4px;cursor:help;font-weight:900;';
+                    mBadge.title = 'Manually Edited';
+                    mBadge.textContent = 'M';
+                    phEl.parentNode.insertBefore(mBadge, phEl.nextSibling);
+                }
+            }
+            if(selDev && selDev._id === id && curTab === 'device') renderTab(); // re-render detail box only if visible
             const srcObj = SOURCES.find(s => s.key === src);
             const token = srcObj ? await getAuthToken(srcObj) : null;
             const authSuffix = token ? `?auth=${token}` : '';
@@ -3811,6 +3841,25 @@ devList.addEventListener('touchend', e => {
         fetchAll();
     }
 });
+
+devList.addEventListener('scroll', () => {
+    if (devList.scrollHeight - devList.scrollTop - devList.clientHeight < 400) {
+        if (sidebarLimit < filtered.length) {
+            sidebarLimit += 100;
+            renderDevList(false);
+        }
+    }
+}, { passive: true });
+
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 768) {
+        const mc = document.getElementById('mainContent');
+        if (mc && mc.classList.contains('mobile-active')) {
+            mc.classList.remove('mobile-active');
+        }
+    }
+});
+
 let ctxTarget = null;
 function showContextMenu(e, src, id) {
     e.preventDefault();
