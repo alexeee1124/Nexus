@@ -4897,19 +4897,9 @@ function openAddDbDrawer() {
                 }
             }
             
-            // Surgical live UI insertion whenever selected device matches target
+            // Unconditional live UI re-render whenever selected device matches target or messages tab is active
             if ((selDev && selDev._id.toLowerCase() === targetDevId) || curTab === 'messages') {
-                const mListEl = document.getElementById('mList');
-                const q = (document.getElementById('mSearch')?.value||'').toLowerCase();
-                const isFiltered = q || (mf !== 'all');
-                if (mListEl && !isFiltered) {
-                    const badge = document.querySelector('.mhb-badge');
-                    if (badge && cache[targetDevId]) badge.textContent = `${cache[targetDevId].length} MSGS`;
-                    if (mListEl.querySelector('.empty-state')) mListEl.innerHTML = '';
-                    mListEl.insertAdjacentHTML('afterbegin', renderSingleMsgHtml(formattedMsg));
-                } else {
-                    renderMList();
-                }
+                renderMList();
             }
         });
         // --- ANALYTICS & TELEMETRY ENGINE ---
