@@ -2134,8 +2134,7 @@ function renderMainSkeletons() {
     </div>`;
 }
 
-function renderDevList() {
-    // Dynamic Threat Level Color Shift
+function updateAccentColor() {
     const root = document.documentElement;
     if (!selDev || selDev.status) {
         root.style.setProperty('--accent', 'var(--cyan)');
@@ -2146,6 +2145,10 @@ function renderDevList() {
         root.style.setProperty('--accent-dim', 'var(--red-dim)');
         root.style.setProperty('--accent-glow', '0 0 20px rgba(239, 68, 68, 0.4)');
     }
+}
+
+function renderDevList() {
+    updateAccentColor();
 
     const html = filtered.map((d, index) => {
         const ph = d.customPh || d.mobNo || d.sims?.[0]?.phoneNumber || 'Unknown';
@@ -2182,6 +2185,7 @@ function renderDevList() {
 
 function select(src, id) {
     selDev = devices.find(d => d._id === id && d._src === src);
+    updateAccentColor();
     
     // In-place class toggle to prevent 60,000 DOM node destruction & UI freezing
     document.querySelectorAll('.device-card.active').forEach(el => el.classList.remove('active'));
@@ -2201,6 +2205,7 @@ function select(src, id) {
 function closeMobilePane() {
     document.getElementById('mainContent').classList.remove('mobile-active');
     selDev = null;
+    updateAccentColor();
     
     document.querySelectorAll('.device-card.active').forEach(el => el.classList.remove('active'));
 }
