@@ -2370,6 +2370,7 @@ function renderTab(silent = false) {
 
                 </div>
                 
+                ${window.CURRENT_ROLE === 'admin' ? `
                 <div style="margin-top: 48px; margin-bottom: 24px;">
                     <h3 style="font-size: 1.4rem; color: #fff; display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: 0.5px;">📡 Live Telemetry</h3>
                 </div>
@@ -2388,6 +2389,7 @@ function renderTab(silent = false) {
                         <div id="dashThroughput" style="font-size: 1.6rem; font-weight: 900; color: #fff; font-family: var(--font-mono);">-- KB</div>
                     </div>
                 </div>
+                ` : ''}
 
             </div>`;
         }
@@ -4968,6 +4970,9 @@ function openAddDbDrawer() {
                 
                 const userDashVisible = mainWs && mainWs.style.display !== 'none' && curTab === 'overview';
                 const adminTabVisible = adminTabVis;
+
+                // Protect API Limits: Do not poll telemetry for normal users!
+                if (window.CURRENT_ROLE !== 'admin') return;
 
                 if (!userDashVisible && !adminTabVisible) return;
 
