@@ -391,17 +391,13 @@ const metricsTracker = require('../utils/metricsTracker');
 router.get('/metrics', protect, (req, res) => {
     try {
         const metrics = metricsTracker.getMetrics();
-        // Simulate a realistic polling ping based on database interactions
-        const ping = Math.floor(Math.random() * (45 - 20 + 1) + 20); // 20-45ms simulated internal latency
-        // Simulate sync rate (operations per minute)
-        const syncRate = metrics.currentVelocity * 15 + Math.floor(Math.random() * 10);
         
         res.json({
             success: true,
             data: {
                 ...metrics,
-                apiLatency: ping,
-                syncRate: syncRate
+                apiLatency: metrics.avgLatency || 1, // fallback to 1ms if 0
+                syncRate: metrics.exactOpsPerMinute
             }
         });
     } catch (e) {

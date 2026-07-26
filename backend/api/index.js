@@ -20,7 +20,17 @@ app.use('/api', (req, res, next) => {
 // Analytics Tracker
 const metricsTracker = require('../utils/metricsTracker');
 app.use('/api', (req, res, next) => {
+    const start = process.hrtime();
     metricsTracker.recordRequest(req);
+    
+    res.on('finish', () => {
+        const diff = process.hrtime(start);
+        const ms = Math.round((diff[0] * 1e9 + diff[1]) / 1e6);
+        if (metricsTracker.recordLatency) {
+            metricsTracker.recordLatency(ms);
+        }
+    });
+    
     next();
 });
 
