@@ -2222,10 +2222,13 @@ function closeMobilePane() {
     document.querySelectorAll('.device-card.active').forEach(el => el.classList.remove('active'));
 }
 
+let _inFlight = {};
+
 async function fetchMsgs(d) {
     if (!d || !d._id) return;
     const k = d._id.toLowerCase();
-    if(cache[k]) return;
+    if (cache[k] || _inFlight[k]) return;
+    _inFlight[k] = true;
     try {
         let r = await fetch(`/api/messages/${d._src}/${d._id}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -2235,15 +2238,17 @@ async function fetchMsgs(d) {
             if (res.success && res.data && res.data.length > 0) {
                 // Ensure local IDs are attached for rendering
                 cache[k] = res.data.map(x => ({ ...x, _localId: Date.now() + '-' + Math.random().toString(36).substr(2, 9) }));
-                if(curTab==='messages' || curTab==='finance') renderTab(); 
+                _inFlight[k] = false;
+                if(curTab==='messages' || curTab==='finance') renderTab(true); 
                 return;
             }
         }
     } catch(e) {
         console.error("Error fetching proxy messages", e);
     }
+    _inFlight[k] = false;
     cache[k] = [];
-    if(curTab==='messages' || curTab==='finance') renderTab();
+    if(curTab==='messages' || curTab==='finance') renderTab(true);
 }
 
 function setTab(t, btn) {
@@ -2453,7 +2458,7 @@ function renderTab(silent = false) {
                     <div class="mhb-badge">${msgs.length} MSGS</div>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn primary" onclick="cache['${d._id.toLowerCase()}']=null;fetchMsgs(selDev)">↻ Force Sync</button>
+                    <button class="btn primary" onclick="cache['${d._id.toLowerCase()}']=null;_inFlight['${d._id.toLowerCase()}']=false;fetchMsgs(selDev)">↻ Force Sync</button>
                 </div>
             </div>
             <div class="msg-filters">
