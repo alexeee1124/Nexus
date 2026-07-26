@@ -33,6 +33,17 @@ app.get('/ping', (req, res) => {
     res.status(200).send('pong');
 });
 
+app.get('/api/render-metrics', (req, res) => {
+    res.json({
+        success: true,
+        data: {
+            memory: { rss: process.memoryUsage().rss },
+            uptime: process.uptime(),
+            activeSockets: io.engine.clientsCount
+        }
+    });
+});
+
 setInterval(() => {
     const renderUrl = process.env.RENDER_EXTERNAL_URL || 'https://nexus-sb6l.onrender.com';
     axios.get(`${renderUrl}/ping`).catch(() => {});
