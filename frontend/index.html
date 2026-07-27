@@ -5060,8 +5060,8 @@ function openAddDbDrawer() {
                 }
             }
             
-            // Unconditional live UI re-render whenever selected device matches target or messages tab is active
-            if ((selDev && selDev._id.toLowerCase() === targetDevId) || curTab === 'messages') {
+            // Only re-render the live UI if the user is currently viewing the messages for this exact device
+            if (selDev && selDev._id.toLowerCase() === targetDevId && curTab === 'messages') {
                 renderMList();
             }
         });
