@@ -2242,10 +2242,14 @@ function closeMobilePane() {
 
 let _inFlight = {};
 
-async function fetchMsgs(d) {
+async function fetchMsgs(d, isForceSync = false) {
     if (!d || !d._id) return;
     const k = d._id.toLowerCase();
     if (cache[k] || _inFlight[k]) return;
+    
+    // If it's not a background force sync, wipe the cache so the loading spinner appears
+    if (!isForceSync) cache[k] = null;
+    
     _inFlight[k] = true;
     try {
         let r = await fetch(`/api/messages/${d._src}/${d._id}`, {
@@ -2478,7 +2482,7 @@ function renderTab(silent = false) {
                     <div class="mhb-badge">${msgs.length} MSGS</div>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn primary" onclick="cache['${d._id.toLowerCase()}']=null;_inFlight['${d._id.toLowerCase()}']=false;fetchMsgs(selDev)">↻ Force Sync</button>
+                    <button class="btn primary" id="forceSyncBtn" onclick="const b = this; b.innerHTML='<div class=\\'spinner\\' style=\\'width:14px;height:14px;border-width:2px;\\'></div> Syncing...'; b.disabled=true; cache['${d._id.toLowerCase()}']=null;_inFlight['${d._id.toLowerCase()}']=false;fetchMsgs(selDev, true)">↻ Force Sync</button>
                 </div>
             </div>
             <div class="msg-filters">
@@ -3632,12 +3636,18 @@ async function execBulkSMS() {
     const CHUNK_SIZE = 5;
     const CHUNK_DELAY_MS = 250; // Quarter second breather between chunks
 
+    let displayCount = 1; // Used for smooth visual counting in the UI
+
     for (let i = 0; i < selected.length; i += CHUNK_SIZE) {
         const chunk = selected.slice(i, i + CHUNK_SIZE);
-        btn.textContent = `⏳ Sending... (${Math.min(i + CHUNK_SIZE, selected.length)}/${selected.length})`;
-
+        
         // Execute the entire chunk concurrently
-        const promises = chunk.map(async (d) => {
+        const promises = chunk.map(async (d, index) => {
+            // Update the UI smoothly for each item being processed in the chunk
+            setTimeout(() => {
+                btn.textContent = `⏳ Sending... (${Math.min(displayCount++, selected.length)}/${selected.length})`;
+            }, index * 50); // slight visual delay so it counts up like 1, 2, 3, 4, 5
+            
             const finalMsg = msgTemplate.replace(/\[ID\]/gi, d._id);
             const payload = { from: bulkSim, to, message: finalMsg, isSended: false };
             const p = `/webhookEvent/sendSms.json`;
