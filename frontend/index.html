@@ -3897,8 +3897,8 @@ function openDupScanner() {
 // ═══ BACKGROUND AUTO-REFRESH ═══
 // Automatically pull live dashboard data every 10 seconds silently
 setInterval(() => {
-    // Only run if there isn't already an active manual fetch happening
-    if (document.getElementById('loader').classList.contains('hidden')) {
+    // Only run if there isn't already an active manual fetch happening AND user is authenticated
+    if (MASTER_KEY && document.getElementById('loader').classList.contains('hidden')) {
         fetchAll(true); // true = silent background mode
     }
 }, 10000);
