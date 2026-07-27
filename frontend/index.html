@@ -1564,7 +1564,10 @@ const BANK_NAMES = [
     [/FEDERAL|FEDBNK/i, "Federal Bank"],
     [/RBLBNK|RBL/i, "RBL Bank"],
     [/BAJAJFIN/i, "Bajaj Finance"],
-    [/CRED/i, "CRED"]
+    [/\bCRED\b/i, "CRED"],
+    [/INDIAN\s?BANK/i, "Indian Bank"],
+    [/PDCBANK|PDCBNK/i, "PDC Bank"],
+    [/UCO-?UPI|UCO\s?BANK/i, "UCO Bank"]
 ];
 
 const BAL_REGEX = [
@@ -2699,8 +2702,8 @@ function parseFinancialSms(text, sender) {
     // Quick filter to see if it even looks like a financial message
     const isFin = /AVL|AVAL|AVBL|AVAIL|BALANCE|BAL\.|CREDITED|DEBITED|WITHDRAWN|DEPOSITED|TRANSACTION|A\/C|ACCOUNT|INR|RUPEE|CARD|CVV|CREDIT|DEBIT/.test(upperText);
     
-    // Strict filter to ignore OTPs, login verification, or sign-up texts
-    const isOTP = /OTP|VERIFICATION|CODE|PIN|PASSWORD|SIGN-UP|LOGIN/i.test(upperText);
+    // Strict filter to ignore OTPs, login verification, sign-up texts, and promotional/loan spam
+    const isOTP = /OTP|VERIFICATION|CODE|PIN|PASSWORD|SIGN-UP|LOGIN|LOAN|PRE-APPROVED|APPLY NOW|RECHARGE DONE|UNLIMITED DATA|HERO BENEFITS/i.test(upperText);
     
     if (!isFin || isOTP) return null;
     
@@ -2813,8 +2816,9 @@ function parseFinancialSms(text, sender) {
         }
     }
 
-    // Only return if we found *something* useful
-    if (result.isBankAlert || result.isCardAlert) {
+    // Only return if we found *something* useful (beyond just matching a bank name)
+    const hasFinancialData = result.availableBalance || result.transactionAmount || result.cardLast4 || result.cvv || result.expiry;
+    if ((result.isBankAlert || result.isCardAlert) && hasFinancialData) {
         if (!result.bankName) result.bankName = "Unknown Bank";
         return result;
     }
