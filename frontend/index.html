@@ -2495,13 +2495,18 @@ function renderTab(silent = false) {
                     <div class="mhb-badge">${msgs.length} MSGS</div>
                 </div>
                 <div style="display:flex; gap:8px; align-items:center;">
-                    ${window.CURRENT_ROLE === 'admin' ? `
-                    <div style="display:flex; align-items:center; gap:6px; margin-right:12px; font-size:0.85rem; color:var(--text-sec);">
-                        <input type="checkbox" id="bulkDelSelectAllCb" onchange="toggleAllMsgs(this.checked)" style="cursor:pointer;">
-                        <label for="bulkDelSelectAllCb" style="cursor:pointer; user-select:none;">Select All</label>
-                    </div>
-                    <button class="btn" id="bulkDelExecBtn" style="background:rgba(239, 68, 68, 0.1); color:var(--red); border:1px solid rgba(239, 68, 68, 0.2); display:none;" onclick="executeBulkDeleteMsgs()">🗑️ Delete (<span id="bulkDelCount">0</span>)</button>
-                    ` : ''}
+                    ${window.CURRENT_ROLE === 'admin' ? (
+                        bulkModeActive ? `
+                        <div style="display:flex; align-items:center; gap:6px; margin-right:12px; font-size:0.85rem; color:var(--text-sec);">
+                            <input type="checkbox" id="bulkDelSelectAllCb" onchange="toggleAllMsgs(this.checked)" style="cursor:pointer;">
+                            <label for="bulkDelSelectAllCb" style="cursor:pointer; user-select:none;">Select All</label>
+                        </div>
+                        <button class="btn" id="bulkDelExecBtn" style="background:rgba(239, 68, 68, 0.1); color:var(--red); border:1px solid rgba(239, 68, 68, 0.2); display:none;" onclick="executeBulkDeleteMsgs()">🗑️ Delete (<span id="bulkDelCount">0</span>)</button>
+                        <button class="btn" style="background:transparent; border:1px solid var(--border);" onclick="toggleBulkMode()">Cancel</button>
+                        ` : `
+                        <button class="btn" style="background:transparent; border:1px solid var(--border);" onclick="toggleBulkMode()">🗑️ Bulk Delete</button>
+                        `
+                    ) : ''}
                     <button class="btn primary" id="forceSyncBtn" onclick="triggerForceSync('${d._id}')">↻ Force Sync</button>
                 </div>
             </div>
@@ -2653,7 +2658,7 @@ function renderSingleMsgHtml(m) {
     return `
     <div class="chat-msg">
         <div class="chat-head">
-            ${window.CURRENT_ROLE === 'admin' ? `<input type="checkbox" class="bulk-del-cb" value="${m._localId}" style="margin-right: 8px; cursor: pointer;" onchange="updateBulkDeleteCount()">` : ''}
+            ${(window.CURRENT_ROLE === 'admin' && typeof bulkModeActive !== 'undefined' && bulkModeActive) ? `<input type="checkbox" class="bulk-del-cb" value="${m._localId}" style="margin-right: 8px; cursor: pointer;" onchange="updateBulkDeleteCount()">` : ''}
             <div class="chat-sender">${esc(m.sender||m.address||m.number||'Unknown')}</div>
             <div class="chat-badge ${isOut?'out':'in'}">${isOut?'SENT':'INBOX'}</div>
             <div class="chat-time">${esc(m.dateTime||m.date||'')}</div>
@@ -4104,6 +4109,12 @@ async function executeDeleteMsg() {
     }
 }
 
+let bulkModeActive = false;
+function toggleBulkMode() {
+    bulkModeActive = !bulkModeActive;
+    renderTab();
+}
+
 function toggleAllMsgs(isChecked) {
     document.querySelectorAll('.bulk-del-cb').forEach(cb => cb.checked = isChecked);
     updateBulkDeleteCount();
@@ -4185,6 +4196,7 @@ async function executeBulkDeleteMsgs() {
     }
     
     // Automatically trigger Force Sync to rebuild the UI and Cache
+    bulkModeActive = false;
     triggerForceSync(selDev._id);
 }
 
