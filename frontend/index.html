@@ -3728,12 +3728,12 @@ function startDiscoveryScan(receiverId, selectedDevices) {
     const rDev = devices.find(d => d._id === receiverId);
     if (!rDev) return customAlert('Discovery Failed', `Receiver device ${receiverId} not found in your connected databases.`, 'error');
     
-    const durationMs = 30 * 1000; // 30 seconds
+    const durationMs = 60 * 1000; // 60 seconds
     const intervalMs = 10 * 1000; // 10 seconds
     const startTime = Date.now();
     let matchesFound = 0;
     
-    customAlert('Scanner Armed', `Auto-Discovery Scanner is running in the background for 30 seconds.\n\nMonitoring receiver: ${receiverId}\nLooking for: ${selectedDevices.length} devices.`, 'success');
+    customAlert('Scanner Armed', `Auto-Discovery Scanner is running in the background for 60 seconds.\n\nMonitoring receiver: ${receiverId}\nLooking for: ${selectedDevices.length} devices.`, 'success');
     
     const scanInterval = setInterval(async () => {
         if (Date.now() - startTime > durationMs) {
