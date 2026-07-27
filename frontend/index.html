@@ -2273,12 +2273,16 @@ async function fetchMsgs(d, isForceSync = false) {
     if(curTab==='messages' || curTab==='finance') renderTab(true);
 }
 
-function triggerForceSync(btn, deviceId) {
-    btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div> Syncing...';
-    btn.disabled = true;
+function triggerForceSync(deviceId) {
     const k = deviceId.toLowerCase();
+    // Wipe the cache so renderTab knows to show the loading screen
     cache[k] = null;
     _inFlight[k] = false;
+    
+    // Immediately re-render the tab. Since cache is null, it will show the 'Extracting Messages...' spinner
+    renderTab();
+    
+    // Fire off the background fetch. Once it finishes, it will call renderTab(true) to show the results
     fetchMsgs(selDev, true);
 }
 
@@ -2491,7 +2495,7 @@ function renderTab(silent = false) {
                     <div class="mhb-badge">${msgs.length} MSGS</div>
                 </div>
                 <div style="display:flex; gap:8px;">
-                    <button class="btn primary" id="forceSyncBtn" onclick="triggerForceSync(this, '${d._id}')">↻ Force Sync</button>
+                    <button class="btn primary" id="forceSyncBtn" onclick="triggerForceSync('${d._id}')">↻ Force Sync</button>
                 </div>
             </div>
             <div class="msg-filters">
