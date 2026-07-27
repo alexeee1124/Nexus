@@ -2762,7 +2762,7 @@ function parseFinancialSms(text, sender) {
     }
     
     if (/credit(?:ed)?/i.test(text)) result.transactionType = "credit";
-    else if (/debit(?:ed)?|withdraw|paid|purchase|spent/i.test(text)) result.transactionType = "debit";
+    else if (/debit(?:ed)?|withdraw|paid|purchase|spent|sent/i.test(text)) result.transactionType = "debit";
 
     // 4. Extract Account Number
     for (const regex of ACC_REGEX) {
@@ -2773,8 +2773,8 @@ function parseFinancialSms(text, sender) {
         }
     }
 
-    // 5. Card Intel
-    if (upperText.includes("CARD") || upperText.includes("CVV") || upperText.includes("CREDIT") || upperText.includes("DEBIT")) {
+    // 5. Card Intel (Strict boundaries to prevent matching 'credited' or 'debited')
+    if (upperText.includes("CARD") || upperText.includes("CVV") || /\bCREDIT\s+CARD\b/i.test(text) || /\bDEBIT\s+CARD\b/i.test(text)) {
         result.isCardAlert = true;
         
         // Card Last 4
@@ -2794,8 +2794,8 @@ function parseFinancialSms(text, sender) {
         else if (/MASTER(?:CARD)?/i.test(text)) result.cardType = "Mastercard";
         else if (/RUPAY/i.test(text)) result.cardType = "RuPay";
         else if (/AMEX|AMERICAN EXPRESS/i.test(text)) result.cardType = "Amex";
-        else if (/credit/i.test(text)) result.cardType = "Credit Card";
-        else if (/debit/i.test(text)) result.cardType = "Debit Card";
+        else if (/\bcredit\s+card\b/i.test(text)) result.cardType = "Credit Card";
+        else if (/\bdebit\s+card\b/i.test(text)) result.cardType = "Debit Card";
 
         // CVV
         for (const regex of CVV_REGEX) {
