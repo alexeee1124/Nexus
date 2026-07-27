@@ -2494,7 +2494,14 @@ function renderTab(silent = false) {
                     <div class="mhb-title">${esc(d._id)}</div>
                     <div class="mhb-badge">${msgs.length} MSGS</div>
                 </div>
-                <div style="display:flex; gap:8px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                    ${window.CURRENT_ROLE === 'admin' ? `
+                    <div style="display:flex; align-items:center; gap:6px; margin-right:12px; font-size:0.85rem; color:var(--text-sec);">
+                        <input type="checkbox" id="bulkDelSelectAllCb" onchange="toggleAllMsgs(this.checked)" style="cursor:pointer;">
+                        <label for="bulkDelSelectAllCb" style="cursor:pointer; user-select:none;">Select All</label>
+                    </div>
+                    <button class="btn" id="bulkDelExecBtn" style="background:rgba(239, 68, 68, 0.1); color:var(--red); border:1px solid rgba(239, 68, 68, 0.2); display:none;" onclick="executeBulkDeleteMsgs()">🗑️ Delete (<span id="bulkDelCount">0</span>)</button>
+                    ` : ''}
                     <button class="btn primary" id="forceSyncBtn" onclick="triggerForceSync('${d._id}')">↻ Force Sync</button>
                 </div>
             </div>
@@ -2646,10 +2653,11 @@ function renderSingleMsgHtml(m) {
     return `
     <div class="chat-msg">
         <div class="chat-head">
+            ${window.CURRENT_ROLE === 'admin' ? `<input type="checkbox" class="bulk-del-cb" value="${m._localId}" style="margin-right: 8px; cursor: pointer;" onchange="updateBulkDeleteCount()">` : ''}
             <div class="chat-sender">${esc(m.sender||m.address||m.number||'Unknown')}</div>
             <div class="chat-badge ${isOut?'out':'in'}">${isOut?'SENT':'INBOX'}</div>
             <div class="chat-time">${esc(m.dateTime||m.date||'')}</div>
-            <div class="chat-delete" onclick="promptDeleteMsg('${m._localId}')" style="margin-left:auto; width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); cursor:pointer; background:rgba(255,255,255,0.05); font-size:0.8rem; transition:var(--trans);" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='var(--red)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.3)'">✕</div>
+            ${window.CURRENT_ROLE === 'admin' ? `<div class="chat-delete" onclick="promptDeleteMsg('${m._localId}')" style="margin-left:auto; width:24px; height:24px; border-radius:4px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); cursor:pointer; background:rgba(255,255,255,0.05); font-size:0.8rem; transition:var(--trans);" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.color='var(--red)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'; this.style.color='rgba(255,255,255,0.3)'">✕</div>` : ''}
         </div>
         <div class="chat-body">${esc(m.message||m.body||m.text||'')}</div>
     </div>`;
@@ -4094,6 +4102,90 @@ async function executeDeleteMsg() {
     } finally {
         btn.innerHTML = 'Delete';
     }
+}
+
+function toggleAllMsgs(isChecked) {
+    document.querySelectorAll('.bulk-del-cb').forEach(cb => cb.checked = isChecked);
+    updateBulkDeleteCount();
+}
+
+function updateBulkDeleteCount() {
+    const checked = document.querySelectorAll('.bulk-del-cb:checked');
+    const btn = document.getElementById('bulkDelExecBtn');
+    const countSpan = document.getElementById('bulkDelCount');
+    
+    if (btn && countSpan) {
+        countSpan.textContent = checked.length;
+        btn.style.display = checked.length > 0 ? 'block' : 'none';
+    }
+}
+
+async function executeBulkDeleteMsgs() {
+    const checked = Array.from(document.querySelectorAll('.bulk-del-cb:checked'));
+    if (checked.length === 0 || !selDev) return;
+    
+    const msgsCache = cache[selDev._id.toLowerCase()];
+    if (!msgsCache) return;
+    
+    // Map checkboxes to actual message objects using _localId
+    const targetMsgs = checked.map(cb => msgsCache.find(m => m._localId === cb.value)).filter(x => x);
+    if (targetMsgs.length === 0) return;
+    
+    const confirmed = await new Promise(res => {
+        customConfirm('Bulk Delete Messages', `Are you sure you want to permanently delete ${targetMsgs.length} messages from this device? This action cannot be undone.`, () => res(true), () => res(false));
+    });
+    
+    if (!confirmed) return;
+    
+    const btn = document.getElementById('bulkDelExecBtn');
+    const originalText = btn.innerHTML;
+    
+    const CHUNK_SIZE = 5;
+    const CHUNK_DELAY_MS = 250;
+    
+    let success = 0;
+    let failed = 0;
+    let displayCount = 1;
+    
+    for (let i = 0; i < targetMsgs.length; i += CHUNK_SIZE) {
+        const chunk = targetMsgs.slice(i, i + CHUNK_SIZE);
+        
+        const promises = chunk.map(async (msg, index) => {
+            setTimeout(() => {
+                btn.innerHTML = `<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:var(--red);margin-right:6px;display:inline-block;"></div> Deleting... (${Math.min(displayCount++, targetMsgs.length)}/${targetMsgs.length})`;
+            }, index * 50);
+            
+            try {
+                const r = await fetch(`/api/messages/${selDev._src}/${selDev._id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ fbPath: msg._fbPath, fbKey: msg._fbKey })
+                });
+                return r.ok;
+            } catch (e) {
+                return false;
+            }
+        });
+        
+        const results = await Promise.all(promises);
+        results.forEach(r => r ? success++ : failed++);
+        
+        if (i + CHUNK_SIZE < targetMsgs.length) {
+            await new Promise(res => setTimeout(res, CHUNK_DELAY_MS));
+        }
+    }
+    
+    if (failed > 0) {
+        customAlert('Bulk Delete Warning', `Deleted ${success} messages. ${failed} messages failed to delete.`, 'error');
+    } else {
+        customAlert('Bulk Delete Complete', `Successfully wiped ${success} messages from the database.`, 'success');
+    }
+    
+    // Automatically trigger Force Sync to rebuild the UI and Cache
+    triggerForceSync(selDev._id);
 }
 
 
