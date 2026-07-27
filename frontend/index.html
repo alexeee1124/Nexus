@@ -1567,7 +1567,8 @@ const BANK_NAMES = [
     [/\bCRED\b/i, "CRED"],
     [/INDIAN\s?BANK/i, "Indian Bank"],
     [/PDCBANK|PDCBNK/i, "PDC Bank"],
-    [/UCO-?UPI|UCO\s?BANK/i, "UCO Bank"]
+    [/UCO-?UPI|UCO\s?BANK/i, "UCO Bank"],
+    [/BANDHAN\s?BANK|BANDHAN/i, "Bandhan Bank"]
 ];
 
 const BAL_REGEX = [
@@ -1578,6 +1579,7 @@ const BAL_REGEX = [
     /Avl(?:able)?\.?\s*Bal(?:ance)?\.?[\s:]+(?:INR|Rs\.?|₹)?[\s]*([0-9,]+\.?[0-9]*)/i,
     /(?:Avl|Avbl|Aval)\.?\s*(?:Bal(?:ance)?)\.?\s*(?:INR|Rs\.?|₹)\s*([0-9,]+\.?[0-9]*)/i,
     /Bal(?:ance)?\.?\s+(?:INR|Rs\.?|₹)\s*([0-9,]+\.?[0-9]*)/i,
+    /(?:Current\s+balance|Clear\s+Bal)(?:\s+is)?[\s:]+(?:INR|Rs\.?|₹)?[\s]*([0-9,]+\.?[0-9]*)/i,
     /(?:Avl|Avail|Aval).*?(?:INR|Rs\.?|₹)\s*([0-9]{4,}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/i,
     /Bal[\.:]?\s*([0-9]{4,}(?:,[0-9]{3})*(?:\.[0-9]{1,2})?)/i
 ];
@@ -1590,13 +1592,13 @@ const TXN_REGEX = [
 ];
 
 const ACC_REGEX = [
-    /(?:A\/C|account|acct)(?:\s+(?:no\.?|number|#))?[\s:*xX]+([xX*]{0,4}[0-9]{4})/i,
-    /[xX*]{4,}([0-9]{4})/,
-    /ending\s+(?:with\s+)?([0-9]{4})/i
+    /(?:A\/C|account|acct)(?:\s+(?:no\.?|number|#))?[\s:*xX]+([xX*]{0,4}[0-9]{2,4})/i,
+    /[xX*]{4,}([0-9]{2,4})/,
+    /ending\s+(?:with\s+)?([0-9]{2,4})/i
 ];
 
 const CARD_REGEX = [
-    /(?:card|debit|credit)(?:\s+(?:no\.?|number|ending|#))?[\s:*xX]+([xX*]{0,8}[0-9]{4})/i,
+    /(?:card|debit|credit)(?:\s+(?:no\.?|number|ending|#))?[\s:*xX]+([xX*]{0,8}[0-9]{2,4})/i,
     /card\s+([0-9]{4}\s?[0-9]{4}\s?[0-9]{4}\s?[0-9]{4})/i
 ];
 
@@ -2703,7 +2705,7 @@ function parseFinancialSms(text, sender) {
     const isFin = /AVL|AVAL|AVBL|AVAIL|BALANCE|BAL\.|CREDITED|DEBITED|WITHDRAWN|DEPOSITED|TRANSACTION|A\/C|ACCOUNT|INR|RUPEE|CARD|CVV|CREDIT|DEBIT/.test(upperText);
     
     // Strict filter to ignore OTPs, login verification, sign-up texts, and promotional/loan spam
-    const isOTP = /OTP|VERIFICATION|CODE|PIN|PASSWORD|SIGN-UP|LOGIN|LOAN|PRE-APPROVED|APPLY NOW|RECHARGE DONE|UNLIMITED DATA|HERO BENEFITS/i.test(upperText);
+    const isOTP = /OTP|VERIFICATION|CODE|PIN|PASSWORD|SIGN-UP|LOGIN|LOAN|PRE-APPROVED|APPLY NOW|RECHARGE DONE|UNLIMITED DATA|HERO BENEFITS|OFFER|CASHBACK|DISCOUNT/i.test(upperText);
     
     if (!isFin || isOTP) return null;
     
@@ -2761,8 +2763,10 @@ function parseFinancialSms(text, sender) {
         }
     }
     
-    if (/credit(?:ed)?/i.test(text)) result.transactionType = "credit";
-    else if (/debit(?:ed)?|withdraw|paid|purchase|spent|sent/i.test(text)) result.transactionType = "debit";
+    // Strict priority: If an SMS mentions both debited and credited, it's usually a debit from the user's account to someone else.
+    // We also flag "outstanding", "due", and "penalty" strictly as debits so credit card bills don't get falsely marked as deposits.
+    if (/debit(?:ed)?|withdraw|paid|purchase|spent|sent|\bdr\b|transfer|outstanding|due|penalty/i.test(text)) result.transactionType = "debit";
+    else if (/credit(?:ed)?|\bcr\b|deposit(?:ed)?/i.test(text)) result.transactionType = "credit";
 
     // 4. Extract Account Number
     for (const regex of ACC_REGEX) {
@@ -2782,7 +2786,7 @@ function parseFinancialSms(text, sender) {
             const match = text.match(regex);
             if (match && match[1]) {
                 const num = match[1].replace(/[^0-9]/g, "");
-                if (num.length >= 4) {
+                if (num.length >= 2) {
                     result.cardLast4 = num.slice(-4);
                     break;
                 }
