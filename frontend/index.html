@@ -756,13 +756,19 @@
 </head>
 <body>
 
-    <div class="loading" id="loader" style="background: rgba(6,9,19,0.98); backdrop-filter: blur(20px); flex-direction: column; gap: 24px;">
-        <div style="position: relative; width: 80px; height: 80px; display: flex; justify-content: center; align-items: center;">
-            <div class="spinner" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0;"></div>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="z-index: 10; filter: drop-shadow(0 0 10px rgba(0,240,255,0.5));"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+    <div class="loading" id="loader" style="background: radial-gradient(circle at center, rgba(6,9,19,0.95) 0%, rgba(2,3,7,1) 100%); backdrop-filter: blur(30px); flex-direction: column; gap: 32px; z-index: 999999;">
+        <div style="position: relative; width: 100px; height: 100px; display: flex; justify-content: center; align-items: center;">
+            <!-- Outer rotating ring -->
+            <div style="width: 100%; height: 100%; position: absolute; border-radius: 50%; border: 2px solid transparent; border-top-color: var(--cyan); border-bottom-color: var(--cyan); animation: spin 2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite; opacity: 0.7; box-shadow: 0 0 20px rgba(0,240,255,0.2);"></div>
+            <!-- Inner reverse rotating dashed ring -->
+            <div style="width: 70%; height: 70%; position: absolute; border-radius: 50%; border: 2px dashed rgba(0,240,255,0.4); border-left-color: var(--cyan); animation: spin 3s linear infinite reverse;"></div>
+            <!-- Core Icon -->
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="z-index: 10; filter: drop-shadow(0 0 15px rgba(0,240,255,0.8)); animation: pulse 2s infinite;"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
         </div>
-        <div style="font-family:var(--font-mono); color:var(--cyan); font-weight:700; font-size:1.2rem; letter-spacing: 2px; text-transform: uppercase;" id="loadText">Establishing Uplink...</div>
-        <div style="color:var(--text-muted); font-size: 0.85rem; letter-spacing: 1px;" id="loadSubtext">Connecting to Secure Nexus</div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <div style="font-family:var(--font-mono); color:#fff; font-weight:800; font-size:1.4rem; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 0 20px rgba(255,255,255,0.4);" id="loadText">Establishing Uplink...</div>
+            <div style="color:var(--cyan); font-size: 0.9rem; letter-spacing: 2px; font-family:var(--font-mono); text-transform: uppercase; opacity: 0.8; animation: pulse 1.5s infinite;" id="loadSubtext">Connecting to Secure Nexus</div>
+        </div>
     </div>
 
     <!-- Session Invalidation Modal -->
@@ -1755,7 +1761,7 @@ function lockVault() {
 async function bootNexus() {
     document.getElementById('loader').classList.remove('hidden');
     document.getElementById('loadText').textContent = 'Authenticating Uplink...';
-    document.getElementById('loadSubtext').textContent = 'Connecting to Proxy Backend';
+    document.getElementById('loadSubtext').textContent = 'Connecting to Secure Nexus Core';
     
     try {
         // Fetch identity to restore permissions on page reload if token exists
@@ -3252,7 +3258,7 @@ async function addDb() {
         
     } catch (e) {
         resetAddBtn(btn);
-        return customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
+        return customAlert('API Error', 'Failed to communicate with Secure Nexus Core.', 'error');
     }
 }
 
@@ -3308,7 +3314,7 @@ function removeDb(idx) {
                 customAlert('Delete Failed', data.message || 'Could not delete database.', 'error');
             }
         } catch(e) {
-            customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
+            customAlert('API Error', 'Failed to communicate with Secure Nexus Core.', 'error');
         }
     });
 }
@@ -3362,7 +3368,7 @@ async function createUser() {
             customAlert('Creation Failed', data.message || 'Could not create operator account.', 'error');
         }
     } catch (e) {
-        customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
+        customAlert('API Error', 'Failed to communicate with Secure Nexus Core.', 'error');
     }
     
     btn.disabled = false;
@@ -3388,7 +3394,7 @@ async function deleteDb(key) {
                 customAlert('Disconnection Failed', data.message || 'Could not disconnect database.', 'error');
             }
         } catch(e) {
-            customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
+            customAlert('API Error', 'Failed to communicate with Secure Nexus Core.', 'error');
         }
     });
 }
@@ -3409,7 +3415,7 @@ async function deleteUser(id, username) {
                 customAlert('Revocation Failed', data.message || 'Could not revoke access.', 'error');
             }
         } catch(e) {
-            customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
+            customAlert('API Error', 'Failed to communicate with Secure Nexus Core.', 'error');
         }
     });
 }
@@ -4757,7 +4763,7 @@ async function saveOperator() {
             customAlert('Update Failed', data.message || 'Error updating operator.', 'error');
         }
     } catch (e) {
-        customAlert('API Error', 'Failed to communicate with proxy backend.', 'error');
+        customAlert('API Error', 'Failed to communicate with Secure Nexus Core.', 'error');
     }
     
     btn.disabled = false;
