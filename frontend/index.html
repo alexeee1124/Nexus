@@ -1676,6 +1676,7 @@ if (inviteCode) {
     } catch (e) {
         console.error("Invite parsing failed", e);
         if (!MASTER_KEY) {
+            document.getElementById('loader').classList.add('hidden');
             document.getElementById('pwdModal').classList.add('active');
         } else {
             bootNexus();
@@ -1683,6 +1684,7 @@ if (inviteCode) {
     }
 } else if (!MASTER_KEY) {
     const authErr = localStorage.getItem('authError');
+    document.getElementById('loader').classList.add('hidden');
     if (authErr) {
         document.getElementById('authKickMsg').textContent = authErr;
         let emoji = '⚠️';
