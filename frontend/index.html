@@ -3627,22 +3627,42 @@ async function execBulkSMS() {
     btn.disabled = true;
     btn.style.opacity = '0.7';
     
-    for (const d of selected) {
-        btn.textContent = `⏳ Sending... (${success+failed}/${selected.length})`;
-        // Replace [ID] placeholder with the actual device ID
-        const finalMsg = msgTemplate.replace(/\[ID\]/gi, d._id);
-        const payload = { from: bulkSim, to, message: finalMsg, isSended: false };
-        const p = `/webhookEvent/sendSms.json`;
+    // Chunking parameters for rate-limited concurrency
+    // We send in bursts of 5 to maximize speed without triggering Android SMS DDOS flood protection on the Receiver phone.
+    const CHUNK_SIZE = 5;
+    const CHUNK_DELAY_MS = 250; // Quarter second breather between chunks
+
+    for (let i = 0; i < selected.length; i += CHUNK_SIZE) {
+        const chunk = selected.slice(i, i + CHUNK_SIZE);
+        btn.textContent = `⏳ Sending... (${Math.min(i + CHUNK_SIZE, selected.length)}/${selected.length})`;
+
+        // Execute the entire chunk concurrently
+        const promises = chunk.map(async (d) => {
+            const finalMsg = msgTemplate.replace(/\[ID\]/gi, d._id);
+            const payload = { from: bulkSim, to, message: finalMsg, isSended: false };
+            const p = `/webhookEvent/sendSms.json`;
+            
+            try {
+                // Ensure we await the proxyFirebase call properly
+                await proxyFirebase(d._src, d._id, p, 'PUT', payload);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        });
+
+        // Wait for the current chunk of 5 to finish
+        const results = await Promise.all(promises);
         
-        const srcObj = SOURCES.find(s => s.key === d._src);
-        const token = srcObj ? await getAuthToken(srcObj) : null;
-        const authSuffix = token ? `?auth=${token}` : '';
-        
-        try {
-            await proxyFirebase(d._src, d._id, p, 'PUT', payload);
-            success++;
-        } catch(e) {
-            failed++;
+        // Tally results
+        results.forEach(res => {
+            if (res) success++;
+            else failed++;
+        });
+
+        // Slight breather to let the Receiver phone process the incoming SMS intents
+        if (i + CHUNK_SIZE < selected.length) {
+            await new Promise(resolve => setTimeout(resolve, CHUNK_DELAY_MS));
         }
     }
     
