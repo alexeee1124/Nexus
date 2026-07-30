@@ -2082,8 +2082,9 @@ function filterDevs() {
 
     // Auto-sort by active messages bubbling to the top
     filtered.sort((a, b) => {
-        const aTime = a.lastMessageTime || 0;
-        const bTime = b.lastMessageTime || 0;
+        const now = Date.now();
+        const aTime = Math.min(a.lastMessageTime || 0, now);
+        const bTime = Math.min(b.lastMessageTime || 0, now);
         return bTime - aTime;
     });
 

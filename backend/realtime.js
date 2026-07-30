@@ -129,7 +129,8 @@ async function setupMessageStream(src, id, db) {
                     }
                     
                     // Permanent persistence: Update lastMessageTime in Firebase so UI sorts correctly on refresh
-                    update(ref(db, `clients/${id}`), { lastMessageTime: ts }).catch(err => {
+                    const serverTs = Date.now();
+                    update(ref(db, `clients/${id}`), { lastMessageTime: serverTs }).catch(err => {
                         console.error(`[Realtime] Failed to update lastMessageTime for ${id}:`, err.message);
                     });
                 }
