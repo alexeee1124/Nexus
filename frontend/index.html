@@ -2073,7 +2073,7 @@ function filterDevs() {
         if(fEdit === 'edited' && !d.customPh) return false;
         if(fEdit === 'original' && d.customPh) return false;
         if(q) {
-            let p = d.sims?.map(s=>s?.phoneNumber).join(' ')||'';
+            let p = (Array.isArray(d.sims) ? d.sims : []).map(s=>s?.phoneNumber).join(' ')||'';
             let str = `${d._id} ${d.customPh||''} ${d.mobNo||''} ${d.modelName||''} ${d.ip_address||''} ${p}`.toLowerCase();
             if(!str.includes(q)) return false;
         }

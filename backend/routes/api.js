@@ -91,7 +91,7 @@ router.post('/databases', protect, async (req, res) => {
                         lastMessageTime: info.lastMessageTime || 0,
                         mobNo: info.mobNo || '',
                         customPh: info.customPh || '',
-                        sims: info.sims || []
+                        sims: Array.isArray(info.sims) ? info.sims : []
                     });
                     
                     stats.total++;
@@ -222,7 +222,7 @@ router.get('/devices', protect, async (req, res) => {
                             lastMessageTime: info.lastMessageTime || 0,
                             mobNo: info.mobNo || '',
                             customPh: info.customPh || '',
-                            sims: info.sims || []
+                            sims: Array.isArray(info.sims) ? info.sims : []
                         });
                     }
                 }
