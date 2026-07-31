@@ -1817,6 +1817,10 @@ function lockVault() {
 }
 
 async function bootNexus() {
+    if (localStorage.getItem('nexus_grid_mode') === 'true') {
+        toggleGridMode(true);
+    }
+
     document.getElementById('loader').classList.remove('hidden');
     document.getElementById('loadText').textContent = 'Authenticating Uplink...';
     document.getElementById('loadSubtext').textContent = 'Connecting to Secure Nexus Core';
@@ -1939,9 +1943,19 @@ async function proxyFirebase(src, id, path, method = 'PUT', payload = null) {
 
 let _fetchAllInFlight = false;
 
-function toggleGridMode() {
-    const isGrid = document.body.classList.toggle('grid-mode');
+function toggleGridMode(forceState = null) {
+    let isGrid = false;
+    if (forceState !== null) {
+        if (forceState) document.body.classList.add('grid-mode');
+        else document.body.classList.remove('grid-mode');
+        isGrid = forceState;
+    } else {
+        isGrid = document.body.classList.toggle('grid-mode');
+    }
+    
     document.getElementById('viewToggleBtn').innerHTML = isGrid ? '📄 Classic View' : '🔲 Grid View';
+    localStorage.setItem('nexus_grid_mode', isGrid ? 'true' : 'false');
+    
     if (!isGrid) {
         document.body.classList.remove('drawer-open');
     }
@@ -2494,7 +2508,6 @@ function renderTab(silent = false) {
                 </span></div>`).join('')||'<div class="d-key">No SIM data</div>';
             p.innerHTML = `
             <div class="detail-grid">
-                <button class="btn mobile-close" onclick="closeMobilePane()">← Close</button>
                 <div class="detail-box">
                     <h3>📱 Identity</h3>
                     <div class="detail-row"><span class="d-key">Device ID</span><span class="d-val" style="display:flex;align-items:center;gap:8px">${esc(d._id)}<div id="det-status-dot" class="d-status ${d.status?'on':'off'}" style="position:relative; width:10px; height:10px; border:none; border-radius:50%;" title="${d.status?'Online':'Offline'}"></div></span></div>
@@ -2542,7 +2555,6 @@ function renderTab(silent = false) {
             
             p.innerHTML = `
             <div class="msg-header-bar">
-                <button class="btn mobile-close" onclick="closeMobilePane()">← Close</button>
                 <div class="mhb-left">
                     <div class="mhb-title">${esc(d._id)}</div>
                     <div class="mhb-badge">${msgs.length} MSGS</div>
@@ -2617,7 +2629,6 @@ function renderTab(silent = false) {
             
             // Build the Financial Intelligence UI Dashboard
             p.innerHTML = `
-            <button class="btn mobile-close" onclick="closeMobilePane()">← Close</button>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.1);">
                 <div>
                     <h3 style="font-size: 1.5rem; color: var(--text-main); font-weight: 800; display:flex; align-items:center; gap:10px;">
@@ -2676,7 +2687,6 @@ function renderTab(silent = false) {
         }
         else if (curTab === 'sendsms') {
             p.innerHTML = `
-            <button class="btn mobile-close" onclick="closeMobilePane()">← Close</button>
             <div class="form-panel">
                 <div class="form-title">Remote SMS Execution</div>
                 <div class="form-sub">Device: <span style="color:var(--cyan);font-family:var(--font-mono);font-weight:700;">${esc(d._id)}</span></div>
