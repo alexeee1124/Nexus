@@ -786,16 +786,16 @@
         
         /* Side Drawer Logic */
         body.grid-mode #mainContent {
-            position: fixed; top: 60px; right: 0; bottom: 0;
+            position: fixed; top: 60px; right: -650px; bottom: 0;
             width: 600px; max-width: 100vw; z-index: 999;
-            background: var(--bg-card); border-left: 1px solid var(--border-light);
-            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
-            transform: translateX(100%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: #0a101d; border-left: 1px solid var(--border-light);
+            box-shadow: -10px 0 50px rgba(0,0,0,0.9);
+            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
+            transform: none !important;
         }
         body.grid-mode.drawer-open #mainContent {
-            transform: translateX(0);
+            right: 0 !important;
         }
         body.grid-mode #drawerCloseBtn { display: flex !important; }
 
