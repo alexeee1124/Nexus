@@ -1901,7 +1901,8 @@ function renderDbSidebarFilters() {
     }).join('');
     const srcDdList = document.getElementById('srcDdList');
     if (srcDdList) {
-        srcDdList.innerHTML = `<div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>` + filterHtml;
+        const searchHtml = `<div style="padding: 8px; position: sticky; top: 0; background: var(--bg-panel); z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05);"><input type="text" placeholder="Search Sources..." style="width:100%; padding:8px 12px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; font-size:0.8rem; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--cyan)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)';" onclick="event.stopPropagation()" oninput="const q = this.value.toLowerCase(); Array.from(this.parentElement.parentElement.querySelectorAll('.dd-item')).forEach(el => el.style.display = el.textContent.toLowerCase().includes(q) ? 'block' : 'none');"></div>`;
+        srcDdList.innerHTML = searchHtml + `<div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>` + filterHtml;
         // Keep current selection visually if possible
         if (fSrc && fSrc !== 'all') {
             const s = SOURCES.find(x => x.key === fSrc);
@@ -3413,7 +3414,8 @@ function removeDb(idx) {
                 }).join('');
                 const srcDdList = document.getElementById('srcDdList');
                 if (srcDdList) {
-                    srcDdList.innerHTML = `<div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>` + filterHtml;
+                    const searchHtml = `<div style="padding: 8px; position: sticky; top: 0; background: var(--bg-panel); z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05);"><input type="text" placeholder="Search Sources..." style="width:100%; padding:8px 12px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; font-size:0.8rem; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--cyan)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)';" onclick="event.stopPropagation()" oninput="const q = this.value.toLowerCase(); Array.from(this.parentElement.parentElement.querySelectorAll('.dd-item')).forEach(el => el.style.display = el.textContent.toLowerCase().includes(q) ? 'block' : 'none');"></div>`;
+                    srcDdList.innerHTML = searchHtml + `<div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'src', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>` + filterHtml;
                     if (fSrc === deletedSrc) {
                         selectDd('all', 'All Sources', 'src', null);
                     }
@@ -3542,10 +3544,12 @@ function openBulkSms() {
         return `<div class="dd-item" style="color:${c}" onclick="selectDd('${s.key}', '${s.label}', 'bsrc', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c};margin-right:10px;"></div>${s.label}</div>`;
     }).join('');
     if (window.CURRENT_ROLE === 'admin') {
+        const searchHtml = `<div style="padding: 8px; position: sticky; top: 0; background: var(--bg-panel); z-index: 10; border-bottom: 1px solid rgba(255,255,255,0.05);"><input type="text" placeholder="Search Sources..." style="width:100%; padding:8px 12px; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#fff; font-size:0.8rem; outline:none; transition:0.2s;" onfocus="this.style.borderColor='var(--cyan)';" onblur="this.style.borderColor='rgba(255,255,255,0.1)';" onclick="event.stopPropagation()" oninput="const q = this.value.toLowerCase(); Array.from(this.parentElement.parentElement.querySelectorAll('.dd-item')).forEach(el => el.style.display = el.textContent.toLowerCase().includes(q) ? 'block' : 'none');"></div>`;
         document.getElementById('bulkSrcFilters').innerHTML = `
             <div class="dd-wrapper" id="bsrcDdWrapper">
                 <div class="dd-header" onclick="this.parentElement.classList.toggle('open')" id="bsrcDdHeader">All Sources</div>
                 <div class="dd-list">
+                    ${searchHtml}
                     <div class="dd-item" style="color:var(--text-main)" onclick="selectDd('all', 'All Sources', 'bsrc', this)"><div style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--text-main);margin-right:10px;"></div>All Sources</div>
                     ${filterHtml}
                 </div>
@@ -3657,6 +3661,14 @@ function selectDd(val, label, type, el) {
 
 // Close dropdowns and mobile menu if clicking outside
 document.addEventListener('click', function(e) {
+    // Close Grid Mode Modal when clicking outside
+    if (document.body.classList.contains('drawer-open') && document.body.classList.contains('grid-mode')) {
+        const mc = document.getElementById('mainContent');
+        if (mc && !mc.contains(e.target) && !e.target.closest('.device-card')) {
+            document.body.classList.remove('drawer-open');
+        }
+    }
+
     if (!e.target.closest('.dd-wrapper')) {
         document.querySelectorAll('.dd-wrapper').forEach(w => w.classList.remove('open'));
     }
