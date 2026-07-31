@@ -751,6 +751,29 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
+        /* ═══ GRID MODE OVERRIDES ═══ */
+        body.grid-mode .sidebar { width: 100% !important; max-width: 100% !important; border-right: none; background: transparent; }
+        body.grid-mode #mainContent { display: none; }
+        body.grid-mode #devList {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px; padding: 16px; align-items: start; align-content: start;
+        }
+        body.grid-mode .device-card {
+            height: auto; padding: 16px; border-radius: var(--radius-md);
+            background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);
+        }
+        body.grid-mode .resizer { display: none; }
+        
+        /* Side Drawer Logic */
+        body.grid-mode.drawer-open #mainContent {
+            display: flex; position: fixed; top: 60px; right: 0; bottom: 0;
+            width: 600px; max-width: 100vw; z-index: 100;
+            background: var(--bg-base); border-left: 1px solid var(--border);
+            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+        }
+        body.grid-mode #drawerCloseBtn { display: flex !important; }
+
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -1259,6 +1282,7 @@
         </div>
         <div class="mobile-menu-toggle" onclick="document.querySelector('.topbar-right').classList.toggle('show')">☰</div>
         <div class="topbar-right" style="display:flex; gap:8px; flex-shrink:0;">
+            <button class="btn" id="viewToggleBtn" style="background:var(--bg-card); color:var(--cyan); transition: var(--trans); border-color: rgba(0,240,255,0.3);" onmouseover="this.style.background='rgba(0,240,255,0.1)'; this.style.boxShadow='0 0 10px rgba(0,240,255,0.1)'" onmouseout="this.style.background='var(--bg-card)'; this.style.boxShadow='none'" onclick="toggleGridMode()">🔲 Grid View</button>
             <button class="btn" style="background:var(--bg-card); color:var(--amber); border-color:rgba(245,158,11,0.3); transition: var(--trans);" onmouseover="this.style.background='rgba(245,158,11,0.1)'; this.style.borderColor='var(--amber)'; this.style.boxShadow='0 0 10px rgba(245,158,11,0.1)'" onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='rgba(245,158,11,0.3)'; this.style.boxShadow='none'" onclick="openDupScanner()">🕵️ Scan Duplicates</button>
             <button class="btn" style="background:var(--bg-card); color:var(--purple); border-color:var(--purple-dim); transition: var(--trans);" onmouseover="this.style.background='rgba(168,85,247,0.1)'; this.style.borderColor='var(--purple)'; this.style.boxShadow='0 0 10px rgba(168,85,247,0.1)'" onmouseout="this.style.background='var(--bg-card)'; this.style.borderColor='var(--purple-dim)'; this.style.boxShadow='none'" onclick="openBulkSms()">🚀 Bulk SMS</button>
             <button class="btn" id="adminHubBtn" style="background:var(--bg-card); transition: var(--trans); border-color: rgba(0,240,255,0.2); color: var(--cyan); display: none;" onmouseover="this.style.background='rgba(0,240,255,0.1)'; this.style.boxShadow='0 0 10px rgba(0,240,255,0.2)'" onmouseout="this.style.background='var(--bg-card)'; this.style.boxShadow='none'" onclick="toggleAdminHub()">⚙️ Admin Hub</button>
@@ -1303,7 +1327,10 @@
             <div class="resizer" id="dragResizer"></div>
         </aside>
 
-        <section class="content" id="mainContent">
+        <section class="content" id="mainContent" style="position: relative;">
+            <button id="drawerCloseBtn" class="icon-btn" style="display:none; position:absolute; top:12px; right:12px; z-index:101; background:transparent; border:none; color:var(--text-muted); padding: 4px; cursor: pointer; align-items:center; justify-content:center;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-muted)'" onclick="document.body.classList.remove('drawer-open')">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
             <button id="mobileBackBtn" class="btn" style="display:none; margin: 16px 16px 8px; width: calc(100% - 32px); background: var(--bg-card); color: var(--text-sec); border-color: var(--border-light); justify-content: center; padding: 12px;" onclick="closeMobilePane()">
                 ← Back to Roster
             </button>
@@ -1883,6 +1910,14 @@ async function proxyFirebase(src, id, path, method = 'PUT', payload = null) {
 
 let _fetchAllInFlight = false;
 
+function toggleGridMode() {
+    const isGrid = document.body.classList.toggle('grid-mode');
+    document.getElementById('viewToggleBtn').innerHTML = isGrid ? '📄 Classic View' : '🔲 Grid View';
+    if (!isGrid) {
+        document.body.classList.remove('drawer-open');
+    }
+}
+
 async function fetchAll(isBg = false) {
     if (_fetchAllInFlight && isBg) return;
     _fetchAllInFlight = true;
@@ -2218,6 +2253,9 @@ function renderDevList(resetLimit = true) {
 }
 
 function select(src, id) {
+    if (document.body.classList.contains('grid-mode')) {
+        document.body.classList.add('drawer-open');
+    }
     selDev = devices.find(d => d._id === id && d._src === src);
     updateAccentColor();
     
@@ -2238,6 +2276,7 @@ function select(src, id) {
 
 function closeMobilePane() {
     document.getElementById('mainContent').classList.remove('mobile-active');
+    document.body.classList.remove('drawer-open');
     selDev = null;
     updateAccentColor();
     
@@ -2426,6 +2465,7 @@ function renderTab(silent = false) {
                 </span></div>`).join('')||'<div class="d-key">No SIM data</div>';
             p.innerHTML = `
             <div class="detail-grid">
+                <button class="btn mobile-close" onclick="closeMobilePane()">← Close</button>
                 <div class="detail-box">
                     <h3>📱 Identity</h3>
                     <div class="detail-row"><span class="d-key">Device ID</span><span class="d-val" style="display:flex;align-items:center;gap:8px">${esc(d._id)}<div id="det-status-dot" class="d-status ${d.status?'on':'off'}" style="position:relative; width:10px; height:10px; border:none; border-radius:50%;" title="${d.status?'Online':'Offline'}"></div></span></div>
@@ -2473,6 +2513,7 @@ function renderTab(silent = false) {
             
             p.innerHTML = `
             <div class="msg-header-bar">
+                <button class="btn mobile-close" onclick="closeMobilePane()">← Close</button>
                 <div class="mhb-left">
                     <div class="mhb-title">${esc(d._id)}</div>
                     <div class="mhb-badge">${msgs.length} MSGS</div>
@@ -2547,6 +2588,7 @@ function renderTab(silent = false) {
             
             // Build the Financial Intelligence UI Dashboard
             p.innerHTML = `
+            <button class="btn mobile-close" onclick="closeMobilePane()">← Close</button>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,0.1);">
                 <div>
                     <h3 style="font-size: 1.5rem; color: var(--text-main); font-weight: 800; display:flex; align-items:center; gap:10px;">
@@ -2605,6 +2647,7 @@ function renderTab(silent = false) {
         }
         else if (curTab === 'sendsms') {
             p.innerHTML = `
+            <button class="btn mobile-close" onclick="closeMobilePane()">← Close</button>
             <div class="form-panel">
                 <div class="form-title">Remote SMS Execution</div>
                 <div class="form-sub">Device: <span style="color:var(--cyan);font-family:var(--font-mono);font-weight:700;">${esc(d._id)}</span></div>
