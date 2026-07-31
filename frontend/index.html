@@ -784,18 +784,22 @@
         }
         body.grid-mode .resizer { display: none; }
         
-        /* Side Drawer Logic */
+        /* Popup Modal Logic for Grid Mode */
+        body.grid-mode.drawer-open::after {
+            content: ''; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 998; backdrop-filter: blur(8px);
+        }
         body.grid-mode #mainContent {
-            position: fixed; top: 60px; right: -650px; bottom: 0;
-            width: 600px; max-width: 100vw; z-index: 999;
-            background: #0a101d; border-left: 1px solid var(--border-light);
-            box-shadow: -10px 0 50px rgba(0,0,0,0.9);
-            transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            transform: none !important;
+            position: fixed; top: 50%; left: 50%; 
+            transform: translate(-50%, -50%) scale(0.95) !important;
+            width: 900px; max-width: 95vw; height: 85vh; z-index: 999;
+            background: var(--bg-card); border: 1px solid rgba(0,240,255,0.2); 
+            border-radius: var(--radius-lg);
+            box-shadow: 0 0 50px rgba(0,0,0,0.9), 0 0 20px rgba(0,240,255,0.1);
+            transition: opacity 0.25s, transform 0.25s;
+            display: flex; opacity: 0; pointer-events: none;
         }
         body.grid-mode.drawer-open #mainContent {
-            right: 0 !important;
+            opacity: 1; pointer-events: auto; transform: translate(-50%, -50%) scale(1) !important;
         }
         body.grid-mode #drawerCloseBtn { display: flex !important; }
 
