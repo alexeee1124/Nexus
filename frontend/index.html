@@ -752,10 +752,10 @@
         }
 
         /* ═══ GRID MODE OVERRIDES ═══ */
-        body.grid-mode .sidebar { width: 100% !important; max-width: 100% !important; border-right: none; background: transparent; }
+        body.grid-mode #mainWorkspace .sidebar { width: 100% !important; max-width: 100% !important; border-right: none; background: transparent; }
         
         /* Compact filters for grid mode */
-        body.grid-mode .sidebar-head {
+        body.grid-mode #mainWorkspace .sidebar-head {
             display: flex;
             flex-wrap: wrap;
             gap: 12px;
@@ -766,8 +766,8 @@
             padding: 12px;
             margin: 16px 16px 0 16px;
         }
-        body.grid-mode .sidebar-head .search-box, 
-        body.grid-mode .sidebar-head .filter-row {
+        body.grid-mode #mainWorkspace .sidebar-head .search-box, 
+        body.grid-mode #mainWorkspace .sidebar-head .filter-row {
             margin: 0 !important;
             flex: 1 1 auto;
             min-width: 250px;
@@ -798,7 +798,7 @@
             box-shadow: inset 0 0 20px var(--accent-dim), 0 0 15px var(--accent-glow);
             transform: translateY(-2px);
         }
-        body.grid-mode .resizer { display: none; }
+        body.grid-mode #mainWorkspace .resizer { display: none; }
         
         /* Popup Modal Logic for Grid Mode */
         body.grid-mode.drawer-open::after {
