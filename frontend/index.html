@@ -2178,14 +2178,6 @@ function filterDevs() {
 
     // Auto-sort by active messages bubbling to the top
     filtered.sort((a, b) => {
-        // If a device is currently selected, pin it to the absolute top of the list
-        if (selDev) {
-            const aIsActive = (a._id === selDev._id && a._src === selDev._src);
-            const bIsActive = (b._id === selDev._id && b._src === selDev._src);
-            if (aIsActive && !bIsActive) return -1;
-            if (bIsActive && !aIsActive) return 1;
-        }
-
         const now = Date.now();
         // If a device has a future timestamp, treat it as 0 to send it to the bottom
         const aTime = (a.lastMessageTime && a.lastMessageTime <= now) ? a.lastMessageTime : 0;
