@@ -814,17 +814,13 @@
             border-color: rgba(0, 240, 255, 0.4);
             background: rgba(13, 19, 38, 0.95);
         }
-        @keyframes pulseGridActive {
-            0%, 100% { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent), inset 0 0 30px var(--accent-dim), var(--accent-glow); }
-            50% { border-color: var(--accent-dim); box-shadow: inset 0 0 0 1px transparent, inset 0 0 10px transparent, 0 0 5px transparent; }
-        }
         body.grid-mode .device-card.active {
             background: var(--bg-panel);
-            border-color: var(--accent);
-            box-shadow: inset 0 0 0 1px var(--accent), inset 0 0 30px var(--accent-dim), var(--accent-glow);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-left: 3px solid var(--accent);
             transform: translateY(-4px) scale(1.02);
             z-index: 10;
-            animation: pulseGridActive 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            animation: pulseActive 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
         body.grid-mode #mainWorkspace .resizer { display: none; }
         
