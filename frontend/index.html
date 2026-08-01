@@ -2085,16 +2085,8 @@ async function fetchAll(isBg = false) {
                                 }
                             }
                             if (selDev && selDev._id === existing._id && selDev._src === existing._src) {
-                                const root = document.documentElement;
-                                if (existing.status) {
-                                    root.style.setProperty('--accent', 'var(--cyan)');
-                                    root.style.setProperty('--accent-dim', 'var(--cyan-dim)');
-                                    root.style.setProperty('--accent-glow', '0 0 20px rgba(0, 240, 255, 0.4)');
-                                } else {
-                                    root.style.setProperty('--accent', 'var(--red)');
-                                    root.style.setProperty('--accent-dim', 'var(--red-dim)');
-                                    root.style.setProperty('--accent-glow', '0 0 20px rgba(239, 68, 68, 0.4)');
-                                }
+                                selDev.status = existing.status;
+                                updateAccentColor();
                                 
                                 if (curTab === 'device') {
                                     const dDot = document.getElementById('det-status-dot');
