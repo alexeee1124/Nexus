@@ -816,9 +816,10 @@
         }
         body.grid-mode .device-card.active {
             background: var(--bg-panel);
-            border: 1px solid var(--accent);
-            box-shadow: inset 0 0 20px var(--accent-dim), 0 0 15px var(--accent-glow);
-            transform: translateY(-2px);
+            border-color: var(--accent);
+            box-shadow: inset 0 0 0 1px var(--accent), inset 0 0 30px var(--accent-dim), var(--accent-glow);
+            transform: translateY(-4px) scale(1.02);
+            z-index: 10;
         }
         body.grid-mode #mainWorkspace .resizer { display: none; }
         
