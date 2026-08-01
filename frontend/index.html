@@ -786,6 +786,27 @@
             border-top: 1px solid rgba(0, 240, 255, 0.2);
             box-shadow: 0 4px 15px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
             transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s, border-color 0.2s, background 0.2s;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 16px;
+            align-items: center;
+        }
+        /* Grid Mode Internal Card Scaling */
+        body.grid-mode .device-card .d-icon {
+            width: 52px; height: 52px; font-size: 1.6rem;
+            border-radius: 14px; background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        body.grid-mode .device-card .d-status {
+            width: 14px; height: 14px; right: -3px; bottom: -3px; border-width: 3px;
+        }
+        body.grid-mode .device-card .d-id {
+            font-size: 1.1rem; margin-bottom: 6px; letter-spacing: 0.5px;
+        }
+        body.grid-mode .device-card .d-sub { font-size: 0.85rem; }
+        body.grid-mode .device-card .d-batt { font-size: 1rem; }
+        body.grid-mode .device-card .d-src {
+            font-size: 0.75rem; padding: 4px 8px; margin-top: 8px; border-radius: 6px;
         }
         body.grid-mode .device-card:hover {
             transform: translateY(-4px);
