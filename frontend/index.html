@@ -3688,7 +3688,11 @@ document.addEventListener('click', function(e) {
     // Close Grid Mode Modal when clicking outside
     if (document.body.classList.contains('drawer-open') && document.body.classList.contains('grid-mode')) {
         const mc = document.getElementById('mainContent');
-        if (mc && !mc.contains(e.target) && !e.target.closest('.device-card')) {
+        const path = e.composedPath ? e.composedPath() : [];
+        const clickedInside = path.includes(mc) || (mc && mc.contains(e.target));
+        const clickedOnCard = path.some(el => el.classList && el.classList.contains('device-card')) || !!e.target.closest('.device-card');
+        
+        if (mc && !clickedInside && !clickedOnCard) {
             document.body.classList.remove('drawer-open');
         }
     }
