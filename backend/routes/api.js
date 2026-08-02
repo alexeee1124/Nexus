@@ -222,7 +222,7 @@ router.get('/devices', protect, async (req, res) => {
                             lastMessageTime: info.lastMessageTime || 0,
                             mobNo: info.mobNo || '',
                             customPh: info.customPh || '',
-                            sims: Array.isArray(info.sims) ? info.sims : []
+                            sims: Array.isArray(info.sims) ? info.sims : (info.sims && typeof info.sims === 'object' ? Object.values(info.sims) : [])
                         });
                     }
                 }
