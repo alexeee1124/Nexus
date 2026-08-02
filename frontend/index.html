@@ -3691,8 +3691,9 @@ document.addEventListener('click', function(e) {
         const path = e.composedPath ? e.composedPath() : [];
         const clickedInside = path.includes(mc) || (mc && mc.contains(e.target));
         const clickedOnCard = path.some(el => el.classList && el.classList.contains('device-card')) || !!e.target.closest('.device-card');
+        const clickedOnModal = path.some(el => el.classList && el.classList.contains('modal-overlay')) || !!e.target.closest('.modal-overlay');
         
-        if (mc && !clickedInside && !clickedOnCard) {
+        if (mc && !clickedInside && !clickedOnCard && !clickedOnModal) {
             document.body.classList.remove('drawer-open');
         }
     }
