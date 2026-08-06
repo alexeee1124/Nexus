@@ -1532,6 +1532,9 @@
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                             Export
                         </button>
+                        <button class="f-btn" style="background: rgba(249, 115, 22, 0.1); border: 1px solid rgba(249, 115, 22, 0.2); color: #f97316; padding: 8px 16px; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; white-space: nowrap;" onclick="openLookupModal()">
+                            🔥 Firebase Lookup
+                        </button>
                         <button class="f-btn" style="background: var(--cyan); color: #000; padding: 8px 16px; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; white-space: nowrap;" onclick="openAddDbDrawer()">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             Add Source
@@ -5107,6 +5110,142 @@ function openAddDbDrawer() {
         </div>
     </div>
 
+    <div class="modal-overlay" id="lookupModal">
+        <div class="modal" style="max-width: 400px; padding: 24px; text-align: center;">
+            <div style="font-size: 1.2rem; font-weight: 800; color: #f97316; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                🔥 Firebase Lookup
+            </div>
+            <div style="text-align: left; margin-bottom: 16px;">
+                <label class="f-label" style="font-size:0.8rem;">Database URL</label>
+                <input type="text" id="lookupUrl" class="f-input" placeholder="https://..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px;">
+            </div>
+            <div style="text-align: left; margin-bottom: 24px;">
+                <label class="f-label" style="font-size:0.8rem;">Auth Key (Optional)</label>
+                <input type="text" id="lookupAuth" class="f-input" placeholder="Secret key if required..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px;">
+            </div>
+            
+            <div id="lookupResults" style="display: none; flex-direction: row; gap: 12px; margin-bottom: 24px;">
+                <div style="flex:1; background: rgba(255,255,255,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Total</div>
+                    <div id="lookupTotal" style="font-size: 1.5rem; font-weight: 900; color: #fff;">0</div>
+                </div>
+                <div style="flex:1; background: rgba(0,255,157,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(0,255,157,0.1);">
+                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Online</div>
+                    <div id="lookupOnline" style="font-size: 1.5rem; font-weight: 900; color: var(--green);">0</div>
+                </div>
+                <div style="flex:1; background: rgba(255,71,87,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,71,87,0.1);">
+                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Offline</div>
+                    <div id="lookupOffline" style="font-size: 1.5rem; font-weight: 900; color: var(--red);">0</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; flex-direction: column;">
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn" style="flex: 1;" onclick="document.getElementById('lookupModal').classList.remove('active')">Close</button>
+                    <button class="btn primary" id="lookupExecBtn" style="flex: 1; background: #f97316; color: #fff; border-color: #ea580c;" onclick="executeLookup()">Check Status</button>
+                </div>
+                <button class="btn primary" id="lookupAddBtn" style="display: none; background: var(--cyan); color: #000; font-weight: 900; border-color: var(--cyan);" onclick="lookupAddSource()">+ Add this to Dashboard</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function openLookupModal() {
+            document.getElementById('lookupUrl').value = '';
+            document.getElementById('lookupAuth').value = '';
+            document.getElementById('lookupResults').style.display = 'none';
+            document.getElementById('lookupAddBtn').style.display = 'none';
+            document.getElementById('lookupModal').classList.add('active');
+        }
+
+        async function executeLookup() {
+            const urlInput = document.getElementById('lookupUrl').value.trim();
+            const authInput = document.getElementById('lookupAuth').value.trim();
+            if (!urlInput) return customAlert("Lookup Error", "Please enter a Firebase URL.", "error");
+
+            let baseUrl = urlInput;
+            if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+            if (baseUrl.endsWith('.json')) baseUrl = baseUrl.replace('/clients.json', '').replace('.json', '');
+
+            const btn = document.getElementById('lookupExecBtn');
+            btn.textContent = 'Checking...';
+            btn.disabled = true;
+
+            try {
+                const authSuffix = authInput ? `?auth=${authInput}` : '';
+                const fetchUrl = `${baseUrl}/clients.json${authSuffix}`;
+                const res = await fetch(fetchUrl);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                
+                let total = 0, online = 0, offline = 0;
+                if (data && typeof data === 'object') {
+                    const entries = Array.isArray(data) ? data.map((v, i) => [String(i), v]).filter(x => x[1]) : Object.entries(data);
+                    total = entries.length;
+                    online = entries.filter(([id, info]) => info && info.status).length;
+                    offline = total - online;
+                }
+
+                document.getElementById('lookupTotal').textContent = total;
+                document.getElementById('lookupOnline').textContent = online;
+                document.getElementById('lookupOffline').textContent = offline;
+                
+                document.getElementById('lookupResults').style.display = 'flex';
+                document.getElementById('lookupAddBtn').style.display = 'block';
+                
+                window._lookupBaseUrl = baseUrl;
+                window._lookupAuth = authInput;
+
+            } catch (e) {
+                customAlert("Lookup Failed", "Could not fetch data. Check URL or Auth Key.", "error");
+            } finally {
+                btn.textContent = 'Check Status';
+                btn.disabled = false;
+            }
+        }
+
+        async function lookupAddSource() {
+            let baseUrl = window._lookupBaseUrl;
+            let auth = window._lookupAuth;
+            if (!baseUrl) return;
+
+            let label = 'db';
+            try {
+                const urlObj = new URL(baseUrl);
+                label = urlObj.hostname.split('-')[0].split('.')[0]; 
+            } catch(e) {}
+
+            let finalLabel = label;
+            let counter = 1;
+            const existingLabels = SOURCES.map(s => s.label.toLowerCase());
+            while (existingLabels.includes(finalLabel.toLowerCase())) {
+                finalLabel = label + counter;
+                counter++;
+            }
+
+            document.getElementById('lookupModal').classList.remove('active');
+            document.getElementById('loader').classList.remove('hidden');
+
+            try {
+                const payload = { base: baseUrl, label: finalLabel, apiKey: auth, color: '#00f0ff' };
+                const res = await fetch('/api/databases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${MASTER_KEY}` },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                document.getElementById('loader').classList.add('hidden');
+                if (result.success) {
+                    customAlert("Added successfully", `Database connected as '${finalLabel}'.`, "success");
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    customAlert("Add Failed", result.message || "Failed to add source.", "error");
+                }
+            } catch(e) {
+                document.getElementById('loader').classList.add('hidden');
+                customAlert("Add Error", "Network error.", "error");
+            }
+        }
+    </script>
     <div id="contextMenu" class="context-menu">
         <div class="c-header">Device Actions</div>
         <div class="c-item" onclick="execContext('copy-id', this)">📋 Copy Device ID</div>
