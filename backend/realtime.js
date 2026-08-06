@@ -91,10 +91,14 @@ async function setupMessageStream(src, id, db) {
         const q = query(msgRef, limitToLast(1));
         
         let isInitial = true;
+        let lastSeenMsgId = null;
         
         // Attach onValue first to clear the isInitial flag after initial data is loaded
         const unsubValue = onValue(q, (snapshot) => {
             isInitial = false;
+            snapshot.forEach(child => {
+                lastSeenMsgId = child.key;
+            });
             unsubValue(); // We only need this to fire once
         }, (error) => {
             console.error(`[Realtime] onValue error for ${streamKey}:`, error);
@@ -108,6 +112,18 @@ async function setupMessageStream(src, id, db) {
             
             try {
                 const msgId = snapshot.key;
+                
+                // Prevent duplicate emit when a newer message is deleted and an older message shifts into limitToLast(1)
+                if (lastSeenMsgId !== null) {
+                    const isNumeric = !isNaN(msgId) && !isNaN(lastSeenMsgId);
+                    if (isNumeric) {
+                        if (Number(msgId) <= Number(lastSeenMsgId)) return;
+                    } else {
+                        if (String(msgId) <= String(lastSeenMsgId)) return;
+                    }
+                }
+                lastSeenMsgId = msgId;
+                
                 const messageObj = snapshot.val();
                 
                 if (messageObj && typeof messageObj === 'object') {
