@@ -119,6 +119,7 @@ async function setupMessageStream(src, id, db) {
                             srcKey: src.key,
                             deviceId: id,
                             _fbKey: msgId,
+                            _fbPath: '/' + correctPath,
                             timestamp: ts,
                             id: ts,
                             type: messageObj.type || 'incoming',
