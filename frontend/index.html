@@ -1450,6 +1450,28 @@
                     <span style="font-size: 1.2rem;">📈</span> Analytics
                 </button>
             </div>
+            
+            <div style="padding: 20px; border-top: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #fff;">Auto-Fetch</div>
+                    <label class="switch" style="position:relative; display:inline-block; width:34px; height:20px;">
+                        <input type="checkbox" id="adminAutoFetchToggle" checked style="opacity:0; width:0; height:0;" onchange="window.localStorage.setItem('adminAutoFetch', this.checked ? 'true' : 'false')">
+                        <span style="position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:rgba(255,255,255,0.1); transition:.4s; border-radius:34px; border:1px solid rgba(255,255,255,0.2);">
+                            <span class="slider-dot" style="position:absolute; content:''; height:14px; width:14px; left:2px; bottom:2px; background-color:var(--text-muted); transition:.4s; border-radius:50%;"></span>
+                        </span>
+                    </label>
+                </div>
+                <div style="font-size: 0.65rem; color: var(--text-sec); line-height: 1.4;">Toggle global 15s background syncing. Turn off to save Vercel serverless CPU quota.</div>
+                <style>
+                    #adminAutoFetchToggle:checked + span { background-color: rgba(0,240,255,0.2); border-color: var(--cyan); }
+                    #adminAutoFetchToggle:checked + span .slider-dot { transform: translateX(14px); background-color: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+                </style>
+                <script>
+                    if(window.localStorage.getItem('adminAutoFetch') === 'false') {
+                        document.getElementById('adminAutoFetchToggle').checked = false;
+                    }
+                </script>
+            </div>
         </aside>
 
         <!-- Admin Main Content -->
@@ -4023,8 +4045,11 @@ function openDupScanner() {
 // ═══ BACKGROUND AUTO-REFRESH ═══
 // Automatically pull live dashboard data every 15 seconds silently
 setInterval(() => {
-    // Only run if tab is visible, no active fetch is happening, and user is authenticated
-    if (!document.hidden && MASTER_KEY && document.getElementById('loader').classList.contains('hidden')) {
+    // Check if the admin has toggled off background fetching
+    const autoFetchEnabled = window.localStorage.getItem('adminAutoFetch') !== 'false';
+    
+    // Only run if tab is visible, no active fetch is happening, user is authenticated, and toggle is ON
+    if (autoFetchEnabled && !document.hidden && MASTER_KEY && document.getElementById('loader').classList.contains('hidden')) {
         fetchAll(true); // true = silent background mode
     }
 }, 15000);
