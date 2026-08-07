@@ -5254,7 +5254,13 @@ function openAddDbDrawer() {
             document.getElementById('loader').classList.remove('hidden');
 
             try {
-                const payload = { base: baseUrl, label: finalLabel, apiKey: auth, color: '#00f0ff' };
+                const payload = { 
+                    key: finalLabel.toLowerCase().replace(/[^a-z0-9]/g, '') + (Math.random() + 1).toString(36).substring(7),
+                    base: baseUrl, 
+                    label: finalLabel, 
+                    apiKey: auth, 
+                    color: '#00f0ff' 
+                };
                 const res = await fetch('/api/databases', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${MASTER_KEY}` },
