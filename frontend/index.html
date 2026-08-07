@@ -5270,7 +5270,8 @@ function openAddDbDrawer() {
                 document.getElementById('loader').classList.add('hidden');
                 if (result.success) {
                     customAlert("Added successfully", `Database connected as '${finalLabel}'.`, "success");
-                    setTimeout(() => location.reload(), 1500);
+                    await fetchAll(true); // Fetch state without throwing up the full loading screen if possible
+                    if (typeof renderAdminDbGrid === "function") renderAdminDbGrid();
                 } else {
                     customAlert("Add Failed", result.message || "Failed to add source.", "error");
                 }
