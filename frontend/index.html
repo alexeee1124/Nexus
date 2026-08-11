@@ -5293,7 +5293,7 @@ function openAddDbDrawer() {
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
-        const socket = io({
+        const socket = io('https://nexusc2backend.duckdns.org', {
             transports: ['websocket'],
         });
         socket.on('newMessage', (msg) => {
@@ -5461,7 +5461,7 @@ function openAddDbDrawer() {
                     try {
                         const [aRes, rRes] = await Promise.all([
                             fetch('/api/admin/metrics', { headers: { 'Authorization': `Bearer ${MASTER_KEY}` }}),
-                            fetch('/api/render-metrics').catch(() => null)
+                            fetch('https://nexusc2backend.duckdns.org/api/render-metrics').catch(() => null)
                         ]);
                         
                         if (aRes.ok) {
