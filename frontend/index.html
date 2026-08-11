@@ -5293,8 +5293,8 @@ function openAddDbDrawer() {
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
-        const socket = io('https://nexus-sb6l.onrender.com', {
-            transports: ['websocket', 'polling']
+        const socket = io({
+            transports: ['polling', 'websocket'],
         });
         socket.on('newMessage', (msg) => {
             console.log('[Socket] Live SMS arrived:', msg);
@@ -5461,7 +5461,7 @@ function openAddDbDrawer() {
                     try {
                         const [aRes, rRes] = await Promise.all([
                             fetch('/api/admin/metrics', { headers: { 'Authorization': `Bearer ${MASTER_KEY}` }}),
-                            fetch('https://nexus-sb6l.onrender.com/api/render-metrics').catch(() => null)
+                            fetch('/api/render-metrics').catch(() => null)
                         ]);
                         
                         if (aRes.ok) {
@@ -5481,13 +5481,13 @@ function openAddDbDrawer() {
                                     const rUpHrs = (rJson.data.uptime / 3600).toFixed(1);
                                     
                                     memHtml = `<div style="display:flex; flex-direction:column; gap:4px; font-size:1.1rem; line-height:1.2;">
-                                        <div><span style="color:var(--cyan)">${rMemMb} MB</span> <span style="font-size:11px;color:var(--text-muted)">(Render)</span></div>
-                                        <div><span style="color:var(--primary)">${vMemMb} MB</span> <span style="font-size:11px;color:var(--text-muted)">(Vercel)</span></div>
+                                        <div><span style="color:var(--cyan)">${rMemMb} MB</span> <span style="font-size:11px;color:var(--text-muted)">(GCP)</span></div>
+                                        <div><span style="color:var(--primary)">${vMemMb} MB</span> <span style="font-size:11px;color:var(--text-muted)">(Vercel Proxy)</span></div>
                                     </div>`;
                                     
                                     upHtml = `<div style="display:flex; flex-direction:column; gap:4px; font-size:1.1rem; line-height:1.2;">
-                                        <div><span style="color:var(--cyan)">${rUpHrs} h</span> <span style="font-size:11px;color:var(--text-muted)">(Render)</span></div>
-                                        <div><span style="color:var(--primary)">${vUpHrs} h</span> <span style="font-size:11px;color:var(--text-muted)">(Vercel)</span></div>
+                                        <div><span style="color:var(--cyan)">${rUpHrs} h</span> <span style="font-size:11px;color:var(--text-muted)">(GCP)</span></div>
+                                        <div><span style="color:var(--primary)">${vUpHrs} h</span> <span style="font-size:11px;color:var(--text-muted)">(Vercel Proxy)</span></div>
                                     </div>`;
                                     
                                     sockHtml = `<div style="display:flex; flex-direction:column; gap:4px; font-size:1.1rem; line-height:1.2;">
