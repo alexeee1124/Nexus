@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const axios = require('axios');
 const Source = require('./models/Source');
 const { initializeApp } = require('firebase/app');
-const { getDatabase, ref, onChildAdded, onValue, query, limitToLast, update, get, limitToFirst } = require('firebase/database');
+const { getDatabase, ref, onChildAdded, onChildChanged, onValue, query, limitToLast, update, get, limitToFirst } = require('firebase/database');
 
 // Map to store initialized Firebase apps: src.key -> app
 const firebaseApps = new Map();
@@ -13,18 +13,16 @@ let ioInstance = null;
 
 function initRealtime(io) {
     ioInstance = io;
-    syncFirebaseStreams();
-    setInterval(syncFirebaseStreams, 30 * 1000);
+    initializeRealtimeListeners();
 }
 
-async function syncFirebaseStreams() {
+async function initializeRealtimeListeners() {
     try {
         const sources = await Source.find({});
         
         for (let src of sources) {
             if (!src.base) continue;
             
-            // Initialize Firebase App for this database if not already done
             if (!firebaseApps.has(src.key)) {
                 try {
                     const appConfig = { databaseURL: src.base };
@@ -32,36 +30,46 @@ async function syncFirebaseStreams() {
                     const app = initializeApp(appConfig, src.key);
                     firebaseApps.set(src.key, app);
                 } catch (e) {
-                    console.error(`[Realtime] Failed to initialize Firebase App for ${src.key}:`, e.message);
+                    console.error(`[Realtime] Failed to init Firebase App for ${src.key}:`, e.message);
                     continue;
                 }
             }
             
             const db = getDatabase(firebaseApps.get(src.key));
-            const authSuffix = src.apiKey ? `?auth=${src.apiKey}&` : '?';
+            const clientsRef = ref(db, 'clients');
             
-            try {
-                // Fetch the list of devices via REST shallow to avoid downloading the whole node
-                const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}shallow=true`);
-                if (clientsRes.data && typeof clientsRes.data === 'object') {
-                    const clientIds = Object.keys(clientsRes.data).filter(id => clientsRes.data[id] === true || typeof clientsRes.data[id] === 'object');
-                    
-                    for (let id of clientIds) {
-                        const streamKey = `${src.key}_${id}`;
-                        if (!activeStreams.has(streamKey)) {
-                            activeStreams.add(streamKey);
-                            setupMessageStream(src, id, db);
-                            // Micro-delay to avoid CPU spikes on boot
-                            await new Promise(r => setTimeout(r, 10));
-                        }
-                    }
+            // Listen for NEW devices connecting
+            onChildAdded(clientsRef, (snapshot) => {
+                const id = snapshot.key;
+                const streamKey = `${src.key}_${id}`;
+                
+                if (!activeStreams.has(streamKey)) {
+                    activeStreams.add(streamKey);
+                    setupMessageStream(src, id, db);
                 }
-            } catch(e) {
-                console.error(`[Realtime] Failed to sync clients for ${src.key}:`, e.message);
-            }
+                
+                if (ioInstance) {
+                    ioInstance.emit('deviceAdded', {
+                        srcKey: src.key,
+                        deviceId: id,
+                        data: snapshot.val()
+                    });
+                }
+            });
+            
+            // Listen for EXISTING devices changing status (online/offline)
+            onChildChanged(clientsRef, (snapshot) => {
+                if (ioInstance) {
+                    ioInstance.emit('deviceChanged', {
+                        srcKey: src.key,
+                        deviceId: snapshot.key,
+                        data: snapshot.val()
+                    });
+                }
+            });
         }
     } catch(e) {
-        console.error('[Realtime] Sync loop error:', e);
+        console.error('[Realtime] Init listeners error:', e);
     }
 }
 
