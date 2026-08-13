@@ -57,6 +57,15 @@ async function initializeRealtimeListeners() {
             const db = getDatabase(firebaseApps.get(src.key));
             const clientsRef = ref(db, 'clients');
             
+            const authSuffix = src.apiKey ? `?auth=${src.apiKey}&` : '?';
+            const initialIds = new Set();
+            try {
+                const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}shallow=true`);
+                if (clientsRes.data && typeof clientsRes.data === 'object') {
+                    Object.keys(clientsRes.data).forEach(id => initialIds.add(id));
+                }
+            } catch(e) {}
+            
             // Listen for NEW devices connecting
             onChildAdded(clientsRef, (snapshot) => {
                 const id = snapshot.key;
@@ -65,7 +74,7 @@ async function initializeRealtimeListeners() {
                 deviceSetupQueue.push({ src, id, db });
                 processDeviceQueue();
                 
-                if (ioInstance) {
+                if (ioInstance && !initialIds.has(id)) {
                     ioInstance.emit('deviceAdded', {
                         srcKey: src.key,
                         deviceId: id,
