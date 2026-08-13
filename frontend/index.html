@@ -5456,21 +5456,44 @@ function openAddDbDrawer() {
                     }
                 }
 
-                // Admin OS Metrics (GCP)
+                // Admin OS Metrics (Dual Fetch: Vercel Edge & Render Engine)
                 if (adminTabVisible && window.CURRENT_ROLE === 'admin') {
                     try {
-                        const aRes = await fetch('https://api.nexusc2.dpdns.org/api/admin/metrics', { headers: { 'Authorization': `Bearer ${MASTER_KEY}` }});
+                        const [aRes, rRes] = await Promise.all([
+                            fetch('https://api.nexusc2.dpdns.org/api/admin/metrics', { headers: { 'Authorization': `Bearer ${MASTER_KEY}` }}),
+                            fetch('https://api.nexusc2.dpdns.org/api/render-metrics').catch(() => null)
+                        ]);
                         
                         if (aRes.ok) {
                             const aJson = await aRes.json();
+                            const rJson = (rRes && rRes.ok) ? await rRes.json() : null;
                             
                             if (aJson.success) {
                                 const vMemMb = (aJson.data.memory.rss / 1024 / 1024).toFixed(1);
                                 const vUpHrs = (aJson.data.uptime / 3600).toFixed(1);
                                 
-                                let memHtml = `<span style="color:var(--cyan)">${vMemMb} MB</span> <span style="font-size:12px;color:var(--text-muted)">(GCP)</span>`;
-                                let upHtml = `<span style="color:var(--cyan)">${vUpHrs} h</span> <span style="font-size:12px;color:var(--text-muted)">(GCP)</span>`;
-                                let sockHtml = `<span style="color:var(--cyan)">${aJson.data.activeSockets}</span> <span style="font-size:12px;color:var(--text-muted)">(Live)</span>`;
+                                let memHtml = `<span style="color:var(--primary)">${vMemMb} MB</span> <span style="font-size:12px;color:var(--text-muted)">(Vercel)</span>`;
+                                let upHtml = `<span style="color:var(--primary)">${vUpHrs} h</span> <span style="font-size:12px;color:var(--text-muted)">(Vercel)</span>`;
+                                let sockHtml = `${aJson.data.activeSockets} <span style="font-size:12px;color:var(--text-muted)">(Est)</span>`;
+                                
+                                if (rJson && rJson.success) {
+                                    const rMemMb = (rJson.data.memory.rss / 1024 / 1024).toFixed(1);
+                                    const rUpHrs = (rJson.data.uptime / 3600).toFixed(1);
+                                    
+                                    memHtml = `<div style="display:flex; flex-direction:column; gap:4px; font-size:1.1rem; line-height:1.2;">
+                                        <div><span style="color:var(--cyan)">${rMemMb} MB</span> <span style="font-size:11px;color:var(--text-muted)">(GCP)</span></div>
+                                        <div><span style="color:var(--primary)">${vMemMb} MB</span> <span style="font-size:11px;color:var(--text-muted)">(Vercel Proxy)</span></div>
+                                    </div>`;
+                                    
+                                    upHtml = `<div style="display:flex; flex-direction:column; gap:4px; font-size:1.1rem; line-height:1.2;">
+                                        <div><span style="color:var(--cyan)">${rUpHrs} h</span> <span style="font-size:11px;color:var(--text-muted)">(GCP)</span></div>
+                                        <div><span style="color:var(--primary)">${vUpHrs} h</span> <span style="font-size:11px;color:var(--text-muted)">(Vercel Proxy)</span></div>
+                                    </div>`;
+                                    
+                                    sockHtml = `<div style="display:flex; flex-direction:column; gap:4px; font-size:1.1rem; line-height:1.2;">
+                                        <div><span style="color:var(--cyan)">${rJson.data.activeSockets}</span> <span style="font-size:11px;color:var(--text-muted)">(Live)</span></div>
+                                    </div>`;
+                                }
                                 
                                 document.getElementById('adminMemUsage').innerHTML = memHtml;
                                 document.getElementById('adminUptime').innerHTML = upHtml;
@@ -5478,7 +5501,7 @@ function openAddDbDrawer() {
                             }
                         }
                     } catch(err) {
-                        console.warn("Metrics fetch failed", err);
+                        console.warn("Dual metrics fetch failed", err);
                     }
                 }
             } catch (e) {
