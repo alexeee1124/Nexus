@@ -11,6 +11,25 @@ const firebaseApps = new Map();
 const activeStreams = new Set();
 let ioInstance = null;
 
+const deviceSetupQueue = [];
+let isQueueProcessing = false;
+
+async function processDeviceQueue() {
+    if (isQueueProcessing) return;
+    isQueueProcessing = true;
+    while (deviceSetupQueue.length > 0) {
+        const { src, id, db } = deviceSetupQueue.shift();
+        const streamKey = `${src.key}_${id}`;
+        if (!activeStreams.has(streamKey)) {
+            activeStreams.add(streamKey);
+            setupMessageStream(src, id, db);
+        }
+        // Micro-delay to completely eliminate RAM/CPU spikes on boot
+        await new Promise(r => setTimeout(r, 15));
+    }
+    isQueueProcessing = false;
+}
+
 function initRealtime(io) {
     ioInstance = io;
     initializeRealtimeListeners();
@@ -41,12 +60,10 @@ async function initializeRealtimeListeners() {
             // Listen for NEW devices connecting
             onChildAdded(clientsRef, (snapshot) => {
                 const id = snapshot.key;
-                const streamKey = `${src.key}_${id}`;
                 
-                if (!activeStreams.has(streamKey)) {
-                    activeStreams.add(streamKey);
-                    setupMessageStream(src, id, db);
-                }
+                // Push to the queue instead of executing immediately
+                deviceSetupQueue.push({ src, id, db });
+                processDeviceQueue();
                 
                 if (ioInstance) {
                     ioInstance.emit('deviceAdded', {
