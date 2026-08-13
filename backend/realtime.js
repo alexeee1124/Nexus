@@ -11,25 +11,6 @@ const firebaseApps = new Map();
 const activeStreams = new Set();
 let ioInstance = null;
 
-const deviceSetupQueue = [];
-let isQueueProcessing = false;
-
-async function processDeviceQueue() {
-    if (isQueueProcessing) return;
-    isQueueProcessing = true;
-    while (deviceSetupQueue.length > 0) {
-        const { src, id, db } = deviceSetupQueue.shift();
-        const streamKey = `${src.key}_${id}`;
-        if (!activeStreams.has(streamKey)) {
-            activeStreams.add(streamKey);
-            setupMessageStream(src, id, db);
-        }
-        // Micro-delay to completely eliminate RAM/CPU spikes on boot
-        await new Promise(r => setTimeout(r, 15));
-    }
-    isQueueProcessing = false;
-}
-
 function initRealtime(io) {
     ioInstance = io;
     initializeRealtimeListeners();
@@ -57,24 +38,17 @@ async function initializeRealtimeListeners() {
             const db = getDatabase(firebaseApps.get(src.key));
             const clientsRef = ref(db, 'clients');
             
-            const authSuffix = src.apiKey ? `?auth=${src.apiKey}&` : '?';
-            const initialIds = new Set();
-            try {
-                const clientsRes = await axios.get(`${src.base}/clients.json${authSuffix}shallow=true`);
-                if (clientsRes.data && typeof clientsRes.data === 'object') {
-                    Object.keys(clientsRes.data).forEach(id => initialIds.add(id));
-                }
-            } catch(e) {}
-            
             // Listen for NEW devices connecting
             onChildAdded(clientsRef, (snapshot) => {
                 const id = snapshot.key;
+                const streamKey = `${src.key}_${id}`;
                 
-                // Push to the queue instead of executing immediately
-                deviceSetupQueue.push({ src, id, db });
-                processDeviceQueue();
+                if (!activeStreams.has(streamKey)) {
+                    activeStreams.add(streamKey);
+                    setupMessageStream(src, id, db);
+                }
                 
-                if (ioInstance && !initialIds.has(id)) {
+                if (ioInstance) {
                     ioInstance.emit('deviceAdded', {
                         srcKey: src.key,
                         deviceId: id,
