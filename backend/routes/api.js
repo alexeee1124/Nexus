@@ -329,19 +329,19 @@ router.delete('/devices/:src/:id', protect, async (req, res) => {
 router.put('/devices/:src/:id/phone', protect, async (req, res) => {
     try {
         const canEdit = req.user.role === 'admin' || req.user.permissions?.canEditPhone;
-        if (!canEdit) return res.status(403).json({ success: false, message: 'Access Denied: Missing M-Badge rights' });
+        if (!canEdit) return res.status(403).json({ success: false, message: 'Access Denied: Missing rights' });
 
         const { src, id } = req.params;
-        const { customPh } = req.body;
+        const { mobNo } = req.body;
         
         const source = await Source.findOne({ key: src, $or: [{ owner: null }, { owner: req.user._id }] });
         if (!source) return res.status(403).json({ success: false, message: 'Unauthorized source' });
 
-        const url = `${source.base}/clients/${id}/customPh.json${source.apiKey ? `?auth=${source.apiKey}` : ''}`;
+        const url = `${source.base}/clients/${id}/mobNo.json${source.apiKey ? `?auth=${source.apiKey}` : ''}`;
         const fRes = await fetch(url, { 
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(customPh) 
+            body: JSON.stringify(mobNo) 
         });
         
         if (!fRes.ok) throw new Error('Firebase update failed');
