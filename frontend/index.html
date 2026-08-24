@@ -1391,11 +1391,11 @@
                         </div>
                     </div>
                 </div>
-                <div class="filter-row">
-                    <span class="f-label">NUMBER</span>
-                    <button class="f-btn f-cyan active" onclick="setF('edit','all',this)">All</button>
-                    <button class="f-btn f-pink" onclick="setF('edit','has_number',this)">Has Number</button>
-                    <button class="f-btn f-amber" onclick="setF('edit','no_number',this)">No Number</button>
+                <div class="filter-row" style="display:flex; align-items:center; flex-wrap:nowrap; gap:6px;">
+                    <span class="f-label" style="margin-right:4px;">NUMBER</span>
+                    <button class="f-btn f-cyan active" style="flex:1; padding:6px 2px; white-space:nowrap; font-size:0.7rem;" onclick="setF('edit','all',this)">ALL</button>
+                    <button class="f-btn f-pink" style="flex:1.5; padding:6px 2px; white-space:nowrap; font-size:0.7rem;" onclick="setF('edit','has_number',this)">HAS NUM</button>
+                    <button class="f-btn f-amber" style="flex:1.5; padding:6px 2px; white-space:nowrap; font-size:0.7rem;" onclick="setF('edit','no_number',this)">NO NUM</button>
                 </div>
             </div>
             <div class="list-header" id="devCount">DEVICES (0)</div>
@@ -2214,8 +2214,9 @@ function filterDevs() {
         if(fStat === 'online' && !d.status) return false;
         if(fStat === 'offline' && d.status) return false;
         if(fStat === 'sms' && !d.webhookEvent?.sendSms) return false;
-        if(fEdit === 'has_number' && !d.mobNo && !d.sims?.[0]?.phoneNumber) return false;
-        if(fEdit === 'no_number' && (d.mobNo || d.sims?.[0]?.phoneNumber)) return false;
+        const hasNum = (d.mobNo && d.mobNo !== 'Unknown' && d.mobNo.trim() !== '') || (d.sims?.[0]?.phoneNumber && d.sims[0].phoneNumber !== 'Unknown' && d.sims[0].phoneNumber.trim() !== '');
+        if(fEdit === 'has_number' && !hasNum) return false;
+        if(fEdit === 'no_number' && hasNum) return false;
         if(q) {
             let p = (Array.isArray(d.sims) ? d.sims : []).map(s=>s?.phoneNumber).join(' ')||'';
             let str = `${d._id} ${d.mobNo||''} ${d.modelName||''} ${d.ip_address||''} ${p}`.toLowerCase();
@@ -3739,8 +3740,9 @@ function renderBulkList() {
         if(b_fSrc !== 'all' && d._src !== b_fSrc) return false;
         if(b_fStat === 'online' && !d.status) return false;
         if(b_fStat === 'offline' && d.status) return false;
-        if(b_fEdit === 'has_number' && !d.mobNo && !d.sims?.[0]?.phoneNumber) return false;
-        if(b_fEdit === 'no_number' && (d.mobNo || d.sims?.[0]?.phoneNumber)) return false;
+        const hasNum = (d.mobNo && d.mobNo !== 'Unknown' && d.mobNo.trim() !== '') || (d.sims?.[0]?.phoneNumber && d.sims[0].phoneNumber !== 'Unknown' && d.sims[0].phoneNumber.trim() !== '');
+        if(b_fEdit === 'has_number' && !hasNum) return false;
+        if(b_fEdit === 'no_number' && hasNum) return false;
         return true;
     });
 
