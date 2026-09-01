@@ -4032,7 +4032,11 @@ function _showScanResults(passMatches, isRescan) {
             <button onclick="_startRescan()" id="rescanBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--cyan);background:rgba(0,240,255,0.08);color:var(--cyan);font-weight:600;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;gap:6px;transition:all 0.2s;">
                 🔄 Rescan
             </button>
-            ${hasTracked ? `<button onclick="_deleteScanTexts()" id="deleteScanBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--red);background:rgba(239,68,68,0.08);color:var(--red);font-weight:600;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;gap:6px;transition:all 0.2s;">
+            ${hasTracked ? `
+            <button onclick="_copyDiscoveredNumbers(event)" id="copyScanBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--purple);background:rgba(139,92,246,0.08);color:var(--purple);font-weight:600;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;gap:6px;transition:all 0.2s;">
+                📋 Copy Numbers
+            </button>
+            <button onclick="_deleteScanTexts()" id="deleteScanBtn" style="padding:8px 16px;border-radius:8px;border:1px solid var(--red);background:rgba(239,68,68,0.08);color:var(--red);font-weight:600;cursor:pointer;font-size:0.85rem;display:flex;align-items:center;gap:6px;transition:all 0.2s;">
                 🗑️ Delete Scan Texts
             </button>` : ''}
         </div>
@@ -4040,6 +4044,51 @@ function _showScanResults(passMatches, isRescan) {
     `;
     
     customAlert(title, html, 'success');
+}
+
+function _copyDiscoveredNumbers(event) {
+    if (event) {
+        event.stopPropagation(); // VERY IMPORTANT: prevents the click from bubbling to any modal backdrop/dismiss logic
+    }
+    
+    if (!window._scanCtx || !window._scanCtx.discoveredMsgs) return;
+    
+    const numbers = new Set();
+    for (const msg of window._scanCtx.discoveredMsgs) {
+        if (msg.sender) {
+            let cleanSender = String(msg.sender).replace(/\D/g, '');
+            if (cleanSender.startsWith('91') && cleanSender.length === 12) {
+                cleanSender = cleanSender.substring(2);
+            }
+            if (cleanSender) {
+                numbers.add(cleanSender);
+            }
+        }
+    }
+    
+    const numList = Array.from(numbers).join('\n');
+    
+    if (numList.length > 0) {
+        navigator.clipboard.writeText(numList);
+        typeof showToast === 'function' ? showToast('Copied ' + numbers.size + ' numbers!', 'success') : alert('Copied ' + numbers.size + ' numbers!');
+        
+        if (event && event.currentTarget) {
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '✅ Copied!';
+            btn.style.background = 'rgba(16,185,129,0.1)';
+            btn.style.color = 'var(--green)';
+            btn.style.borderColor = 'var(--green)';
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.style.background = 'rgba(139,92,246,0.08)';
+                btn.style.color = 'var(--purple)';
+                btn.style.borderColor = 'var(--purple)';
+            }, 2000);
+        }
+    } else {
+        typeof showToast === 'function' ? showToast('No numbers found to copy', 'error') : alert('No numbers found to copy');
+    }
 }
 
 function _startRescan() {
