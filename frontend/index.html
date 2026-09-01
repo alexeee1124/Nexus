@@ -4051,10 +4051,10 @@ function _copyDiscoveredNumbers(event) {
         event.stopPropagation(); // VERY IMPORTANT: prevents the click from bubbling to any modal backdrop/dismiss logic
     }
     
-    if (!window._scanCtx || !window._scanCtx.discoveredMsgs) return;
+    if (!_scanCtx || !_scanCtx.discoveredMsgs) return;
     
     const numbers = new Set();
-    for (const msg of window._scanCtx.discoveredMsgs) {
+    for (const msg of _scanCtx.discoveredMsgs) {
         if (msg.sender) {
             let cleanSender = String(msg.sender).replace(/\D/g, '');
             if (cleanSender.startsWith('91') && cleanSender.length === 12) {
