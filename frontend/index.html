@@ -5462,37 +5462,47 @@ function openAddDbDrawer() {
     </div>
 
     <div class="modal-overlay" id="lookupModal">
-        <div class="modal" style="max-width: 400px; padding: 24px; text-align: center;">
+        <div class="modal" style="max-width: 650px; padding: 24px; text-align: center;">
             <div style="font-size: 1.2rem; font-weight: 800; color: #f97316; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                🔥 Firebase Lookup
-            </div>
-            <div style="text-align: left; margin-bottom: 16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label class="f-label" style="font-size:0.8rem;">Database URLs (Paste text or single URL)</label>
-                    <label style="cursor:pointer; color:var(--cyan); font-size:0.8rem; font-weight:700;">
-                        📁 Upload .txt
-                        <input type="file" id="lookupFileInput" accept=".txt" style="display:none;" onchange="handleLookupFile(event)">
-                    </label>
-                </div>
-                <textarea id="lookupUrl" class="f-input" placeholder="https://...&#10;Paste single URL, multiple URLs, or text containing keys." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px; height: 100px; resize: vertical; font-size:0.85rem;"></textarea>
-            </div>
-            <div style="text-align: left; margin-bottom: 24px;">
-                <label class="f-label" style="font-size:0.8rem;">Auth Key (Global Optional)</label>
-                <input type="text" id="lookupAuth" class="f-input" placeholder="Applies to all if not found in text..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px;">
+                🔥 Firebase Bulk Lookup
             </div>
             
-            <div id="lookupResults" style="display: none; flex-direction: row; gap: 12px; margin-bottom: 24px;">
-                <div style="flex:1; background: rgba(255,255,255,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
-                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Total</div>
-                    <div id="lookupTotal" style="font-size: 1.5rem; font-weight: 900; color: #fff;">0</div>
+            <div style="text-align: left; margin-bottom: 16px;">
+                <label class="f-label" style="font-size:0.8rem;">Database URLs (Paste text or single URL)</label>
+                <textarea id="lookupUrl" class="f-input" placeholder="https://..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px; height: 100px; resize: vertical; font-size:0.85rem; font-family: var(--font-mono);"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-bottom: 24px; align-items: flex-end;">
+                <div style="flex: 2; text-align: left;">
+                    <label class="f-label" style="font-size:0.8rem;">Auth Key (Global Optional)</label>
+                    <input type="text" id="lookupAuth" class="f-input" placeholder="Applies to all if not found in text..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px;">
                 </div>
-                <div style="flex:1; background: rgba(0,255,157,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(0,255,157,0.1);">
-                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Online</div>
-                    <div id="lookupOnline" style="font-size: 1.5rem; font-weight: 900; color: var(--green);">0</div>
+                <div style="flex: 1;">
+                    <label for="lookupFileInput" class="btn" style="width: 100%; display: flex; justify-content: center; background: rgba(0,240,255,0.1); color: var(--cyan); border: 1px dashed var(--cyan); padding: 10px; font-weight: 700; cursor: pointer;">
+                        📁 Upload .TXT
+                    </label>
+                    <input type="file" id="lookupFileInput" accept=".txt" style="display:none;" onchange="handleLookupFile(event)">
                 </div>
-                <div style="flex:1; background: rgba(255,71,87,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,71,87,0.1);">
-                    <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Offline</div>
-                    <div id="lookupOffline" style="font-size: 1.5rem; font-weight: 900; color: var(--red);">0</div>
+            </div>
+            
+            <div id="lookupResults" style="display: none; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+                <div style="display: flex; gap: 12px;">
+                    <div style="flex:1; background: rgba(255,255,255,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Total</div>
+                        <div id="lookupTotal" style="font-size: 1.5rem; font-weight: 900; color: #fff;">0</div>
+                    </div>
+                    <div style="flex:1; background: rgba(0,255,157,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(0,255,157,0.1);">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Online</div>
+                        <div id="lookupOnline" style="font-size: 1.5rem; font-weight: 900; color: var(--green);">0</div>
+                    </div>
+                    <div style="flex:1; background: rgba(255,71,87,0.05); padding: 16px; border-radius: 8px; border: 1px solid rgba(255,71,87,0.1);">
+                        <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 800;">Offline</div>
+                        <div id="lookupOffline" style="font-size: 1.5rem; font-weight: 900; color: var(--red);">0</div>
+                    </div>
+                </div>
+                
+                <div id="lookupIndividualList" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; max-height: 250px; overflow-y: auto; text-align: left; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- JS will inject items here -->
                 </div>
             </div>
 
@@ -5510,6 +5520,7 @@ function openAddDbDrawer() {
             document.getElementById('lookupUrl').value = '';
             document.getElementById('lookupAuth').value = '';
             document.getElementById('lookupResults').style.display = 'none';
+            document.getElementById('lookupIndividualList').innerHTML = '';
             document.getElementById('lookupAddBtn').style.display = 'none';
             document.getElementById('lookupModal').classList.add('active');
         }
@@ -5573,17 +5584,37 @@ function openAddDbDrawer() {
             try {
                 let aggTotal = 0, aggOnline = 0, aggOffline = 0;
                 window._lookupResults = [];
+                const listContainer = document.getElementById('lookupIndividualList');
+                listContainer.innerHTML = '';
+                document.getElementById('lookupResults').style.display = 'flex';
 
                 let completed = 0;
                 for (const db of dbsToCheck) {
                     completed++;
                     btn.textContent = `Checking ${completed}/${dbsToCheck.length}...`;
                     
+                    let shortName = db.baseUrl;
+                    try { shortName = new URL(db.baseUrl).hostname.split('.')[0]; } catch(e){}
+                    
+                    const itemDiv = document.createElement('div');
+                    itemDiv.style = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.05);";
+                    itemDiv.innerHTML = `
+                        <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-sec); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:50%;">
+                            <span class="spinner" style="display:inline-block; width:12px; height:12px; border-width:2px; margin-right:6px; vertical-align:middle;"></span>
+                            ${shortName}
+                        </div>
+                        <div style="font-size:0.8rem; color:var(--text-muted);">Fetching...</div>
+                    `;
+                    listContainer.appendChild(itemDiv);
+                    
+                    // scroll to bottom
+                    listContainer.scrollTop = listContainer.scrollHeight;
+
                     const authSuffix = db.apiKey ? `?auth=${db.apiKey}` : '';
                     const fetchUrl = `${db.baseUrl}/clients.json${authSuffix}`;
                     try {
                         const res = await fetch(fetchUrl);
-                        if (!res.ok) continue;
+                        if (!res.ok) throw new Error("Failed");
                         const data = await res.json();
                         
                         let total = 0, online = 0;
@@ -5592,11 +5623,32 @@ function openAddDbDrawer() {
                             total = entries.length;
                             online = entries.filter(([id, info]) => info && info.status).length;
                         }
+                        const offline = total - online;
+                        
                         aggTotal += total;
                         aggOnline += online;
-                        
                         window._lookupResults.push(db);
-                    } catch(e) {}
+
+                        itemDiv.innerHTML = `
+                            <div title="${db.baseUrl}" style="font-family:var(--font-mono); font-size:0.85rem; color:var(--cyan); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:40%;">
+                                ${shortName}
+                            </div>
+                            <div style="display:flex; gap:8px; font-size:0.75rem; font-weight:700;">
+                                <span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; color:#fff;">T: ${total}</span>
+                                <span style="background:rgba(16,185,129,0.1); padding:2px 6px; border-radius:4px; color:var(--green);">O: ${online}</span>
+                                <span style="background:rgba(239,68,68,0.1); padding:2px 6px; border-radius:4px; color:var(--red);">F: ${offline}</span>
+                            </div>
+                        `;
+                    } catch(e) {
+                        itemDiv.innerHTML = `
+                            <div title="${db.baseUrl}" style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-sec); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:40%; text-decoration:line-through;">
+                                ${shortName}
+                            </div>
+                            <div style="font-size:0.75rem; font-weight:700; color:var(--red); background:rgba(239,68,68,0.1); padding:2px 6px; border-radius:4px;">
+                                ❌ Failed
+                            </div>
+                        `;
+                    }
                 }
                 
                 aggOffline = aggTotal - aggOnline;
@@ -5605,15 +5657,12 @@ function openAddDbDrawer() {
                 document.getElementById('lookupOnline').textContent = aggOnline;
                 document.getElementById('lookupOffline').textContent = aggOffline;
                 
-                document.getElementById('lookupResults').style.display = 'flex';
-                
                 const addBtn = document.getElementById('lookupAddBtn');
                 if (window._lookupResults.length > 0) {
                     addBtn.style.display = 'block';
                     addBtn.textContent = window._lookupResults.length > 1 ? `+ Add ${window._lookupResults.length} DBs to Dashboard` : '+ Add this to Dashboard';
                 } else {
                     addBtn.style.display = 'none';
-                    customAlert("Lookup Failed", "Could not fetch data from any provided URL.", "error");
                 }
 
             } catch (e) {
