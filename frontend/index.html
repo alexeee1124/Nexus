@@ -5462,6 +5462,11 @@ function openAddDbDrawer() {
     </div>
 
     <div class="modal-overlay" id="lookupModal">
+        <style>
+            .lookup-expanded { max-width: 1000px !important; height: 90vh !important; display: flex; flex-direction: column; }
+            .lookup-expanded #lookupResults { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+            .lookup-expanded #lookupIndividualList { flex: 1; max-height: none !important; overflow-y: auto; }
+        </style>
         <div class="modal" style="max-width: 650px; padding: 24px; text-align: center;">
             <div style="font-size: 1.2rem; font-weight: 800; color: #f97316; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 🔥 Firebase Bulk Lookup
@@ -5501,6 +5506,13 @@ function openAddDbDrawer() {
                     </div>
                 </div>
                 
+                <div id="lookupListHeader" style="display: none; justify-content: space-between; align-items: center;">
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn" style="padding:4px 8px; font-size:0.75rem;" onclick="lookupSelectAll(true)">Select All</button>
+                        <button class="btn" style="padding:4px 8px; font-size:0.75rem;" onclick="lookupSelectAll(false)">None</button>
+                    </div>
+                    <button id="lookupExpandBtn" class="btn" style="padding:4px 8px; font-size:0.75rem; background:rgba(255,255,255,0.1);" onclick="toggleLookupExpand()">⛶ Expand</button>
+                </div>
                 <div id="lookupIndividualList" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; max-height: 250px; overflow-y: auto; text-align: left; padding: 12px; display: flex; flex-direction: column; gap: 8px;">
                     <!-- JS will inject items here -->
                 </div>
@@ -5583,10 +5595,12 @@ function openAddDbDrawer() {
 
             try {
                 let aggTotal = 0, aggOnline = 0, aggOffline = 0;
-                window._lookupResults = [];
+                const allCheckedDbs = [];
                 const listContainer = document.getElementById('lookupIndividualList');
                 listContainer.innerHTML = '';
                 document.getElementById('lookupResults').style.display = 'flex';
+                document.getElementById('lookupListHeader').style.display = 'none';
+                document.getElementById('lookupAddBtn').style.display = 'none';
 
                 let completed = 0;
                 for (const db of dbsToCheck) {
@@ -5606,8 +5620,6 @@ function openAddDbDrawer() {
                         <div style="font-size:0.8rem; color:var(--text-muted);">Fetching...</div>
                     `;
                     listContainer.appendChild(itemDiv);
-                    
-                    // scroll to bottom
                     listContainer.scrollTop = listContainer.scrollHeight;
 
                     const authSuffix = db.apiKey ? `?auth=${db.apiKey}` : '';
@@ -5627,7 +5639,7 @@ function openAddDbDrawer() {
                         
                         aggTotal += total;
                         aggOnline += online;
-                        window._lookupResults.push(db);
+                        allCheckedDbs.push({ ...db, shortName, total, online, offline, success: true });
 
                         itemDiv.innerHTML = `
                             <div title="${db.baseUrl}" style="font-family:var(--font-mono); font-size:0.85rem; color:var(--cyan); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:40%;">
@@ -5640,6 +5652,7 @@ function openAddDbDrawer() {
                             </div>
                         `;
                     } catch(e) {
+                        allCheckedDbs.push({ ...db, shortName, success: false });
                         itemDiv.innerHTML = `
                             <div title="${db.baseUrl}" style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-sec); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:40%; text-decoration:line-through;">
                                 ${shortName}
@@ -5652,18 +5665,19 @@ function openAddDbDrawer() {
                 }
                 
                 aggOffline = aggTotal - aggOnline;
-
                 document.getElementById('lookupTotal').textContent = aggTotal;
                 document.getElementById('lookupOnline').textContent = aggOnline;
                 document.getElementById('lookupOffline').textContent = aggOffline;
                 
-                const addBtn = document.getElementById('lookupAddBtn');
-                if (window._lookupResults.length > 0) {
-                    addBtn.style.display = 'block';
-                    addBtn.textContent = window._lookupResults.length > 1 ? `+ Add ${window._lookupResults.length} DBs to Dashboard` : '+ Add this to Dashboard';
-                } else {
-                    addBtn.style.display = 'none';
-                }
+                // Finalize data
+                allCheckedDbs.sort((a, b) => {
+                    if (a.success !== b.success) return a.success ? -1 : 1;
+                    if (a.success) return b.online - a.online;
+                    return 0;
+                });
+                window._lookupFinalData = allCheckedDbs;
+                
+                renderLookupList();
 
             } catch (e) {
                 customAlert("Lookup Error", "An error occurred during check.", "error");
@@ -5673,8 +5687,84 @@ function openAddDbDrawer() {
             }
         }
 
+        function renderLookupList() {
+            const container = document.getElementById('lookupIndividualList');
+            container.innerHTML = '';
+            
+            if (window._lookupFinalData.length > 0) {
+                document.getElementById('lookupListHeader').style.display = 'flex';
+            }
+            
+            window._lookupFinalData.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.style = "display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:6px; border:1px solid rgba(255,255,255,0.05); flex-shrink: 0;";
+                
+                if (item.success) {
+                    div.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:12px; width:60%; overflow:hidden;">
+                            <input type="checkbox" class="lookup-cb" value="${index}" checked onchange="updateLookupAddBtn()" style="accent-color:var(--cyan); width:16px; height:16px; cursor:pointer; flex-shrink:0;">
+                            <div title="${item.baseUrl}" style="font-family:var(--font-mono); font-size:0.85rem; color:var(--cyan); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">
+                                ${item.shortName}
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; font-size:0.75rem; font-weight:700; flex-shrink:0;">
+                            <span style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; color:#fff;">T: ${item.total}</span>
+                            <span style="background:rgba(16,185,129,0.1); padding:2px 6px; border-radius:4px; color:var(--green);">O: ${item.online}</span>
+                            <span style="background:rgba(239,68,68,0.1); padding:2px 6px; border-radius:4px; color:var(--red);">F: ${item.offline}</span>
+                        </div>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:12px; width:60%; overflow:hidden;">
+                            <input type="checkbox" disabled style="width:16px; height:16px; opacity:0.3; flex-shrink:0;">
+                            <div title="${item.baseUrl}" style="font-family:var(--font-mono); font-size:0.85rem; color:var(--text-sec); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; text-decoration:line-through;">
+                                ${item.shortName}
+                            </div>
+                        </div>
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--red); background:rgba(239,68,68,0.1); padding:2px 6px; border-radius:4px; flex-shrink:0;">
+                            ❌ Failed
+                        </div>
+                    `;
+                }
+                container.appendChild(div);
+            });
+            updateLookupAddBtn();
+        }
+
+        function updateLookupAddBtn() {
+            const cbs = document.querySelectorAll('.lookup-cb:checked');
+            const addBtn = document.getElementById('lookupAddBtn');
+            if (cbs.length > 0) {
+                addBtn.style.display = 'block';
+                addBtn.textContent = cbs.length > 1 ? \`+ Add \${cbs.length} DBs to Dashboard\` : '+ Add 1 DB to Dashboard';
+            } else {
+                addBtn.style.display = 'none';
+            }
+        }
+
+        function lookupSelectAll(select) {
+            document.querySelectorAll('.lookup-cb').forEach(cb => {
+                cb.checked = select;
+            });
+            updateLookupAddBtn();
+        }
+
+        function toggleLookupExpand() {
+            const modal = document.querySelector('#lookupModal .modal');
+            modal.classList.toggle('lookup-expanded');
+            const btn = document.getElementById('lookupExpandBtn');
+            if (modal.classList.contains('lookup-expanded')) {
+                btn.innerHTML = '🗗 Collapse';
+            } else {
+                btn.innerHTML = '⛶ Expand';
+            }
+        }
+
         async function lookupAddSource() {
-            if (!window._lookupResults || window._lookupResults.length === 0) return;
+            const selectedIndices = Array.from(document.querySelectorAll('.lookup-cb:checked')).map(cb => parseInt(cb.value));
+            if (selectedIndices.length === 0) return;
+            
+            const dbsToAdd = selectedIndices.map(idx => window._lookupFinalData[idx]);
 
             document.getElementById('lookupModal').classList.remove('active');
             document.getElementById('loader').classList.remove('hidden');
@@ -5682,9 +5772,9 @@ function openAddDbDrawer() {
             let successCount = 0;
             let failCount = 0;
 
-            for (let i = 0; i < window._lookupResults.length; i++) {
-                const db = window._lookupResults[i];
-                document.getElementById('loadText').textContent = `Adding Database ${i + 1} of ${window._lookupResults.length}...`;
+            for (let i = 0; i < dbsToAdd.length; i++) {
+                const db = dbsToAdd[i];
+                document.getElementById('loadText').textContent = `Adding Database ${i + 1} of ${dbsToAdd.length}...`;
                 
                 let label = 'db';
                 try {
@@ -5729,13 +5819,13 @@ function openAddDbDrawer() {
             if (typeof renderAdminDbGrid === "function") renderAdminDbGrid();
             
             document.getElementById('loader').classList.add('hidden');
-            if (window._lookupResults.length > 1) {
+            if (dbsToAdd.length > 1) {
                 customAlert("Import Complete", `Successfully connected ${successCount} databases.<br>Failed: ${failCount}`, "success");
             } else {
                 if (successCount > 0) customAlert("Added successfully", "Database connected successfully.", "success");
                 else customAlert("Add Failed", "Failed to add source.", "error");
             }
-            window._lookupResults = [];
+            window._lookupFinalData = [];
         }
     </script>
     <div id="contextMenu" class="context-menu">
