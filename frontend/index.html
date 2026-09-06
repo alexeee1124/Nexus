@@ -5463,21 +5463,30 @@ function openAddDbDrawer() {
 
     <div class="modal-overlay" id="lookupModal">
         <style>
-            .lookup-expanded { max-width: 1000px !important; height: 90vh !important; display: flex; flex-direction: column; }
+            .lookup-expanded { max-width: 95vw !important; height: 95vh !important; display: flex; flex-direction: column; }
+            .lookup-expanded .lookup-inputs { display: none !important; }
             .lookup-expanded #lookupResults { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-            .lookup-expanded #lookupIndividualList { flex: 1; max-height: none !important; overflow-y: auto; }
+            .lookup-expanded #lookupIndividualList { 
+                flex: 1; 
+                max-height: none !important; 
+                overflow-y: auto; 
+                display: grid !important;
+                grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                gap: 12px;
+                align-content: start;
+            }
         </style>
         <div class="modal" style="max-width: 650px; padding: 24px; text-align: center;">
             <div style="font-size: 1.2rem; font-weight: 800; color: #f97316; margin-bottom: 16px; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 🔥 Firebase Bulk Lookup
             </div>
             
-            <div style="text-align: left; margin-bottom: 16px;">
+            <div class="lookup-inputs" style="text-align: left; margin-bottom: 16px;">
                 <label class="f-label" style="font-size:0.8rem;">Database URLs (Paste text or single URL)</label>
                 <textarea id="lookupUrl" class="f-input" placeholder="https://..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px; height: 100px; resize: vertical; font-size:0.85rem; font-family: var(--font-mono);"></textarea>
             </div>
             
-            <div style="display: flex; gap: 12px; margin-bottom: 24px; align-items: flex-end;">
+            <div class="lookup-inputs" style="display: flex; gap: 12px; margin-bottom: 24px; align-items: flex-end;">
                 <div style="flex: 2; text-align: left;">
                     <label class="f-label" style="font-size:0.8rem;">Auth Key (Global Optional)</label>
                     <input type="text" id="lookupAuth" class="f-input" placeholder="Applies to all if not found in text..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px;">
