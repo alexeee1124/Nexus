@@ -5467,12 +5467,18 @@ function openAddDbDrawer() {
                 🔥 Firebase Lookup
             </div>
             <div style="text-align: left; margin-bottom: 16px;">
-                <label class="f-label" style="font-size:0.8rem;">Database URL</label>
-                <input type="text" id="lookupUrl" class="f-input" placeholder="https://..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label class="f-label" style="font-size:0.8rem;">Database URLs (Paste text or single URL)</label>
+                    <label style="cursor:pointer; color:var(--cyan); font-size:0.8rem; font-weight:700;">
+                        📁 Upload .txt
+                        <input type="file" id="lookupFileInput" accept=".txt" style="display:none;" onchange="handleLookupFile(event)">
+                    </label>
+                </div>
+                <textarea id="lookupUrl" class="f-input" placeholder="https://...&#10;Paste single URL, multiple URLs, or text containing keys." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px; height: 100px; resize: vertical; font-size:0.85rem;"></textarea>
             </div>
             <div style="text-align: left; margin-bottom: 24px;">
-                <label class="f-label" style="font-size:0.8rem;">Auth Key (Optional)</label>
-                <input type="text" id="lookupAuth" class="f-input" placeholder="Secret key if required..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px;">
+                <label class="f-label" style="font-size:0.8rem;">Auth Key (Global Optional)</label>
+                <input type="text" id="lookupAuth" class="f-input" placeholder="Applies to all if not found in text..." style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 10px;">
             </div>
             
             <div id="lookupResults" style="display: none; flex-direction: row; gap: 12px; margin-bottom: 24px;">
@@ -5508,46 +5514,110 @@ function openAddDbDrawer() {
             document.getElementById('lookupModal').classList.add('active');
         }
 
-        async function executeLookup() {
-            const urlInput = document.getElementById('lookupUrl').value.trim();
-            const authInput = document.getElementById('lookupAuth').value.trim();
-            if (!urlInput) return customAlert("Lookup Error", "Please enter a Firebase URL.", "error");
+        function handleLookupFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('lookupUrl').value = e.target.result;
+            };
+            reader.readAsText(file);
+            event.target.value = ''; // Reset input
+        }
 
-            let baseUrl = urlInput;
-            if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
-            if (baseUrl.endsWith('.json')) baseUrl = baseUrl.replace('/clients.json', '').replace('.json', '');
+        async function executeLookup() {
+            const textInput = document.getElementById('lookupUrl').value.trim();
+            const globalAuth = document.getElementById('lookupAuth').value.trim();
+            if (!textInput) return customAlert("Lookup Error", "Please enter Firebase URL(s) or upload a file.", "error");
 
             const btn = document.getElementById('lookupExecBtn');
             btn.textContent = 'Checking...';
             btn.disabled = true;
 
-            try {
-                const authSuffix = authInput ? `?auth=${authInput}` : '';
-                const fetchUrl = `${baseUrl}/clients.json${authSuffix}`;
-                const res = await fetch(fetchUrl);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                
-                let total = 0, online = 0, offline = 0;
-                if (data && typeof data === 'object') {
-                    const entries = Array.isArray(data) ? data.map((v, i) => [String(i), v]).filter(x => x[1]) : Object.entries(data);
-                    total = entries.length;
-                    online = entries.filter(([id, info]) => info && info.status).length;
-                    offline = total - online;
+            const urlRegex = /https:\/\/[a-zA-Z0-9-]+\.(?:firebaseio\.com|asia-southeast1\.firebasedatabase\.app)[^\s]*/g;
+            let matches = textInput.match(urlRegex) || [];
+            
+            if (matches.length === 0) {
+                if (textInput.includes('firebaseio.com') || textInput.includes('firebasedatabase.app')) {
+                    matches = [textInput];
+                } else {
+                    btn.textContent = 'Check Status';
+                    btn.disabled = false;
+                    return customAlert("Lookup Error", "No valid Firebase URLs found.", "error");
                 }
+            }
 
-                document.getElementById('lookupTotal').textContent = total;
-                document.getElementById('lookupOnline').textContent = online;
-                document.getElementById('lookupOffline').textContent = offline;
+            matches = [...new Set(matches.map(u => u.replace(/\/$/, '')))];
+            const dbsToCheck = [];
+
+            matches.forEach(url => {
+                const urlIdx = textInput.indexOf(url);
+                let apiKey = globalAuth;
+                if (urlIdx !== -1) {
+                    const chunk = textInput.slice(urlIdx, urlIdx + 300);
+                    const keyMatch = chunk.match(/(?:KEY|Key|key).*?(AIza[a-zA-Z0-9-_]+)/);
+                    if (keyMatch && keyMatch[1]) {
+                        apiKey = keyMatch[1];
+                    } else {
+                        const rawKeyMatch = chunk.match(/AIza[a-zA-Z0-9-_]{30,}/);
+                        if (rawKeyMatch) apiKey = rawKeyMatch[0];
+                    }
+                }
+                
+                let baseUrl = url;
+                if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+                if (baseUrl.endsWith('.json')) baseUrl = baseUrl.replace('/clients.json', '').replace('.json', '');
+                dbsToCheck.push({ baseUrl, apiKey });
+            });
+
+            try {
+                let aggTotal = 0, aggOnline = 0, aggOffline = 0;
+                window._lookupResults = [];
+
+                let completed = 0;
+                for (const db of dbsToCheck) {
+                    completed++;
+                    btn.textContent = `Checking ${completed}/${dbsToCheck.length}...`;
+                    
+                    const authSuffix = db.apiKey ? `?auth=${db.apiKey}` : '';
+                    const fetchUrl = `${db.baseUrl}/clients.json${authSuffix}`;
+                    try {
+                        const res = await fetch(fetchUrl);
+                        if (!res.ok) continue;
+                        const data = await res.json();
+                        
+                        let total = 0, online = 0;
+                        if (data && typeof data === 'object') {
+                            const entries = Array.isArray(data) ? data.map((v, i) => [String(i), v]).filter(x => x[1]) : Object.entries(data);
+                            total = entries.length;
+                            online = entries.filter(([id, info]) => info && info.status).length;
+                        }
+                        aggTotal += total;
+                        aggOnline += online;
+                        
+                        window._lookupResults.push(db);
+                    } catch(e) {}
+                }
+                
+                aggOffline = aggTotal - aggOnline;
+
+                document.getElementById('lookupTotal').textContent = aggTotal;
+                document.getElementById('lookupOnline').textContent = aggOnline;
+                document.getElementById('lookupOffline').textContent = aggOffline;
                 
                 document.getElementById('lookupResults').style.display = 'flex';
-                document.getElementById('lookupAddBtn').style.display = 'block';
                 
-                window._lookupBaseUrl = baseUrl;
-                window._lookupAuth = authInput;
+                const addBtn = document.getElementById('lookupAddBtn');
+                if (window._lookupResults.length > 0) {
+                    addBtn.style.display = 'block';
+                    addBtn.textContent = window._lookupResults.length > 1 ? `+ Add ${window._lookupResults.length} DBs to Dashboard` : '+ Add this to Dashboard';
+                } else {
+                    addBtn.style.display = 'none';
+                    customAlert("Lookup Failed", "Could not fetch data from any provided URL.", "error");
+                }
 
             } catch (e) {
-                customAlert("Lookup Failed", "Could not fetch data. Check URL or Auth Key.", "error");
+                customAlert("Lookup Error", "An error occurred during check.", "error");
             } finally {
                 btn.textContent = 'Check Status';
                 btn.disabled = false;
@@ -5555,53 +5625,68 @@ function openAddDbDrawer() {
         }
 
         async function lookupAddSource() {
-            let baseUrl = window._lookupBaseUrl;
-            let auth = window._lookupAuth;
-            if (!baseUrl) return;
-
-            let label = 'db';
-            try {
-                const urlObj = new URL(baseUrl);
-                label = urlObj.hostname.split('-')[0].split('.')[0]; 
-            } catch(e) {}
-
-            let finalLabel = label;
-            let counter = 1;
-            const existingLabels = SOURCES.map(s => s.label.toLowerCase());
-            while (existingLabels.includes(finalLabel.toLowerCase())) {
-                finalLabel = label + counter;
-                counter++;
-            }
+            if (!window._lookupResults || window._lookupResults.length === 0) return;
 
             document.getElementById('lookupModal').classList.remove('active');
             document.getElementById('loader').classList.remove('hidden');
 
-            try {
-                const payload = { 
-                    key: finalLabel.toLowerCase().replace(/[^a-z0-9]/g, '') + (Math.random() + 1).toString(36).substring(7),
-                    base: baseUrl, 
-                    label: finalLabel, 
-                    apiKey: auth, 
-                    color: '#00f0ff' 
-                };
-                const res = await fetch('/api/databases', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${MASTER_KEY}` },
-                    body: JSON.stringify(payload)
-                });
-                const result = await res.json();
-                document.getElementById('loader').classList.add('hidden');
-                if (result.success) {
-                    customAlert("Added successfully", `Database connected as '${finalLabel}'.`, "success");
-                    await fetchAll(true); // Fetch state without throwing up the full loading screen if possible
-                    if (typeof renderAdminDbGrid === "function") renderAdminDbGrid();
-                } else {
-                    customAlert("Add Failed", result.message || "Failed to add source.", "error");
+            let successCount = 0;
+            let failCount = 0;
+
+            for (let i = 0; i < window._lookupResults.length; i++) {
+                const db = window._lookupResults[i];
+                document.getElementById('loadText').textContent = `Adding Database ${i + 1} of ${window._lookupResults.length}...`;
+                
+                let label = 'db';
+                try {
+                    const urlObj = new URL(db.baseUrl);
+                    label = urlObj.hostname.split('-')[0].split('.')[0]; 
+                } catch(e) {}
+
+                let finalLabel = label;
+                let counter = 1;
+                const existingLabels = SOURCES.map(s => s.label.toLowerCase());
+                while (existingLabels.includes(finalLabel.toLowerCase())) {
+                    finalLabel = label + counter;
+                    counter++;
                 }
-            } catch(e) {
-                document.getElementById('loader').classList.add('hidden');
-                customAlert("Add Error", "Network error.", "error");
+
+                try {
+                    const payload = { 
+                        key: finalLabel.toLowerCase().replace(/[^a-z0-9]/g, '') + (Math.random() + 1).toString(36).substring(7),
+                        base: db.baseUrl, 
+                        label: finalLabel, 
+                        apiKey: db.apiKey || undefined, 
+                        color: '#00f0ff' 
+                    };
+                    const res = await fetch('/api/databases', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await res.json();
+                    if(result.success) {
+                        successCount++;
+                        SOURCES.push(payload); 
+                    } else {
+                        failCount++;
+                    }
+                } catch(e) {
+                    failCount++;
+                }
             }
+            
+            await fetchAll(true);
+            if (typeof renderAdminDbGrid === "function") renderAdminDbGrid();
+            
+            document.getElementById('loader').classList.add('hidden');
+            if (window._lookupResults.length > 1) {
+                customAlert("Import Complete", `Successfully connected ${successCount} databases.<br>Failed: ${failCount}`, "success");
+            } else {
+                if (successCount > 0) customAlert("Added successfully", "Database connected successfully.", "success");
+                else customAlert("Add Failed", "Failed to add source.", "error");
+            }
+            window._lookupResults = [];
         }
     </script>
     <div id="contextMenu" class="context-menu">
